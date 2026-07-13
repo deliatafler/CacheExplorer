@@ -13,6 +13,7 @@
 #include <string>
 #include <system_error>
 #include <thread>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #define NOMINMAX
@@ -35,6 +36,7 @@ namespace
     constexpr int ExportButtonId = 1004;
     constexpr int ExportVisibleButtonId = 1013;
     constexpr int LikelyCompleteCheckId = 1009;
+    constexpr int PreviewableCheckId = 1016;
     constexpr int OverwriteCheckId = 1010;
     constexpr int RetryIncompleteCheckId = 1011;
     constexpr int ProgressBarId = 1012;
@@ -60,6 +62,7 @@ namespace
         HWND exportButton = nullptr;
         HWND exportVisibleButton = nullptr;
         HWND likelyCompleteCheck = nullptr;
+        HWND previewableCheck = nullptr;
         HWND overwriteCheck = nullptr;
         HWND retryIncompleteCheck = nullptr;
         HWND uuidFilterEdit = nullptr;
@@ -73,14 +76,18 @@ namespace
         TextureCacheDatabase database;
         std::vector<const CacheEntry*> visibleEntries;
         bool likelyCompleteOnly = false;
+        bool previewableOnly = false;
         std::wstring uuidFilter;
         int sortColumn = 3;
         bool sortAscending = false;
         std::unique_ptr<gdip::Image> previewImage;
+        std::string previewImageUuid;
+        std::wstring previewText;
         fs::path previewDirectory;
         std::uint64_t previewRequestId = 0;
         std::wstring detailsBase;
         bool exportInProgress = false;
+        std::unordered_map<std::string, bool> previewableByUuid;
     };
 
     struct PreviewResult
@@ -104,6 +111,8 @@ namespace
         bool overwriteExisting = false;
         bool retryIncomplete = false;
     };
+
+    void PopulateList(AppState& app);
 
     std::wstring ToWide(const std::string& value)
     {
@@ -211,6 +220,28 @@ namespace
 
     void SetEntryStatus(AppState& app)
     {
+        if (app.visibleEntries.empty() && !app.uuidFilter.empty())
+        {
+            if (app.previewableOnly)
+            {
+                SetStatus(
+                    app,
+                    L"No confirmed previewable matches. Uncheck Previewable to test this UUID filter.");
+                return;
+            }
+
+            SetStatus(app, L"No UUID matches in the current cache.");
+            return;
+        }
+
+        if (app.previewableOnly && app.visibleEntries.empty())
+        {
+            SetStatus(
+                app,
+                L"No confirmed previewable textures yet. Preview rows first, then enable Previewable.");
+            return;
+        }
+
         std::wostringstream status;
         status
             << L"Showing "
@@ -245,8 +276,11 @@ namespace
         EnableWindow(app.exportButton, enabled);
         EnableWindow(app.exportVisibleButton, enabled);
         EnableWindow(app.likelyCompleteCheck, enabled);
+        EnableWindow(app.previewableCheck, enabled);
         EnableWindow(app.overwriteCheck, enabled);
         EnableWindow(app.retryIncompleteCheck, enabled);
+        EnableWindow(app.uuidFilterEdit, enabled);
+        EnableWindow(app.clearUuidFilterButton, enabled);
         EnableWindow(app.textureList, enabled);
     }
 
@@ -354,6 +388,8 @@ namespace
     void ClearPreview(AppState& app)
     {
         app.previewImage.reset();
+        app.previewImageUuid.clear();
+        app.previewText.clear();
         InvalidateRect(app.previewControl, nullptr, TRUE);
     }
 
@@ -461,15 +497,23 @@ namespace
 
     void ApplyPreviewResult(AppState& app, std::unique_ptr<PreviewResult> result)
     {
-        if (!result || result->requestId != app.previewRequestId)
+        if (!result)
         {
             return;
         }
 
+        const bool isCurrentPreview = result->requestId == app.previewRequestId;
+
         if (!result->exported)
         {
-            SetDetails(app, app.detailsBase + L"\r\n\r\nPreview\r\n" + result->message);
-            SetStatus(app, L"Preview unavailable: " + result->message);
+            app.previewableByUuid[result->uuid] = false;
+
+            if (isCurrentPreview)
+            {
+                SetDetails(app, app.detailsBase + L"\r\n\r\nPreview\r\n" + result->message);
+                SetStatus(app, L"Preview unavailable: " + result->message);
+            }
+
             return;
         }
 
@@ -477,20 +521,40 @@ namespace
 
         if (image->GetLastStatus() != gdip::Ok)
         {
-            SetDetails(app, app.detailsBase + L"\r\n\r\nPreview\r\nPNG was exported but could not be loaded.");
+            app.previewableByUuid[result->uuid] = false;
+
+            if (isCurrentPreview)
+            {
+                SetDetails(app, app.detailsBase + L"\r\n\r\nPreview\r\nPNG was exported but could not be loaded.");
+            }
+
             return;
         }
 
-        std::wostringstream details;
-        details
-            << app.detailsBase
-            << L"\r\n\r\nPreview\r\n"
+        app.previewableByUuid[result->uuid] = true;
+
+        if (!isCurrentPreview)
+        {
+            if (app.previewableOnly)
+            {
+                PopulateList(app);
+                SetEntryStatus(app);
+            }
+
+            return;
+        }
+
+        std::wostringstream previewText;
+        previewText
+            << L"Preview\r\n"
             << image->GetWidth()
             << L" x "
             << image->GetHeight();
 
+        app.previewImageUuid = result->uuid;
+        app.previewText = previewText.str();
         app.previewImage = std::move(image);
-        SetDetails(app, details.str());
+        SetDetails(app, app.detailsBase + L"\r\n\r\n" + app.previewText);
         SetStatus(app, L"Preview ready: " + ToWide(result->uuid));
         InvalidateRect(app.previewControl, nullptr, TRUE);
     }
@@ -621,6 +685,16 @@ namespace
             << FormatTime(entry.timestamp);
 
         app.detailsBase = details.str();
+
+        if (app.previewImage &&
+            app.previewImage->GetLastStatus() == gdip::Ok &&
+            app.previewImageUuid == entry.uuid.ToString())
+        {
+            SetDetails(app, app.detailsBase + L"\r\n\r\n" + app.previewText);
+            InvalidateRect(app.previewControl, nullptr, TRUE);
+            return;
+        }
+
         StartPreview(app, entry);
     }
 
@@ -629,6 +703,12 @@ namespace
         return entry.imageSize > 0 &&
             entry.bodySize > 0 &&
             entry.imageSize > entry.bodySize;
+    }
+
+    bool IsConfirmedPreviewable(AppState& app, const CacheEntry& entry)
+    {
+        const auto status = app.previewableByUuid.find(entry.uuid.ToString());
+        return status != app.previewableByUuid.end() && status->second;
     }
 
     bool MatchesUuidFilter(const CacheEntry& entry, const std::wstring& filter)
@@ -795,6 +875,11 @@ namespace
                 continue;
             }
 
+            if (app.previewableOnly && !IsConfirmedPreviewable(app, entry))
+            {
+                continue;
+            }
+
             app.visibleEntries.push_back(&entry);
         }
 
@@ -863,6 +948,7 @@ namespace
         }
 
         app.database = std::move(database);
+        app.previewableByUuid.clear();
         SetWindowTextW(app.pathEdit, app.database.CacheDirectory().wstring().c_str());
         PopulateList(app);
 
@@ -1093,6 +1179,7 @@ namespace
         constexpr int buttonWidth = 90;
         constexpr int exportButtonWidth = 120;
         constexpr int checkWidth = 130;
+        constexpr int previewableWidth = 105;
         constexpr int smallCheckWidth = 95;
         constexpr int uuidFilterWidth = 260;
         constexpr int clearFilterWidth = 52;
@@ -1140,29 +1227,36 @@ namespace
             rowHeight,
             TRUE);
         MoveWindow(
-            app.overwriteCheck,
+            app.previewableCheck,
             margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap,
+            margin + rowHeight + gap,
+            previewableWidth,
+            rowHeight,
+            TRUE);
+        MoveWindow(
+            app.overwriteCheck,
+            margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap + previewableWidth + gap,
             margin + rowHeight + gap,
             smallCheckWidth,
             rowHeight,
             TRUE);
         MoveWindow(
             app.retryIncompleteCheck,
-            margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap + smallCheckWidth + gap,
+            margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap + previewableWidth + gap + smallCheckWidth + gap,
             margin + rowHeight + gap,
             checkWidth,
             rowHeight,
             TRUE);
         MoveWindow(
             app.uuidFilterEdit,
-            margin + (exportButtonWidth * 2) + (gap * 2) + (checkWidth * 2) + smallCheckWidth + (gap * 3),
+            margin + (exportButtonWidth * 2) + (gap * 2) + (checkWidth * 2) + previewableWidth + smallCheckWidth + (gap * 4),
             margin + rowHeight + gap,
             uuidFilterWidth,
             rowHeight,
             TRUE);
         MoveWindow(
             app.clearUuidFilterButton,
-            margin + (exportButtonWidth * 2) + (gap * 2) + (checkWidth * 2) + smallCheckWidth + (gap * 4) + uuidFilterWidth,
+            margin + (exportButtonWidth * 2) + (gap * 2) + (checkWidth * 2) + previewableWidth + smallCheckWidth + (gap * 5) + uuidFilterWidth,
             margin + rowHeight + gap,
             clearFilterWidth,
             rowHeight,
@@ -1271,6 +1365,18 @@ namespace
                     0,
                     window,
                     reinterpret_cast<HMENU>(static_cast<INT_PTR>(LikelyCompleteCheckId)),
+                    app->instance,
+                    nullptr);
+                app->previewableCheck = CreateWindowW(
+                    L"BUTTON",
+                    L"Previewable",
+                    WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(PreviewableCheckId)),
                     app->instance,
                     nullptr);
                 app->overwriteCheck = CreateWindowW(
@@ -1535,6 +1641,19 @@ namespace
                         return 0;
                     }
 
+                    case PreviewableCheckId:
+                    {
+                        app->previewableOnly =
+                            SendMessageW(app->previewableCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
+
+                        if (app->database.IsOpen())
+                        {
+                            PopulateList(*app);
+                            SetEntryStatus(*app);
+                        }
+
+                        return 0;
+                    }
                     case ExportButtonId:
                         ExportSelected(*app);
                         return 0;
