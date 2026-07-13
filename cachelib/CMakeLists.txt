@@ -1,7 +1,12 @@
+find_package(OpenJPEG CONFIG REQUIRED)
+find_package(PNG REQUIRED)
+
 add_library(cachelib
     UUID.cpp
     TextureCacheDatabase.cpp
     TextureRebuilder.cpp
+    J2CDecoder.cpp
+    PngWriter.cpp
 )
 
 target_include_directories(cachelib
@@ -12,6 +17,12 @@ target_include_directories(cachelib
 target_compile_features(cachelib
     PUBLIC
         cxx_std_17
+)
+
+target_link_libraries(cachelib
+    PRIVATE
+        openjp2
+        PNG::PNG
 )
 
 if(MSVC)

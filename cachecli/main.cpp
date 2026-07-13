@@ -1,6 +1,8 @@
 #include "TextureCacheDatabase.h"
 #include "TextureRebuilder.h"
 #include "UUID.h"
+#include "J2CDecoder.h"
+#include "PngWriter.h"
 
 #include <fstream>
 #include <vector>
@@ -214,6 +216,8 @@ std::uint64_t CachedEntrySize(
             << "  cachecli stats <cache-directory>\n"
             << "  cachecli export <cache-directory> <uuid> "
                "[output-file]\n\n"
+	    << "  cachecli export-png <cache-directory> <uuid> "
+               "[output-file]\n"
             << "The cache directory may be either:\n"
             << "  - the texturecache directory itself, or\n"
             << "  - its parent Firestorm cache directory.\n";
@@ -532,6 +536,132 @@ std::uint64_t CachedEntrySize(
 
         return 0;
     }
+
+int ExportPngCommand(
+    const fs::path& suppliedPath,
+    const std::string& uuidText,
+    const std::optional<fs::path>& requestedOutput)
+{
+    const std::optional<UUID> uuid =
+        UUID::FromString(uuidText);
+
+    if (!uuid)
+    {
+        std::cerr
+            << "Error: Invalid UUID: "
+            << uuidText
+            << "\n";
+
+        return 1;
+    }
+
+    TextureCacheDatabase database;
+
+    if (!OpenDatabase(suppliedPath, database))
+    {
+        return 1;
+    }
+
+    const CacheEntry* entry =
+        database.Find(*uuid);
+
+    if (entry == nullptr)
+    {
+        std::cerr
+            << "Error: UUID was not found in texture.entries.\n";
+
+        return 1;
+    }
+
+    TextureRebuilder rebuilder;
+
+    std::vector<std::uint8_t> encodedData;
+
+    const RebuildError rebuildResult =
+        rebuilder.Rebuild(
+            database,
+            *entry,
+            encodedData);
+
+    if (rebuildResult != RebuildError::None)
+    {
+        std::cerr
+            << "Error reconstructing texture: "
+            << TextureRebuilder::ErrorMessage(
+                rebuildResult)
+            << "\n";
+
+        return 1;
+    }
+
+    J2CDecoder decoder;
+    DecodedImage decodedImage;
+
+    const DecodeError decodeResult =
+        decoder.Decode(
+            encodedData,
+            decodedImage);
+
+    if (decodeResult != DecodeError::None)
+    {
+        std::cerr
+            << "Error decoding texture: "
+            << J2CDecoder::ErrorMessage(
+                decodeResult)
+            << "\n"
+            << "Cached bytes: "
+            << encodedData.size()
+            << "\n";
+
+        return 1;
+    }
+
+    fs::path outputFile;
+
+    if (requestedOutput)
+    {
+        outputFile = *requestedOutput;
+    }
+    else
+    {
+        outputFile =
+            entry->uuid.ToString() + ".png";
+    }
+
+    PngWriter writer;
+
+    const PngWriteError writeResult =
+        writer.Write(
+            outputFile,
+            decodedImage);
+
+    if (writeResult != PngWriteError::None)
+    {
+        std::cerr
+            << "Error writing PNG: "
+            << PngWriter::ErrorMessage(
+                writeResult)
+            << "\n";
+
+        return 1;
+    }
+
+    std::cout
+        << "Exported PNG:\n"
+        << "  UUID       : "
+        << entry->uuid.ToString()
+        << "\n"
+        << "  Dimensions : "
+        << decodedImage.width
+        << " x "
+        << decodedImage.height
+        << "\n"
+        << "  File       : "
+        << fs::absolute(outputFile).string()
+        << "\n";
+
+    return 0;
+}
 
     int VerifyCommand(const fs::path& suppliedPath)
 {
@@ -1216,6 +1346,31 @@ if (command == "stats")
             argv[3],
             outputFile);
     }
+
+if (command == "export-png")
+{
+    if (argc < 4 || argc > 5)
+    {
+        std::cerr
+            << "Error: export-png requires a cache directory, "
+               "UUID, and optional output file.\n\n";
+
+        PrintUsage();
+        return 1;
+    }
+
+    std::optional<fs::path> outputFile;
+
+    if (argc == 5)
+    {
+        outputFile = fs::path(argv[4]);
+    }
+
+    return ExportPngCommand(
+        argv[2],
+        argv[3],
+        outputFile);
+}
 
     std::cerr
         << "Error: Unknown command: "
