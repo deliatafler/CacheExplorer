@@ -3,11 +3,14 @@
 #include "TextureExportState.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <ctime>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -19,6 +22,7 @@
 #define NOMINMAX
 #define UUID WindowsSdkUUID
 #include <windows.h>
+#include <windowsx.h>
 #include <commctrl.h>
 #include <shobjidl.h>
 #include <shlobj.h>
@@ -38,6 +42,7 @@ namespace
     constexpr int ScanVisibleButtonId = 1017;
     constexpr int LikelyCompleteCheckId = 1009;
     constexpr int PreviewableCheckId = 1016;
+    constexpr int GalleryCheckId = 1018;
     constexpr int OverwriteCheckId = 1010;
     constexpr int RetryIncompleteCheckId = 1011;
     constexpr int ProgressBarId = 1012;
@@ -47,13 +52,21 @@ namespace
     constexpr int StatusTextId = 1006;
     constexpr int DetailsTextId = 1007;
     constexpr int PreviewControlId = 1008;
-
+    constexpr int GalleryControlId = 1019;
     constexpr UINT AutoOpenMessage = WM_APP + 1;
     constexpr UINT PreviewCompleteMessage = WM_APP + 2;
     constexpr UINT ExportProgressMessage = WM_APP + 3;
     constexpr UINT ExportCompleteMessage = WM_APP + 4;
     constexpr UINT ScanProgressMessage = WM_APP + 5;
     constexpr UINT ScanCompleteMessage = WM_APP + 6;
+
+    struct PreviewScanRecord
+    {
+        bool previewable = false;
+        std::int32_t imageSize = 0;
+        std::int32_t bodySize = 0;
+        std::time_t timestamp = 0;
+    };
 
     struct AppState
     {
@@ -67,11 +80,13 @@ namespace
         HWND scanVisibleButton = nullptr;
         HWND likelyCompleteCheck = nullptr;
         HWND previewableCheck = nullptr;
+        HWND galleryCheck = nullptr;
         HWND overwriteCheck = nullptr;
         HWND retryIncompleteCheck = nullptr;
         HWND uuidFilterEdit = nullptr;
         HWND clearUuidFilterButton = nullptr;
         HWND textureList = nullptr;
+        HWND galleryControl = nullptr;
         HWND detailsText = nullptr;
         HWND previewControl = nullptr;
         HWND statusText = nullptr;
@@ -81,6 +96,8 @@ namespace
         std::vector<const CacheEntry*> visibleEntries;
         bool likelyCompleteOnly = false;
         bool previewableOnly = false;
+        bool galleryMode = false;
+        int galleryScrollY = 0;
         std::wstring uuidFilter;
         int sortColumn = 3;
         bool sortAscending = false;
@@ -92,7 +109,9 @@ namespace
         std::wstring detailsBase;
         bool exportInProgress = false;
         bool scanInProgress = false;
+        bool listUpdateInProgress = false;
         std::unordered_map<std::string, bool> previewableByUuid;
+        std::unordered_map<std::string, PreviewScanRecord> previewScanByUuid;
     };
 
     struct PreviewResult
@@ -118,12 +137,12 @@ namespace
     };
     struct ScanProgressMessageData
     {
-        std::string uuid;
-        bool previewable = false;
+        std::vector<std::pair<std::string, bool>> statuses;
         std::size_t processed = 0;
         std::size_t total = 0;
         std::size_t previewableCount = 0;
         std::size_t unavailableCount = 0;
+        std::size_t skippedKnownCount = 0;
     };
 
     struct ScanCompleteMessageData
@@ -131,10 +150,12 @@ namespace
         std::size_t total = 0;
         std::size_t previewableCount = 0;
         std::size_t unavailableCount = 0;
+        std::size_t skippedKnownCount = 0;
     };
 
     void PopulateList(AppState& app);
-
+    void UpdateDetails(AppState& app);
+    void ResizeControls(AppState& app, int width, int height);
     std::wstring ToWide(const std::string& value)
     {
         if (value.empty())
@@ -247,7 +268,7 @@ namespace
             {
                 SetStatus(
                     app,
-                    L"No confirmed previewable matches. Uncheck Previewable to test this UUID filter.");
+                    L"No found previews match this search. Turn off Show found to test the search.");
                 return;
             }
 
@@ -259,7 +280,7 @@ namespace
         {
             SetStatus(
                 app,
-                L"No confirmed previewable textures yet. Preview rows first, then enable Previewable.");
+                L"No found previews yet. Click Find Previews, then enable Show found.");
             return;
         }
 
@@ -269,8 +290,33 @@ namespace
             << app.visibleEntries.size()
             << L" of "
             << app.database.Entries().size()
-            << L" texture entries.";
+            << L" texture entries. Narrow results, then Find Previews for visual browsing.";
         SetStatus(app, status.str());
+    }
+
+    bool HasConfirmedPreviewable(const AppState& app)
+    {
+        for (const auto& item : app.previewableByUuid)
+        {
+            if (item.second)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void UpdatePreviewableControl(AppState& app, bool enabled)
+    {
+        const bool hasPreviewable = HasConfirmedPreviewable(app);
+        EnableWindow(app.previewableCheck, enabled && hasPreviewable);
+
+        if (!hasPreviewable && app.previewableOnly)
+        {
+            app.previewableOnly = false;
+            SendMessageW(app.previewableCheck, BM_SETCHECK, BST_UNCHECKED, 0);
+        }
     }
 
     class ScopedWaitCursor
@@ -298,12 +344,14 @@ namespace
         EnableWindow(app.exportVisibleButton, enabled);
         EnableWindow(app.scanVisibleButton, enabled);
         EnableWindow(app.likelyCompleteCheck, enabled);
-        EnableWindow(app.previewableCheck, enabled);
+        UpdatePreviewableControl(app, enabled);
+        EnableWindow(app.galleryCheck, TRUE);
         EnableWindow(app.overwriteCheck, enabled);
         EnableWindow(app.retryIncompleteCheck, enabled);
         EnableWindow(app.uuidFilterEdit, enabled);
         EnableWindow(app.clearUuidFilterButton, enabled);
-        EnableWindow(app.textureList, enabled);
+        EnableWindow(app.textureList, TRUE);
+        EnableWindow(app.galleryControl, TRUE);
     }
 
     void SetScanProgress(
@@ -311,7 +359,8 @@ namespace
         std::size_t processed,
         std::size_t total,
         std::size_t previewableCount,
-        std::size_t unavailableCount)
+        std::size_t unavailableCount,
+        std::size_t skippedKnownCount)
     {
         SendMessageW(
             app.progressBar,
@@ -334,9 +383,11 @@ namespace
             << processed
             << L" of "
             << total
-            << L". Previewable "
+            << L" new. Skipped "
+            << skippedKnownCount
+            << L" cached. Found "
             << previewableCount
-            << L", unavailable "
+            << L", no preview "
             << unavailableCount
             << L".";
         SetStatus(app, status.str());
@@ -445,6 +496,141 @@ namespace
         return app.previewDirectory;
     }
 
+    fs::path PreviewIndexFile(AppState& app)
+    {
+        const fs::path directory = PreviewDirectory(app);
+
+        if (directory.empty())
+        {
+            return {};
+        }
+
+        return directory / L"preview-index.tsv";
+    }
+
+    bool EntryMatchesRecord(const CacheEntry& entry, const PreviewScanRecord& record)
+    {
+        return entry.imageSize == record.imageSize &&
+            entry.bodySize == record.bodySize &&
+            entry.timestamp == record.timestamp;
+    }
+
+    void RecordPreviewStatus(AppState& app, const std::string& uuid, bool previewable)
+    {
+        const std::optional<UUID> parsedUuid = UUID::FromString(uuid);
+
+        if (!parsedUuid)
+        {
+            return;
+        }
+
+        const CacheEntry* entry = app.database.Find(*parsedUuid);
+
+        if (entry == nullptr)
+        {
+            return;
+        }
+
+        app.previewableByUuid[uuid] = previewable;
+        app.previewScanByUuid[uuid] = PreviewScanRecord{
+            previewable,
+            entry->imageSize,
+            entry->bodySize,
+            entry->timestamp};
+    }
+
+    void SavePreviewIndex(AppState& app)
+    {
+        const fs::path indexFile = PreviewIndexFile(app);
+
+        if (indexFile.empty())
+        {
+            return;
+        }
+
+        std::ofstream stream(indexFile, std::ios::binary | std::ios::trunc);
+
+        if (!stream)
+        {
+            return;
+        }
+
+        for (const auto& item : app.previewScanByUuid)
+        {
+            const PreviewScanRecord& record = item.second;
+            stream
+                << item.first << '\t'
+                << (record.previewable ? 1 : 0) << '\t'
+                << record.imageSize << '\t'
+                << record.bodySize << '\t'
+                << static_cast<long long>(record.timestamp) << '\n';
+        }
+    }
+
+    void LoadPreviewIndex(AppState& app)
+    {
+        app.previewableByUuid.clear();
+        app.previewScanByUuid.clear();
+
+        const fs::path indexFile = PreviewIndexFile(app);
+
+        if (indexFile.empty())
+        {
+            return;
+        }
+
+        std::ifstream stream(indexFile, std::ios::binary);
+
+        if (!stream)
+        {
+            return;
+        }
+
+        std::string uuid;
+        int previewable = 0;
+        PreviewScanRecord record;
+        long long timestamp = 0;
+
+        while (stream >> uuid >> previewable >> record.imageSize >> record.bodySize >> timestamp)
+        {
+            const std::optional<UUID> parsedUuid = UUID::FromString(uuid);
+
+            if (!parsedUuid)
+            {
+                continue;
+            }
+
+            const CacheEntry* entry = app.database.Find(*parsedUuid);
+
+            if (entry == nullptr)
+            {
+                continue;
+            }
+
+            record.previewable = previewable != 0;
+            record.timestamp = static_cast<std::time_t>(timestamp);
+
+            if (!EntryMatchesRecord(*entry, record))
+            {
+                continue;
+            }
+
+            if (record.previewable)
+            {
+                const fs::path previewFile =
+                    PreviewDirectory(app) / (ToWide(uuid) + L".png");
+                std::error_code existsError;
+
+                if (!fs::exists(previewFile, existsError) || existsError)
+                {
+                    continue;
+                }
+            }
+
+            app.previewableByUuid[uuid] = record.previewable;
+            app.previewScanByUuid[uuid] = record;
+        }
+    }
     void ClearPreview(AppState& app)
     {
         app.previewImage.reset();
@@ -497,6 +683,316 @@ namespace
             drawTop,
             drawWidth,
             drawHeight);
+    }
+
+    bool HasPreviewPng(AppState& app, const CacheEntry& entry)
+    {
+        const auto status = app.previewableByUuid.find(entry.uuid.ToString());
+
+        if (status == app.previewableByUuid.end() || !status->second)
+        {
+            return false;
+        }
+
+        const fs::path previewDirectory = PreviewDirectory(app);
+
+        if (previewDirectory.empty())
+        {
+            return false;
+        }
+
+        std::error_code existsError;
+        return fs::exists(
+            previewDirectory / (ToWide(entry.uuid.ToString()) + L".png"),
+            existsError) && !existsError;
+    }
+
+    int SelectedVisibleIndex(AppState& app)
+    {
+        const int item = ListView_GetNextItem(
+            app.textureList,
+            -1,
+            LVNI_SELECTED);
+
+        if (item < 0 || static_cast<std::size_t>(item) >= app.visibleEntries.size())
+        {
+            return -1;
+        }
+
+        return item;
+    }
+
+    void SelectVisibleIndex(AppState& app, int index)
+    {
+        if (index < 0 || static_cast<std::size_t>(index) >= app.visibleEntries.size())
+        {
+            return;
+        }
+
+        ListView_SetItemState(
+            app.textureList,
+            -1,
+            0,
+            LVIS_SELECTED | LVIS_FOCUSED);
+        ListView_SetItemState(
+            app.textureList,
+            index,
+            LVIS_SELECTED | LVIS_FOCUSED,
+            LVIS_SELECTED | LVIS_FOCUSED);
+        ListView_EnsureVisible(app.textureList, index, FALSE);
+        UpdateDetails(app);
+        InvalidateRect(app.galleryControl, nullptr, TRUE);
+    }
+
+    int GalleryColumns(HWND gallery)
+    {
+        RECT client{};
+        GetClientRect(gallery, &client);
+        constexpr int cellWidth = 132;
+        return std::max(1, static_cast<int>(client.right - client.left) / cellWidth);
+    }
+
+    std::vector<std::size_t> GalleryEntryIndices(AppState& app)
+    {
+        std::vector<std::size_t> indices;
+        indices.reserve(app.visibleEntries.size());
+
+        for (std::size_t index = 0; index < app.visibleEntries.size(); ++index)
+        {
+            const CacheEntry* entry = app.visibleEntries[index];
+
+            if (entry != nullptr && HasPreviewPng(app, *entry))
+            {
+                indices.push_back(index);
+            }
+        }
+
+        return indices;
+    }
+
+    int GalleryContentHeight(AppState& app, HWND gallery)
+    {
+        constexpr int cellHeight = 154;
+        const int columns = GalleryColumns(gallery);
+        const std::vector<std::size_t> galleryEntries = GalleryEntryIndices(app);
+        const int rows = static_cast<int>(
+            (galleryEntries.size() + static_cast<std::size_t>(columns) - 1)
+            / static_cast<std::size_t>(columns));
+        return rows * cellHeight;
+    }
+
+    void UpdateGalleryScroll(AppState& app)
+    {
+        if (app.galleryControl == nullptr)
+        {
+            return;
+        }
+
+        RECT client{};
+        GetClientRect(app.galleryControl, &client);
+        const int page = std::max(1, static_cast<int>(client.bottom - client.top));
+        const int contentHeight = GalleryContentHeight(app, app.galleryControl);
+        const int maxScroll = std::max(0, contentHeight - page);
+        app.galleryScrollY = std::clamp(app.galleryScrollY, 0, maxScroll);
+
+        SCROLLINFO scroll{};
+        scroll.cbSize = sizeof(scroll);
+        scroll.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
+        scroll.nMin = 0;
+        scroll.nMax = std::max(0, contentHeight - 1);
+        scroll.nPage = static_cast<UINT>(page);
+        scroll.nPos = app.galleryScrollY;
+        SetScrollInfo(app.galleryControl, SB_VERT, &scroll, TRUE);
+    }
+
+    void DrawGallery(AppState& app, HWND gallery, HDC dc)
+    {
+        RECT client{};
+        GetClientRect(gallery, &client);
+        FillRect(dc, &client, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
+
+        constexpr int cellWidth = 132;
+        constexpr int cellHeight = 154;
+        constexpr int margin = 10;
+        constexpr int thumbSize = 104;
+        const int columns = GalleryColumns(gallery);
+        const int selectedIndex = SelectedVisibleIndex(app);
+        const std::vector<std::size_t> galleryEntries = GalleryEntryIndices(app);
+        gdip::Graphics graphics(dc);
+        graphics.SetInterpolationMode(gdip::InterpolationModeHighQualityBicubic);
+
+        if (galleryEntries.empty())
+        {
+            SetBkMode(dc, TRANSPARENT);
+            DrawTextW(
+                dc,
+                L"No found previews in the current results. Narrow results, then Find Previews.",
+                -1,
+                &client,
+                DT_CENTER | DT_VCENTER | DT_WORDBREAK);
+            return;
+        }
+
+        for (std::size_t cellIndex = 0; cellIndex < galleryEntries.size(); ++cellIndex)
+        {
+            const std::size_t index = galleryEntries[cellIndex];
+            const int row = static_cast<int>(cellIndex) / columns;
+            const int column = static_cast<int>(cellIndex) % columns;
+            const int left = margin + (column * cellWidth);
+            const int top = margin + (row * cellHeight) - app.galleryScrollY;
+
+            if (top > client.bottom || top + cellHeight < client.top)
+            {
+                continue;
+            }
+
+            RECT card{left, top, left + cellWidth - margin, top + cellHeight - margin};
+            HBRUSH background = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+            FillRect(dc, &card, background);
+            FrameRect(dc, &card, reinterpret_cast<HBRUSH>(COLOR_3DSHADOW + 1));
+
+            if (static_cast<int>(index) == selectedIndex)
+            {
+                HPEN pen = CreatePen(PS_SOLID, 2, GetSysColor(COLOR_HIGHLIGHT));
+                HGDIOBJ oldPen = SelectObject(dc, pen);
+                HGDIOBJ oldBrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
+                Rectangle(dc, card.left + 1, card.top + 1, card.right - 1, card.bottom - 1);
+                SelectObject(dc, oldBrush);
+                SelectObject(dc, oldPen);
+                DeleteObject(pen);
+            }
+
+            const CacheEntry& entry = *app.visibleEntries[index];
+            RECT thumb{left + 8, top + 8, left + 8 + thumbSize, top + 8 + thumbSize};
+            FillRect(dc, &thumb, reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1));
+
+            if (HasPreviewPng(app, entry))
+            {
+                const fs::path file = PreviewDirectory(app) / (ToWide(entry.uuid.ToString()) + L".png");
+                gdip::Image image(file.wstring().c_str());
+
+                if (image.GetLastStatus() == gdip::Ok && image.GetWidth() > 0 && image.GetHeight() > 0)
+                {
+                    const double scale = std::min(
+                        static_cast<double>(thumb.right - thumb.left) / static_cast<double>(image.GetWidth()),
+                        static_cast<double>(thumb.bottom - thumb.top) / static_cast<double>(image.GetHeight()));
+                    const int drawWidth = std::max(1, static_cast<int>(image.GetWidth() * scale));
+                    const int drawHeight = std::max(1, static_cast<int>(image.GetHeight() * scale));
+                    const int drawLeft = thumb.left + ((thumb.right - thumb.left) - drawWidth) / 2;
+                    const int drawTop = thumb.top + ((thumb.bottom - thumb.top) - drawHeight) / 2;
+                    graphics.DrawImage(&image, drawLeft, drawTop, drawWidth, drawHeight);
+                }
+            }
+            else
+            {
+                SetBkMode(dc, TRANSPARENT);
+                DrawTextW(dc, L"No preview", -1, &thumb, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            }
+
+            RECT label{card.left + 5, thumb.bottom + 8, card.right - 5, card.bottom - 5};
+            const std::wstring uuid = ToWide(entry.uuid.ToString()).substr(0, 8);
+            SetBkMode(dc, TRANSPARENT);
+            DrawTextW(dc, uuid.c_str(), -1, &label, DT_CENTER | DT_TOP | DT_SINGLELINE);
+        }
+    }
+
+    int GalleryHitTest(AppState& app, HWND gallery, int x, int y)
+    {
+        constexpr int cellWidth = 132;
+        constexpr int cellHeight = 154;
+        constexpr int margin = 10;
+        const int columns = GalleryColumns(gallery);
+        const int column = std::max(0, (x - margin) / cellWidth);
+        const int row = std::max(0, (y + app.galleryScrollY - margin) / cellHeight);
+
+        if (column >= columns)
+        {
+            return -1;
+        }
+
+        const std::vector<std::size_t> galleryEntries = GalleryEntryIndices(app);
+        const std::size_t cellIndex = static_cast<std::size_t>(row * columns + column);
+        return cellIndex < galleryEntries.size() ? static_cast<int>(galleryEntries[cellIndex]) : -1;
+    }
+
+    LRESULT CALLBACK GalleryProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+    {
+        HWND parent = GetParent(window);
+        AppState* app = parent == nullptr
+            ? nullptr
+            : reinterpret_cast<AppState*>(GetWindowLongPtrW(parent, GWLP_USERDATA));
+
+        switch (message)
+        {
+            case WM_PAINT:
+            {
+                PAINTSTRUCT paint{};
+                HDC dc = BeginPaint(window, &paint);
+
+                if (app != nullptr)
+                {
+                    DrawGallery(*app, window, dc);
+                }
+
+                EndPaint(window, &paint);
+                return 0;
+            }
+
+            case WM_SIZE:
+                if (app != nullptr)
+                {
+                    UpdateGalleryScroll(*app);
+                }
+                return 0;
+
+            case WM_MOUSEWHEEL:
+                if (app != nullptr)
+                {
+                    const int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+                    app->galleryScrollY -= (delta / WHEEL_DELTA) * 48;
+                    UpdateGalleryScroll(*app);
+                    InvalidateRect(window, nullptr, TRUE);
+                }
+                return 0;
+
+            case WM_VSCROLL:
+                if (app != nullptr)
+                {
+                    SCROLLINFO scroll{};
+                    scroll.cbSize = sizeof(scroll);
+                    scroll.fMask = SIF_ALL;
+                    GetScrollInfo(window, SB_VERT, &scroll);
+
+                    int position = app->galleryScrollY;
+                    switch (LOWORD(wParam))
+                    {
+                        case SB_LINEUP: position -= 24; break;
+                        case SB_LINEDOWN: position += 24; break;
+                        case SB_PAGEUP: position -= static_cast<int>(scroll.nPage); break;
+                        case SB_PAGEDOWN: position += static_cast<int>(scroll.nPage); break;
+                        case SB_THUMBTRACK: position = scroll.nTrackPos; break;
+                    }
+
+                    app->galleryScrollY = position;
+                    UpdateGalleryScroll(*app);
+                    InvalidateRect(window, nullptr, TRUE);
+                }
+                return 0;
+
+            case WM_LBUTTONDOWN:
+                if (app != nullptr)
+                {
+                    const int index = GalleryHitTest(
+                        *app,
+                        window,
+                        GET_X_LPARAM(lParam),
+                        GET_Y_LPARAM(lParam));
+                    SelectVisibleIndex(*app, index);
+                }
+                return 0;
+        }
+
+        return DefWindowProcW(window, message, wParam, lParam);
     }
 
     void StartPreview(AppState& app, const CacheEntry& entry)
@@ -566,7 +1062,8 @@ namespace
 
         if (!result->exported)
         {
-            app.previewableByUuid[result->uuid] = false;
+            RecordPreviewStatus(app, result->uuid, false);
+            SavePreviewIndex(app);
 
             if (isCurrentPreview)
             {
@@ -581,7 +1078,8 @@ namespace
 
         if (image->GetLastStatus() != gdip::Ok)
         {
-            app.previewableByUuid[result->uuid] = false;
+            RecordPreviewStatus(app, result->uuid, false);
+            SavePreviewIndex(app);
 
             if (isCurrentPreview)
             {
@@ -591,7 +1089,12 @@ namespace
             return;
         }
 
-        app.previewableByUuid[result->uuid] = true;
+        RecordPreviewStatus(app, result->uuid, true);
+        SavePreviewIndex(app);
+        if (!app.exportInProgress && !app.scanInProgress)
+        {
+            UpdatePreviewableControl(app, true);
+        }
 
         if (!isCurrentPreview)
         {
@@ -916,6 +1419,7 @@ namespace
     void PopulateList(AppState& app)
     {
         const std::wstring selectedUuid = SelectedUuidText(app.textureList);
+        app.listUpdateInProgress = true;
         ScopedWindowRedraw listRedraw(app.textureList);
         ListView_DeleteAllItems(app.textureList);
         app.visibleEntries.clear();
@@ -986,7 +1490,10 @@ namespace
         }
 
         listRedraw.Resume();
+        app.listUpdateInProgress = false;
         UpdateDetails(app);
+        UpdateGalleryScroll(app);
+        InvalidateRect(app.galleryControl, nullptr, TRUE);
     }
 
     bool OpenCache(AppState& app)
@@ -1008,7 +1515,10 @@ namespace
         }
 
         app.database = std::move(database);
-        app.previewableByUuid.clear();
+        LoadPreviewIndex(app);
+        app.previewableOnly = false;
+        SendMessageW(app.previewableCheck, BM_SETCHECK, BST_UNCHECKED, 0);
+        UpdatePreviewableControl(app, true);
         SetWindowTextW(app.pathEdit, app.database.CacheDirectory().wstring().c_str());
         PopulateList(app);
 
@@ -1255,14 +1765,29 @@ namespace
         }
 
         std::vector<CacheEntry> entryCopies;
+        std::size_t skippedKnownCount = 0;
         entryCopies.reserve(app.visibleEntries.size());
 
         for (const CacheEntry* entry : app.visibleEntries)
         {
-            if (entry != nullptr)
+            if (entry == nullptr)
             {
-                entryCopies.push_back(*entry);
+                continue;
             }
+
+            const std::string uuid = entry->uuid.ToString();
+            const auto knownStatus = app.previewableByUuid.find(uuid);
+
+            if (knownStatus != app.previewableByUuid.end())
+            {
+                if (!knownStatus->second || HasPreviewPng(app, *entry))
+                {
+                    ++skippedKnownCount;
+                    continue;
+                }
+            }
+
+            entryCopies.push_back(*entry);
         }
 
         if (entryCopies.empty())
@@ -1271,10 +1796,35 @@ namespace
             return;
         }
 
+        constexpr std::size_t LargeScanThreshold = 500;
+
+        if (entryCopies.size() > LargeScanThreshold)
+        {
+            std::wostringstream message;
+            message
+                << L"Find previews for "
+                << entryCopies.size()
+                << L" visible textures?\n\n"
+                << L"This attempts JPEG2000 decode work for each visible texture and can take a while. "
+                << L"Use search or Has data first if you want a smaller scan.";
+
+            if (MessageBoxW(
+                    app.window,
+                    message.str().c_str(),
+                    L"Find Previews",
+                    MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) != IDYES)
+            {
+                SetStatus(app, L"Find Previews canceled. Narrow filters first for a shorter scan.");
+                return;
+            }
+        }
+
         app.scanInProgress = true;
         ShowWindow(app.progressBar, SW_SHOW);
         SetExportControlsEnabled(app, false);
-        SetScanProgress(app, 0, entryCopies.size(), 0, 0);
+        SetStatus(app, L"Finding previewable textures. This can take a while for large visible sets...");
+        UpdateWindow(app.statusText);
+        SetScanProgress(app, 0, entryCopies.size(), 0, 0, skippedKnownCount);
 
         TextureCacheDatabase database = app.database;
         HWND window = app.window;
@@ -1283,48 +1833,27 @@ namespace
             [database = std::move(database),
              entryCopies = std::move(entryCopies),
              previewDirectory,
+             skippedKnownCount,
              window]() mutable
             {
+                constexpr std::size_t PreviewWorkerCount = 3;
+                std::atomic<std::size_t> nextEntry{0};
                 std::size_t processed = 0;
                 std::size_t previewableCount = 0;
                 std::size_t unavailableCount = 0;
-                TextureExporter exporter;
+                std::vector<std::pair<std::string, bool>> pendingStatuses;
+                std::mutex progressMutex;
 
-                for (const CacheEntry& entry : entryCopies)
+                auto postProgressLocked = [&]()
                 {
-                    const fs::path previewFile =
-                        previewDirectory / (ToWide(entry.uuid.ToString()) + L".png");
-
-                    TextureExportOptions options;
-                    options.overwriteExisting = true;
-                    options.verboseDecoderErrors = false;
-                    options.maximumStoredMessages = 0;
-
-                    const TexturePngExportResult result = exporter.ExportPngEntry(
-                        database,
-                        entry,
-                        previewFile,
-                        options);
-                    const bool previewable = result.status == TexturePngExportStatus::Exported;
-
-                    ++processed;
-
-                    if (previewable)
-                    {
-                        ++previewableCount;
-                    }
-                    else
-                    {
-                        ++unavailableCount;
-                    }
-
                     auto progress = std::make_unique<ScanProgressMessageData>();
-                    progress->uuid = entry.uuid.ToString();
-                    progress->previewable = previewable;
+                    progress->statuses = std::move(pendingStatuses);
                     progress->processed = processed;
                     progress->total = entryCopies.size();
                     progress->previewableCount = previewableCount;
                     progress->unavailableCount = unavailableCount;
+                    progress->skippedKnownCount = skippedKnownCount;
+                    pendingStatuses.clear();
                     auto* rawProgress = progress.release();
 
                     if (!PostMessageW(
@@ -1335,12 +1864,93 @@ namespace
                     {
                         delete rawProgress;
                     }
+                };
+
+                auto worker = [&]()
+                {
+                    TextureExporter exporter;
+
+                    while (true)
+                    {
+                        const std::size_t entryIndex = nextEntry.fetch_add(1);
+
+                        if (entryIndex >= entryCopies.size())
+                        {
+                            return;
+                        }
+
+                        const CacheEntry& entry = entryCopies[entryIndex];
+                        const std::string uuid = entry.uuid.ToString();
+                        const fs::path previewFile =
+                            previewDirectory / (ToWide(uuid) + L".png");
+
+                        std::error_code existsError;
+                        bool previewable = fs::exists(previewFile, existsError) && !existsError;
+
+                        if (!previewable)
+                        {
+                            TextureExportOptions options;
+                            options.overwriteExisting = false;
+                            options.verboseDecoderErrors = false;
+                            options.maximumStoredMessages = 0;
+
+                            const TexturePngExportResult result = exporter.ExportPngEntry(
+                                database,
+                                entry,
+                                previewFile,
+                                options);
+                            previewable = result.Succeeded();
+                        }
+
+                        std::lock_guard<std::mutex> lock(progressMutex);
+                        ++processed;
+
+                        if (previewable)
+                        {
+                            ++previewableCount;
+                        }
+                        else
+                        {
+                            ++unavailableCount;
+                        }
+
+                        pendingStatuses.emplace_back(uuid, previewable);
+
+                        if (processed == entryCopies.size() || pendingStatuses.size() >= 50)
+                        {
+                            postProgressLocked();
+                        }
+                    }
+                };
+
+                std::vector<std::thread> workers;
+                const std::size_t workerCount = std::min(PreviewWorkerCount, entryCopies.size());
+                workers.reserve(workerCount);
+
+                for (std::size_t i = 0; i < workerCount; ++i)
+                {
+                    workers.emplace_back(worker);
+                }
+
+                for (std::thread& thread : workers)
+                {
+                    thread.join();
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(progressMutex);
+
+                    if (!pendingStatuses.empty())
+                    {
+                        postProgressLocked();
+                    }
                 }
 
                 auto complete = std::make_unique<ScanCompleteMessageData>();
                 complete->total = entryCopies.size();
                 complete->previewableCount = previewableCount;
                 complete->unavailableCount = unavailableCount;
+                complete->skippedKnownCount = skippedKnownCount;
                 auto* rawComplete = complete.release();
 
                 if (!PostMessageW(
@@ -1361,13 +1971,32 @@ namespace
             return;
         }
 
-        app.previewableByUuid[progress->uuid] = progress->previewable;
+        bool foundPreviewable = false;
+
+        for (const auto& status : progress->statuses)
+        {
+            RecordPreviewStatus(app, status.first, status.second);
+            foundPreviewable = foundPreviewable || status.second;
+        }
+
+        if (!progress->statuses.empty())
+        {
+            SavePreviewIndex(app);
+        }
+
         SetScanProgress(
             app,
             progress->processed,
             progress->total,
             progress->previewableCount,
-            progress->unavailableCount);
+            progress->unavailableCount,
+            progress->skippedKnownCount);
+
+        if (app.galleryMode && foundPreviewable)
+        {
+            UpdateGalleryScroll(app);
+            InvalidateRect(app.galleryControl, nullptr, TRUE);
+        }
     }
 
     void ApplyScanComplete(AppState& app, std::unique_ptr<ScanCompleteMessageData> complete)
@@ -1381,6 +2010,9 @@ namespace
             PopulateList(app);
         }
 
+        UpdateGalleryScroll(app);
+        InvalidateRect(app.galleryControl, nullptr, TRUE);
+
         if (!complete)
         {
             SetStatus(app, L"Scan finished, but the result was unavailable.");
@@ -1389,11 +2021,15 @@ namespace
 
         std::wostringstream status;
         status
-            << L"Scanned "
+            << L"Checked "
+            << (complete->total + complete->skippedKnownCount)
+            << L" textures. Scanned "
             << complete->total
-            << L" textures. Previewable "
+            << L" new, skipped "
+            << complete->skippedKnownCount
+            << L" cached. Found "
             << complete->previewableCount
-            << L", unavailable "
+            << L", no preview "
             << complete->unavailableCount
             << L".";
         SetStatus(app, status.str());
@@ -1405,11 +2041,12 @@ namespace
         constexpr int rowHeight = 28;
         constexpr int buttonWidth = 90;
         constexpr int exportButtonWidth = 112;
-        constexpr int scanButtonWidth = 100;
-        constexpr int checkWidth = 118;
-        constexpr int previewableWidth = 100;
+        constexpr int scanButtonWidth = 112;
+        constexpr int checkWidth = 88;
+        constexpr int previewableWidth = 98;
+        constexpr int galleryWidth = 98;
         constexpr int smallCheckWidth = 88;
-        constexpr int retryCheckWidth = 122;
+        constexpr int retryCheckWidth = 98;
         constexpr int uuidFilterWidth = 210;
         constexpr int clearFilterWidth = 52;
         constexpr int statusHeight = 24;
@@ -1453,6 +2090,8 @@ namespace
         toolbarLeft += checkWidth + gap;
         MoveWindow(app.previewableCheck, toolbarLeft, toolbarTop, previewableWidth, rowHeight, TRUE);
         toolbarLeft += previewableWidth + gap;
+        MoveWindow(app.galleryCheck, toolbarLeft, toolbarTop, galleryWidth, rowHeight, TRUE);
+        toolbarLeft += galleryWidth + gap;
         MoveWindow(app.overwriteCheck, toolbarLeft, toolbarTop, smallCheckWidth, rowHeight, TRUE);
         toolbarLeft += smallCheckWidth + gap;
         MoveWindow(app.retryIncompleteCheck, toolbarLeft, toolbarTop, retryCheckWidth, rowHeight, TRUE);
@@ -1461,6 +2100,10 @@ namespace
         toolbarLeft += uuidFilterWidth + gap;
         MoveWindow(app.clearUuidFilterButton, toolbarLeft, toolbarTop, clearFilterWidth, rowHeight, TRUE);
         MoveWindow(app.textureList, margin, listTop, listWidth, listHeight, TRUE);
+        MoveWindow(app.galleryControl, margin, listTop, listWidth, listHeight, TRUE);
+        ShowWindow(app.textureList, app.galleryMode ? SW_HIDE : SW_SHOW);
+        ShowWindow(app.galleryControl, app.galleryMode ? SW_SHOW : SW_HIDE);
+        UpdateGalleryScroll(app);
         MoveWindow(app.detailsText, detailsLeft, listTop, detailsWidth, detailsHeight, TRUE);
         MoveWindow(
             app.previewControl,
@@ -1544,7 +2187,7 @@ namespace
                     nullptr);
                 app->exportVisibleButton = CreateWindowW(
                     L"BUTTON",
-                    L"Export Visible",
+                    L"Export Results",
                     WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                     0,
                     0,
@@ -1556,7 +2199,7 @@ namespace
                     nullptr);
                 app->scanVisibleButton = CreateWindowW(
                     L"BUTTON",
-                    L"Scan Visible",
+                    L"Find Previews",
                     WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                     0,
                     0,
@@ -1568,7 +2211,7 @@ namespace
                     nullptr);
                 app->likelyCompleteCheck = CreateWindowW(
                     L"BUTTON",
-                    L"Likely complete",
+                    L"Has data",
                     WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                     0,
                     0,
@@ -1580,7 +2223,7 @@ namespace
                     nullptr);
                 app->previewableCheck = CreateWindowW(
                     L"BUTTON",
-                    L"Previewable",
+                    L"Show found",
                     WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                     0,
                     0,
@@ -1588,6 +2231,18 @@ namespace
                     0,
                     window,
                     reinterpret_cast<HMENU>(static_cast<INT_PTR>(PreviewableCheckId)),
+                    app->instance,
+                    nullptr);
+                app->galleryCheck = CreateWindowW(
+                    L"BUTTON",
+                    L"Gallery view",
+                    WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(GalleryCheckId)),
                     app->instance,
                     nullptr);
                 app->overwriteCheck = CreateWindowW(
@@ -1604,7 +2259,7 @@ namespace
                     nullptr);
                 app->retryIncompleteCheck = CreateWindowW(
                     L"BUTTON",
-                    L"Retry incomplete",
+                    L"Retry failed",
                     WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                     0,
                     0,
@@ -1655,6 +2310,19 @@ namespace
                     0,
                     window,
                     reinterpret_cast<HMENU>(static_cast<INT_PTR>(TextureListId)),
+                    app->instance,
+                    nullptr);
+                app->galleryControl = CreateWindowExW(
+                    WS_EX_CLIENTEDGE,
+                    L"CacheExplorerGallery",
+                    L"",
+                    WS_CHILD | WS_VSCROLL,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(GalleryControlId)),
                     app->instance,
                     nullptr);
                 app->detailsText = CreateWindowExW(
@@ -1800,7 +2468,10 @@ namespace
                     if (header->idFrom == TextureListId &&
                         header->code == LVN_ITEMCHANGED)
                     {
-                        UpdateDetails(*app);
+                        if (!app->listUpdateInProgress)
+                        {
+                            UpdateDetails(*app);
+                        }
                     }
                     else if (header->idFrom == TextureListId &&
                         header->code == LVN_COLUMNCLICK)
@@ -1891,6 +2562,21 @@ namespace
 
                         return 0;
                     }
+
+                    case GalleryCheckId:
+                    {
+                        app->galleryMode =
+                            SendMessageW(app->galleryCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
+                        RECT client{};
+                        GetClientRect(window, &client);
+                        ResizeControls(
+                            *app,
+                            client.right - client.left,
+                            client.bottom - client.top);
+                        InvalidateRect(app->galleryControl, nullptr, TRUE);
+                        return 0;
+                    }
+
                     case ExportButtonId:
                         ExportSelected(*app);
                         return 0;
@@ -1977,6 +2663,15 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand)
     windowClass.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
 
     RegisterClassW(&windowClass);
+
+    WNDCLASSW galleryClass{};
+    galleryClass.lpfnWndProc = GalleryProc;
+    galleryClass.hInstance = instance;
+    galleryClass.lpszClassName = L"CacheExplorerGallery";
+    galleryClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    galleryClass.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+
+    RegisterClassW(&galleryClass);
 
     HWND window = CreateWindowExW(
         0,
