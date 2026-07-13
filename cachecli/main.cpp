@@ -1,9 +1,8 @@
 #include "TextureCacheDatabase.h"
 #include "TextureRebuilder.h"
 #include "UUID.h"
-#include "J2CDecoder.h"
-#include "PngWriter.h"
 #include "TextureExporter.h"
+#include "TextureSelection.h"
 
 #include <fstream>
 #include <vector>
@@ -565,56 +564,12 @@ int ExportPngCommand(
         return 1;
     }
 
-    const CacheEntry* entry =
-        database.Find(*uuid);
+    const CacheEntry* entry = database.Find(*uuid);
 
     if (entry == nullptr)
     {
         std::cerr
             << "Error: UUID was not found in texture.entries.\n";
-
-        return 1;
-    }
-
-    TextureRebuilder rebuilder;
-
-    std::vector<std::uint8_t> encodedData;
-
-    const RebuildError rebuildResult =
-        rebuilder.Rebuild(
-            database,
-            *entry,
-            encodedData);
-
-    if (rebuildResult != RebuildError::None)
-    {
-        std::cerr
-            << "Error reconstructing texture: "
-            << TextureRebuilder::ErrorMessage(
-                rebuildResult)
-            << "\n";
-
-        return 1;
-    }
-
-    J2CDecoder decoder;
-    DecodedImage decodedImage;
-
-    const DecodeError decodeResult =
-        decoder.Decode(
-            encodedData,
-            decodedImage, true);
-
-    if (decodeResult != DecodeError::None)
-    {
-        std::cerr
-            << "Error decoding texture: "
-            << J2CDecoder::ErrorMessage(
-                decodeResult)
-            << "\n"
-            << "Cached bytes: "
-            << encodedData.size()
-            << "\n";
 
         return 1;
     }
@@ -627,24 +582,36 @@ int ExportPngCommand(
     }
     else
     {
-        outputFile =
-            entry->uuid.ToString() + ".png";
+        outputFile = entry->uuid.ToString() + ".png";
     }
 
-    PngWriter writer;
+    TextureExportOptions options;
+    options.overwriteExisting = true;
+    options.verboseDecoderErrors = true;
 
-    const PngWriteError writeResult =
-        writer.Write(
+    TextureExporter exporter;
+
+    const TexturePngExportResult result =
+        exporter.ExportPngEntry(
+            database,
+            *entry,
             outputFile,
-            decodedImage);
+            options);
 
-    if (writeResult != PngWriteError::None)
+    if (result.status != TexturePngExportStatus::Exported)
     {
         std::cerr
-            << "Error writing PNG: "
-            << PngWriter::ErrorMessage(
-                writeResult)
+            << "Error exporting PNG: "
+            << result.message
             << "\n";
+
+        if (result.cachedBytes > 0)
+        {
+            std::cerr
+                << "Cached bytes: "
+                << result.cachedBytes
+                << "\n";
+        }
 
         return 1;
     }
@@ -655,17 +622,16 @@ int ExportPngCommand(
         << entry->uuid.ToString()
         << "\n"
         << "  Dimensions : "
-        << decodedImage.width
+        << result.width
         << " x "
-        << decodedImage.height
+        << result.height
         << "\n"
         << "  File       : "
-        << fs::absolute(outputFile).string()
+        << fs::absolute(result.outputFile).string()
         << "\n";
 
     return 0;
 }
-
 int ExportPngAllCommand(
     const fs::path& suppliedPath,
     const fs::path& outputDirectory,
@@ -678,15 +644,8 @@ int ExportPngAllCommand(
         return 1;
     }
 
-    std::vector<const CacheEntry*> selectedEntries;
-    selectedEntries.reserve(
-        database.Entries().size());
-
-    for (const CacheEntry& entry :
-         database.Entries())
-    {
-        selectedEntries.push_back(&entry);
-    }
+    const std::vector<const CacheEntry*> selectedEntries =
+        TextureSelection::All(database);
 
     std::cout
         << "Bulk PNG export\n"
@@ -716,7 +675,35 @@ int ExportPngAllCommand(
             database,
             selectedEntries,
             outputDirectory,
-            options);
+            options,
+            [](const TextureExportProgress& progress)
+            {
+                if (progress.processed % 100 != 0 &&
+                    progress.processed != progress.total)
+                {
+                    return;
+                }
+
+                std::cout
+                    << "\rProcessed "
+                    << progress.processed
+                    << " / "
+                    << progress.total
+                    << "  Exported: "
+                    << progress.exported
+                    << "  Incomplete: "
+                    << progress.incompleteTextures
+                    << "  Errors: "
+                    << progress.errors
+                    << "  Skipped: "
+                    << progress.skippedExisting
+                    << std::flush;
+            });
+
+    if (!selectedEntries.empty())
+    {
+        std::cout << "\n";
+    }
 
     std::cout
         << "\nBulk export results\n"
@@ -743,8 +730,7 @@ int ExportPngAllCommand(
             << results.messages.size()
             << " messages:\n";
 
-        for (const std::string& message :
-             results.messages)
+        for (const std::string& message : results.messages)
         {
             std::cout
                 << "  "
@@ -1510,3 +1496,5 @@ if (command == "export-png-all")
     PrintUsage();
     return 1;
 }
+
+

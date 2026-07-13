@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 #include <limits>
 #include <memory>
-#include <iostream>
 
 namespace
 {
@@ -39,8 +39,7 @@ namespace
         const std::size_t bytesToRead =
             std::min<std::size_t>(
                 available,
-                static_cast<std::size_t>(
-                    requestedBytes));
+                static_cast<std::size_t>(requestedBytes));
 
         std::copy_n(
             stream->data + stream->position,
@@ -66,8 +65,7 @@ namespace
         }
 
         const std::size_t offset =
-            static_cast<std::size_t>(
-                requestedOffset);
+            static_cast<std::size_t>(requestedOffset);
 
         const std::size_t available =
             stream->size - stream->position;
@@ -94,8 +92,7 @@ namespace
         }
 
         const std::size_t position =
-            static_cast<std::size_t>(
-                requestedPosition);
+            static_cast<std::size_t>(requestedPosition);
 
         if (position > stream->size)
         {
@@ -107,41 +104,29 @@ namespace
         return OPJ_TRUE;
     }
 
-    void OpenJpegInfo(
-    const char* message,
-    void*)
-{
-    if (message != nullptr)
+    void OpenJpegWarning(
+        const char* message,
+        void*)
     {
-        std::cerr
-            << "OpenJPEG info: "
-            << message;
+        if (message != nullptr)
+        {
+            std::cerr
+                << "OpenJPEG warning: "
+                << message;
+        }
     }
-}
 
-void OpenJpegWarning(
-    const char* message,
-    void*)
-{
-    if (message != nullptr)
+    void OpenJpegError(
+        const char* message,
+        void*)
     {
-        std::cerr
-            << "OpenJPEG warning: "
-            << message;
+        if (message != nullptr)
+        {
+            std::cerr
+                << "OpenJPEG error: "
+                << message;
+        }
     }
-}
-
-void OpenJpegError(
-    const char* message,
-    void*)
-{
-    if (message != nullptr)
-    {
-        std::cerr
-            << "OpenJPEG error: "
-            << message;
-    }
-}
 
     struct StreamDeleter
     {
@@ -185,88 +170,24 @@ void OpenJpegError(
     using ImagePtr =
         std::unique_ptr<opj_image_t, ImageDeleter>;
 
-    std::uint8_t ConvertComponentSample(
-        const opj_image_comp_t& component,
-        std::size_t index)
+    bool ComponentsHaveData(
+        const opj_image_t& image)
     {
-        std::int64_t value =
-            static_cast<std::int64_t>(
-                component.data[index]);
-
-        const std::uint32_t precision =
-            component.prec;
-
-        if (precision == 0 || precision > 31)
-        {
-            return 0;
-        }
-
-        std::int64_t minimum = 0;
-        std::int64_t maximum = 0;
-
-        if (component.sgnd != 0)
-        {
-            minimum =
-                -(static_cast<std::int64_t>(1)
-                  << (precision - 1));
-
-            maximum =
-                (static_cast<std::int64_t>(1)
-                 << (precision - 1)) - 1;
-        }
-        else
-        {
-            minimum = 0;
-
-            maximum =
-                (static_cast<std::int64_t>(1)
-                 << precision) - 1;
-        }
-
-        value = std::clamp(
-            value,
-            minimum,
-            maximum);
-
-        const std::int64_t range =
-            maximum - minimum;
-
-        if (range <= 0)
-        {
-            return 0;
-        }
-
-        const std::int64_t normalized =
-            ((value - minimum) * 255 + range / 2)
-            / range;
-
-        return static_cast<std::uint8_t>(
-            std::clamp<std::int64_t>(
-                normalized,
-                0,
-                255));
-    }
-
-bool ComponentsHaveData(
-    const opj_image_t& image)
-{
-    if (image.comps == nullptr || image.numcomps == 0)
-    {
-        return false;
-    }
-
-    for (OPJ_UINT32 i = 0;
-         i < image.numcomps;
-         ++i)
-    {
-        if (image.comps[i].data == nullptr)
+        if (image.comps == nullptr || image.numcomps == 0)
         {
             return false;
         }
-    }
 
-    return true;
-}
+        for (OPJ_UINT32 i = 0; i < image.numcomps; ++i)
+        {
+            if (image.comps[i].data == nullptr)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     bool ComponentsHaveMatchingDimensions(
         const opj_image_t& image)
@@ -279,9 +200,7 @@ bool ComponentsHaveData(
         const opj_image_comp_t& first =
             image.comps[0];
 
-        for (OPJ_UINT32 i = 1;
-             i < image.numcomps;
-             ++i)
+        for (OPJ_UINT32 i = 1; i < image.numcomps; ++i)
         {
             const opj_image_comp_t& component =
                 image.comps[i];
@@ -297,11 +216,59 @@ bool ComponentsHaveData(
 
         return true;
     }
+
+    std::uint8_t ConvertComponentSample(
+        const opj_image_comp_t& component,
+        std::size_t index)
+    {
+        std::int64_t value =
+            static_cast<std::int64_t>(component.data[index]);
+
+        const std::uint32_t precision = component.prec;
+
+        if (precision == 0 || precision > 31)
+        {
+            return 0;
+        }
+
+        std::int64_t minimum = 0;
+        std::int64_t maximum = 0;
+
+        if (component.sgnd != 0)
+        {
+            minimum =
+                -(static_cast<std::int64_t>(1) << (precision - 1));
+
+            maximum =
+                (static_cast<std::int64_t>(1) << (precision - 1)) - 1;
+        }
+        else
+        {
+            maximum =
+                (static_cast<std::int64_t>(1) << precision) - 1;
+        }
+
+        value = std::clamp(value, minimum, maximum);
+
+        const std::int64_t range = maximum - minimum;
+
+        if (range <= 0)
+        {
+            return 0;
+        }
+
+        const std::int64_t normalized =
+            ((value - minimum) * 255 + range / 2) / range;
+
+        return static_cast<std::uint8_t>(
+            std::clamp<std::int64_t>(normalized, 0, 255));
+    }
 }
 
 DecodeError J2CDecoder::Decode(
     const std::vector<std::uint8_t>& encodedData,
-    DecodedImage& outputImage, bool verbose) const
+    DecodedImage& outputImage,
+    bool verbose) const
 {
     outputImage = {};
 
@@ -311,148 +278,77 @@ DecodeError J2CDecoder::Decode(
     }
 
     MemoryStream memoryStream;
-
     memoryStream.data = encodedData.data();
     memoryStream.size = encodedData.size();
-    memoryStream.position = 0;
 
     StreamPtr stream(
-        opj_stream_create(
-            64 * 1024,
-            OPJ_TRUE));
+        opj_stream_create(64 * 1024, OPJ_TRUE));
 
     if (!stream)
     {
         return DecodeError::StreamCreationFailed;
     }
 
-    opj_stream_set_user_data(
-        stream.get(),
-        &memoryStream,
-        nullptr);
-
+    opj_stream_set_user_data(stream.get(), &memoryStream, nullptr);
     opj_stream_set_user_data_length(
         stream.get(),
-        static_cast<OPJ_UINT64>(
-            encodedData.size()));
+        static_cast<OPJ_UINT64>(encodedData.size()));
+    opj_stream_set_read_function(stream.get(), ReadFromMemory);
+    opj_stream_set_skip_function(stream.get(), SkipMemory);
+    opj_stream_set_seek_function(stream.get(), SeekMemory);
 
-    opj_stream_set_read_function(
-        stream.get(),
-        ReadFromMemory);
-
-    opj_stream_set_skip_function(
-        stream.get(),
-        SkipMemory);
-
-    opj_stream_set_seek_function(
-        stream.get(),
-        SeekMemory);
-
-    CodecPtr codec(
-        opj_create_decompress(
-            OPJ_CODEC_J2K));
+    CodecPtr codec(opj_create_decompress(OPJ_CODEC_J2K));
 
     if (!codec)
     {
         return DecodeError::CodecCreationFailed;
     }
 
+    opj_set_info_handler(codec.get(), nullptr, nullptr);
+
     if (verbose)
-{
-    opj_set_warning_handler(
-        codec.get(),
-        OpenJpegWarning,
-        nullptr);
-
-    opj_set_error_handler(
-        codec.get(),
-        OpenJpegError,
-        nullptr);
-}
-else
-{
-    opj_set_warning_handler(
-        codec.get(),
-        nullptr,
-        nullptr);
-
-    opj_set_error_handler(
-        codec.get(),
-        nullptr,
-        nullptr);
-}
-
-opj_set_info_handler(
-    codec.get(),
-    nullptr,
-    nullptr);
+    {
+        opj_set_warning_handler(codec.get(), OpenJpegWarning, nullptr);
+        opj_set_error_handler(codec.get(), OpenJpegError, nullptr);
+    }
+    else
+    {
+        opj_set_warning_handler(codec.get(), nullptr, nullptr);
+        opj_set_error_handler(codec.get(), nullptr, nullptr);
+    }
 
     opj_dparameters_t parameters{};
+    opj_set_default_decoder_parameters(&parameters);
 
-    opj_set_default_decoder_parameters(
-        &parameters);
-
-    if (!opj_setup_decoder(
-            codec.get(),
-            &parameters))
+    if (!opj_setup_decoder(codec.get(), &parameters))
     {
         return DecodeError::DecodeFailed;
     }
 
     opj_image_t* rawImage = nullptr;
 
-    if (!opj_read_header(
-            stream.get(),
-            codec.get(),
-            &rawImage))
+    if (!opj_read_header(stream.get(), codec.get(), &rawImage))
     {
         return DecodeError::HeaderReadFailed;
     }
 
     ImagePtr image(rawImage);
 
-if (!opj_decode(
-        codec.get(),
-        stream.get(),
-        image.get()))
-{
-    return DecodeError::DecodeFailed;
-}
-
-    const OPJ_BOOL endedCleanly =
-    opj_end_decompress(
-        codec.get(),
-        stream.get());
-
-if (!endedCleanly)
-{
-    /*
-     * A progressively cached codestream may not contain a clean
-     * end-of-codestream marker. If opj_decode() succeeded and image
-     * components were produced, retain the decoded pixels.
-     */
-}
-
-    if (!opj_end_decompress(
-            codec.get(),
-            stream.get()))
+    if (!opj_decode(codec.get(), stream.get(), image.get()))
     {
         return DecodeError::DecodeFailed;
     }
 
-if (image == nullptr ||
-    image->comps == nullptr)
-{
-    return DecodeError::MissingComponentData;
-}
+    // Progressive cache streams may lack a clean end marker. If decoding
+    // produced components, keep the pixels instead of failing finalization.
+    static_cast<void>(opj_end_decompress(codec.get(), stream.get()));
 
-if (!ComponentsHaveData(*image))
-{
-    return DecodeError::MissingComponentData;
-}
+    if (image == nullptr || !ComponentsHaveData(*image))
+    {
+        return DecodeError::MissingComponentData;
+    }
 
-    if (image->numcomps < 1 ||
-        image->numcomps > 4)
+    if (image->numcomps < 1 || image->numcomps > 4)
     {
         return DecodeError::UnsupportedComponentCount;
     }
@@ -462,8 +358,7 @@ if (!ComponentsHaveData(*image))
         return DecodeError::UnsupportedComponentLayout;
     }
 
-    const opj_image_comp_t& first =
-        image->comps[0];
+    const opj_image_comp_t& first = image->comps[0];
 
     if (first.w == 0 || first.h == 0)
     {
@@ -471,8 +366,8 @@ if (!ComponentsHaveData(*image))
     }
 
     const std::uint64_t pixelCount =
-        static_cast<std::uint64_t>(first.w)
-        * static_cast<std::uint64_t>(first.h);
+        static_cast<std::uint64_t>(first.w) *
+        static_cast<std::uint64_t>(first.h);
 
     if (pixelCount >
         static_cast<std::uint64_t>(
@@ -483,14 +378,10 @@ if (!ComponentsHaveData(*image))
 
     outputImage.width = first.w;
     outputImage.height = first.h;
-
-    outputImage.rgba.resize(
-        static_cast<std::size_t>(
-            pixelCount * 4));
+    outputImage.rgba.resize(static_cast<std::size_t>(pixelCount * 4));
 
     for (std::size_t pixel = 0;
-         pixel < static_cast<std::size_t>(
-             pixelCount);
+         pixel < static_cast<std::size_t>(pixelCount);
          ++pixel)
     {
         std::uint8_t red = 0;
@@ -501,81 +392,35 @@ if (!ComponentsHaveData(*image))
         switch (image->numcomps)
         {
             case 1:
-            {
                 red = green = blue =
-                    ConvertComponentSample(
-                        image->comps[0],
-                        pixel);
-
+                    ConvertComponentSample(image->comps[0], pixel);
                 break;
-            }
 
             case 2:
-            {
                 red = green = blue =
-                    ConvertComponentSample(
-                        image->comps[0],
-                        pixel);
-
+                    ConvertComponentSample(image->comps[0], pixel);
                 alpha =
-                    ConvertComponentSample(
-                        image->comps[1],
-                        pixel);
-
+                    ConvertComponentSample(image->comps[1], pixel);
                 break;
-            }
 
             case 3:
-            {
-                red =
-                    ConvertComponentSample(
-                        image->comps[0],
-                        pixel);
-
-                green =
-                    ConvertComponentSample(
-                        image->comps[1],
-                        pixel);
-
-                blue =
-                    ConvertComponentSample(
-                        image->comps[2],
-                        pixel);
-
+                red = ConvertComponentSample(image->comps[0], pixel);
+                green = ConvertComponentSample(image->comps[1], pixel);
+                blue = ConvertComponentSample(image->comps[2], pixel);
                 break;
-            }
 
             case 4:
-            {
-                red =
-                    ConvertComponentSample(
-                        image->comps[0],
-                        pixel);
-
-                green =
-                    ConvertComponentSample(
-                        image->comps[1],
-                        pixel);
-
-                blue =
-                    ConvertComponentSample(
-                        image->comps[2],
-                        pixel);
-
-                alpha =
-                    ConvertComponentSample(
-                        image->comps[3],
-                        pixel);
-
+                red = ConvertComponentSample(image->comps[0], pixel);
+                green = ConvertComponentSample(image->comps[1], pixel);
+                blue = ConvertComponentSample(image->comps[2], pixel);
+                alpha = ConvertComponentSample(image->comps[3], pixel);
                 break;
-            }
 
             default:
                 return DecodeError::UnsupportedComponentCount;
         }
 
-        const std::size_t outputOffset =
-            pixel * 4;
+        const std::size_t outputOffset = pixel * 4;
 
         outputImage.rgba[outputOffset + 0] = red;
         outputImage.rgba[outputOffset + 1] = green;
@@ -621,8 +466,8 @@ const char* J2CDecoder::ErrorMessage(
         case DecodeError::ImageTooLarge:
             return "The decoded image is too large.";
 
-case DecodeError::MissingComponentData:
-    return "OpenJPEG did not produce usable component data.";
+        case DecodeError::MissingComponentData:
+            return "OpenJPEG did not produce usable component data.";
     }
 
     return "Unknown JPEG2000 decoding error.";
