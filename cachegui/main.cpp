@@ -33,6 +33,7 @@ namespace
     constexpr int LikelyCompleteCheckId = 1009;
     constexpr int OverwriteCheckId = 1010;
     constexpr int RetryIncompleteCheckId = 1011;
+    constexpr int ProgressBarId = 1012;
     constexpr int TextureListId = 1005;
     constexpr int StatusTextId = 1006;
     constexpr int DetailsTextId = 1007;
@@ -55,6 +56,7 @@ namespace
         HWND detailsText = nullptr;
         HWND previewControl = nullptr;
         HWND statusText = nullptr;
+        HWND progressBar = nullptr;
 
         TextureCacheDatabase database;
         std::vector<const CacheEntry*> visibleEntries;
@@ -197,6 +199,54 @@ namespace
     private:
         HCURSOR previousCursor_ = nullptr;
     };
+
+    void SetExportControlsEnabled(AppState& app, bool enabled)
+    {
+        EnableWindow(app.browseButton, enabled);
+        EnableWindow(app.openButton, enabled);
+        EnableWindow(app.exportButton, enabled);
+        EnableWindow(app.likelyCompleteCheck, enabled);
+        EnableWindow(app.overwriteCheck, enabled);
+        EnableWindow(app.retryIncompleteCheck, enabled);
+        EnableWindow(app.textureList, enabled);
+    }
+
+    void SetExportProgress(AppState& app, const TextureExportProgress& progress)
+    {
+        SendMessageW(
+            app.progressBar,
+            PBM_SETRANGE32,
+            0,
+            static_cast<LPARAM>(std::min<std::size_t>(
+                progress.total,
+                static_cast<std::size_t>(std::numeric_limits<int>::max()))));
+        SendMessageW(
+            app.progressBar,
+            PBM_SETPOS,
+            static_cast<WPARAM>(std::min<std::size_t>(
+                progress.processed,
+                static_cast<std::size_t>(std::numeric_limits<int>::max()))),
+            0);
+
+        std::wostringstream status;
+        status
+            << L"Exporting "
+            << progress.processed
+            << L" of "
+            << progress.total
+            << L". Exported "
+            << progress.exported
+            << L", skipped "
+            << (progress.skippedExisting + progress.skippedKnownIncomplete)
+            << L", incomplete "
+            << progress.incompleteTextures
+            << L", errors "
+            << progress.errors
+            << L".";
+        SetStatus(app, status.str());
+        UpdateWindow(app.statusText);
+        UpdateWindow(app.progressBar);
+    }
 
     class ScopedWindowRedraw
     {
@@ -769,12 +819,24 @@ namespace
             return;
         }
 
+        ShowWindow(app.progressBar, SW_SHOW);
+        SetExportControlsEnabled(app, false);
+        ScopedWaitCursor waitCursor;
+        SetExportProgress(app, TextureExportProgress{0, entries.size()});
+
         TextureExporter exporter;
         const BulkExportResults results = exporter.ExportPngEntries(
             app.database,
             entries,
             *outputDirectory,
-            options);
+            options,
+            [&app](const TextureExportProgress& progress)
+            {
+                SetExportProgress(app, progress);
+            });
+
+        SetExportControlsEnabled(app, true);
+        ShowWindow(app.progressBar, SW_HIDE);
 
         if (!exportState.Save(stateFile, stateError))
         {
@@ -805,6 +867,7 @@ namespace
         constexpr int checkWidth = 130;
         constexpr int smallCheckWidth = 95;
         constexpr int statusHeight = 24;
+        constexpr int progressWidth = 220;
         constexpr int gap = 8;
         constexpr int detailsWidth = 320;
         constexpr int detailsHeight = 270;
@@ -862,7 +925,14 @@ namespace
             detailsWidth,
             listHeight - detailsHeight - gap,
             TRUE);
-        MoveWindow(app.statusText, margin, height - margin - statusHeight, contentWidth, statusHeight, TRUE);
+        MoveWindow(app.statusText, margin, height - margin - statusHeight, contentWidth - progressWidth - gap, statusHeight, TRUE);
+        MoveWindow(
+            app.progressBar,
+            margin + contentWidth - progressWidth,
+            height - margin - statusHeight + 2,
+            progressWidth,
+            statusHeight - 4,
+            TRUE);
     }
 
     LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
@@ -1012,6 +1082,19 @@ namespace
                     0,
                     window,
                     reinterpret_cast<HMENU>(static_cast<INT_PTR>(StatusTextId)),
+                    app->instance,
+                    nullptr);
+                app->progressBar = CreateWindowExW(
+                    0,
+                    PROGRESS_CLASSW,
+                    L"",
+                    WS_CHILD | PBS_SMOOTH,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(ProgressBarId)),
                     app->instance,
                     nullptr);
 
