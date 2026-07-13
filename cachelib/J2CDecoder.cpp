@@ -301,7 +301,7 @@ bool ComponentsHaveData(
 
 DecodeError J2CDecoder::Decode(
     const std::vector<std::uint8_t>& encodedData,
-    DecodedImage& outputImage) const
+    DecodedImage& outputImage, bool verbose) const
 {
     outputImage = {};
 
@@ -357,19 +357,34 @@ DecodeError J2CDecoder::Decode(
         return DecodeError::CodecCreationFailed;
     }
 
-    opj_set_info_handler(
+    if (verbose)
+{
+    opj_set_warning_handler(
+        codec.get(),
+        OpenJpegWarning,
+        nullptr);
+
+    opj_set_error_handler(
+        codec.get(),
+        OpenJpegError,
+        nullptr);
+}
+else
+{
+    opj_set_warning_handler(
+        codec.get(),
+        nullptr,
+        nullptr);
+
+    opj_set_error_handler(
+        codec.get(),
+        nullptr,
+        nullptr);
+}
+
+opj_set_info_handler(
     codec.get(),
     nullptr,
-    nullptr);
-
-opj_set_warning_handler(
-    codec.get(),
-    OpenJpegWarning,
-    nullptr);
-
-opj_set_error_handler(
-    codec.get(),
-    OpenJpegError,
     nullptr);
 
     opj_dparameters_t parameters{};
@@ -401,7 +416,6 @@ if (!opj_decode(
         stream.get(),
         image.get()))
 {
-    std::cerr << "Decoder: opj_decode returned false\n";
     return DecodeError::DecodeFailed;
 }
 

@@ -5,6 +5,7 @@ add_library(cachelib
     UUID.cpp
     TextureCacheDatabase.cpp
     TextureRebuilder.cpp
+    TextureExporter.cpp
     J2CDecoder.cpp
     PngWriter.cpp
 )

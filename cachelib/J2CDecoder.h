@@ -33,7 +33,7 @@ class J2CDecoder
 public:
     DecodeError Decode(
         const std::vector<std::uint8_t>& encodedData,
-        DecodedImage& outputImage) const;
+        DecodedImage& outputImage, bool verbose = false) const;
 
     static const char* ErrorMessage(DecodeError error);
 };

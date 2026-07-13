@@ -3,6 +3,7 @@
 #include "UUID.h"
 #include "J2CDecoder.h"
 #include "PngWriter.h"
+#include "TextureExporter.h"
 
 #include <fstream>
 #include <vector>
@@ -218,6 +219,8 @@ std::uint64_t CachedEntrySize(
                "[output-file]\n\n"
 	    << "  cachecli export-png <cache-directory> <uuid> "
                "[output-file]\n"
+	       << "  cachecli export-png-all <cache-directory> "
+   "<output-directory> [--overwrite]\n"
             << "The cache directory may be either:\n"
             << "  - the texturecache directory itself, or\n"
             << "  - its parent Firestorm cache directory.\n";
@@ -600,7 +603,7 @@ int ExportPngCommand(
     const DecodeError decodeResult =
         decoder.Decode(
             encodedData,
-            decodedImage);
+            decodedImage, true);
 
     if (decodeResult != DecodeError::None)
     {
@@ -661,6 +664,96 @@ int ExportPngCommand(
         << "\n";
 
     return 0;
+}
+
+int ExportPngAllCommand(
+    const fs::path& suppliedPath,
+    const fs::path& outputDirectory,
+    bool overwriteExisting)
+{
+    TextureCacheDatabase database;
+
+    if (!OpenDatabase(suppliedPath, database))
+    {
+        return 1;
+    }
+
+    std::vector<const CacheEntry*> selectedEntries;
+    selectedEntries.reserve(
+        database.Entries().size());
+
+    for (const CacheEntry& entry :
+         database.Entries())
+    {
+        selectedEntries.push_back(&entry);
+    }
+
+    std::cout
+        << "Bulk PNG export\n"
+        << "---------------\n"
+        << "Input cache : "
+        << database.CacheDirectory().string()
+        << "\n"
+        << "Output      : "
+        << fs::absolute(outputDirectory).string()
+        << "\n"
+        << "Textures    : "
+        << selectedEntries.size()
+        << "\n"
+        << "Overwrite   : "
+        << (overwriteExisting ? "yes" : "no")
+        << "\n\n";
+
+    TextureExportOptions options;
+    options.overwriteExisting = overwriteExisting;
+    options.verboseDecoderErrors = false;
+    options.maximumStoredMessages = 50;
+
+    TextureExporter exporter;
+
+    const BulkExportResults results =
+        exporter.ExportPngEntries(
+            database,
+            selectedEntries,
+            outputDirectory,
+            options);
+
+    std::cout
+        << "\nBulk export results\n"
+        << "-------------------\n"
+        << "Total entries         : "
+        << results.totalEntries << "\n"
+        << "Exported              : "
+        << results.exported << "\n"
+        << "Skipped existing      : "
+        << results.skippedExisting << "\n"
+        << "Incomplete/undecodable: "
+        << results.incompleteTextures << "\n"
+        << "Rebuild failures      : "
+        << results.rebuildFailures << "\n"
+        << "PNG write failures    : "
+        << results.writeFailures << "\n"
+        << "Total errors          : "
+        << results.ErrorCount() << "\n";
+
+    if (!results.messages.empty())
+    {
+        std::cout
+            << "\nFirst "
+            << results.messages.size()
+            << " messages:\n";
+
+        for (const std::string& message :
+             results.messages)
+        {
+            std::cout
+                << "  "
+                << message
+                << "\n";
+        }
+    }
+
+    return results.ErrorCount() == 0 ? 0 : 2;
 }
 
     int VerifyCommand(const fs::path& suppliedPath)
@@ -1370,6 +1463,43 @@ if (command == "export-png")
         argv[2],
         argv[3],
         outputFile);
+}
+
+if (command == "export-png-all")
+{
+    if (argc < 4 || argc > 5)
+    {
+        std::cerr
+            << "Error: export-png-all requires a cache directory, "
+               "output directory, and optional --overwrite.\n\n";
+
+        PrintUsage();
+        return 1;
+    }
+
+    bool overwriteExisting = false;
+
+    if (argc == 5)
+    {
+        const std::string option = argv[4];
+
+        if (option != "--overwrite")
+        {
+            std::cerr
+                << "Error: Unknown export-png-all option: "
+                << option
+                << "\n";
+
+            return 1;
+        }
+
+        overwriteExisting = true;
+    }
+
+    return ExportPngAllCommand(
+        argv[2],
+        argv[3],
+        overwriteExisting);
 }
 
     std::cerr
