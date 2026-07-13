@@ -30,6 +30,9 @@ namespace
     constexpr int BrowseButtonId = 1002;
     constexpr int OpenButtonId = 1003;
     constexpr int ExportButtonId = 1004;
+    constexpr int LikelyCompleteCheckId = 1009;
+    constexpr int OverwriteCheckId = 1010;
+    constexpr int RetryIncompleteCheckId = 1011;
     constexpr int TextureListId = 1005;
     constexpr int StatusTextId = 1006;
     constexpr int DetailsTextId = 1007;
@@ -45,6 +48,9 @@ namespace
         HWND browseButton = nullptr;
         HWND openButton = nullptr;
         HWND exportButton = nullptr;
+        HWND likelyCompleteCheck = nullptr;
+        HWND overwriteCheck = nullptr;
+        HWND retryIncompleteCheck = nullptr;
         HWND textureList = nullptr;
         HWND detailsText = nullptr;
         HWND previewControl = nullptr;
@@ -52,6 +58,7 @@ namespace
 
         TextureCacheDatabase database;
         std::vector<const CacheEntry*> visibleEntries;
+        bool likelyCompleteOnly = false;
         std::unique_ptr<gdip::Image> previewImage;
         fs::path previewDirectory;
     };
@@ -421,6 +428,13 @@ namespace
         SetDetails(app, details.str());
     }
 
+    bool IsLikelyComplete(const CacheEntry& entry)
+    {
+        return entry.imageSize > 0 &&
+            entry.bodySize > 0 &&
+            entry.imageSize > entry.bodySize;
+    }
+
     void PopulateList(AppState& app)
     {
         ListView_DeleteAllItems(app.textureList);
@@ -431,6 +445,11 @@ namespace
 
         for (const CacheEntry& entry : entries)
         {
+            if (app.likelyCompleteOnly && !IsLikelyComplete(entry))
+            {
+                continue;
+            }
+
             app.visibleEntries.push_back(&entry);
             const int itemIndex = static_cast<int>(app.visibleEntries.size() - 1);
             const std::wstring uuid = ToWide(entry.uuid.ToString());
@@ -478,7 +497,7 @@ namespace
         PopulateList(app);
 
         std::wostringstream status;
-        status << L"Loaded " << app.visibleEntries.size() << L" texture entries.";
+        status << L"Showing " << app.visibleEntries.size() << L" of " << app.database.Entries().size() << L" texture entries.";
         SetStatus(app, status.str());
         return true;
     }
@@ -528,6 +547,10 @@ namespace
 
         TextureExportState exportState;
         TextureExportOptions options;
+        options.overwriteExisting =
+            SendMessageW(app.overwriteCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
+        options.skipKnownIncomplete =
+            SendMessageW(app.retryIncompleteCheck, BM_GETCHECK, 0, 0) != BST_CHECKED;
         options.maximumStoredMessages = 10;
         options.exportState = &exportState;
 
@@ -561,6 +584,10 @@ namespace
             << L", skipped incomplete " << results.skippedKnownIncomplete
             << L", incomplete " << results.incompleteTextures
             << L", errors " << results.ErrorCount()
+            << L". Overwrite: "
+            << (options.overwriteExisting ? L"on" : L"off")
+            << L", retry incomplete: "
+            << (!options.skipKnownIncomplete ? L"on" : L"off")
             << L".";
         SetStatus(app, status.str());
     }
@@ -570,6 +597,8 @@ namespace
         constexpr int margin = 12;
         constexpr int rowHeight = 28;
         constexpr int buttonWidth = 90;
+        constexpr int checkWidth = 130;
+        constexpr int smallCheckWidth = 95;
         constexpr int statusHeight = 24;
         constexpr int gap = 8;
         constexpr int detailsWidth = 320;
@@ -598,6 +627,27 @@ namespace
             rowHeight,
             TRUE);
         MoveWindow(app.exportButton, margin, margin + rowHeight + gap, 130, rowHeight, TRUE);
+        MoveWindow(
+            app.likelyCompleteCheck,
+            margin + 130 + gap,
+            margin + rowHeight + gap,
+            checkWidth,
+            rowHeight,
+            TRUE);
+        MoveWindow(
+            app.overwriteCheck,
+            margin + 130 + gap + checkWidth + gap,
+            margin + rowHeight + gap,
+            smallCheckWidth,
+            rowHeight,
+            TRUE);
+        MoveWindow(
+            app.retryIncompleteCheck,
+            margin + 130 + gap + checkWidth + gap + smallCheckWidth + gap,
+            margin + rowHeight + gap,
+            checkWidth,
+            rowHeight,
+            TRUE);
         MoveWindow(app.textureList, margin, listTop, listWidth, listHeight, TRUE);
         MoveWindow(app.detailsText, detailsLeft, listTop, detailsWidth, detailsHeight, TRUE);
         MoveWindow(
@@ -671,6 +721,42 @@ namespace
                     0,
                     window,
                     reinterpret_cast<HMENU>(static_cast<INT_PTR>(ExportButtonId)),
+                    app->instance,
+                    nullptr);
+                app->likelyCompleteCheck = CreateWindowW(
+                    L"BUTTON",
+                    L"Likely complete",
+                    WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(LikelyCompleteCheckId)),
+                    app->instance,
+                    nullptr);
+                app->overwriteCheck = CreateWindowW(
+                    L"BUTTON",
+                    L"Overwrite",
+                    WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(OverwriteCheckId)),
+                    app->instance,
+                    nullptr);
+                app->retryIncompleteCheck = CreateWindowW(
+                    L"BUTTON",
+                    L"Retry incomplete",
+                    WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(RetryIncompleteCheckId)),
                     app->instance,
                     nullptr);
                 app->textureList = CreateWindowExW(
@@ -790,6 +876,28 @@ namespace
                     case OpenButtonId:
                         OpenCache(*app);
                         return 0;
+
+                    case LikelyCompleteCheckId:
+                    {
+                        app->likelyCompleteOnly =
+                            SendMessageW(app->likelyCompleteCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
+
+                        if (app->database.IsOpen())
+                        {
+                            PopulateList(*app);
+
+                            std::wostringstream status;
+                            status
+                                << L"Showing "
+                                << app->visibleEntries.size()
+                                << L" of "
+                                << app->database.Entries().size()
+                                << L" texture entries.";
+                            SetStatus(*app, status.str());
+                        }
+
+                        return 0;
+                    }
 
                     case ExportButtonId:
                         ExportSelected(*app);
