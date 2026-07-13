@@ -1,5 +1,7 @@
-test-output
-bulk-output
+test-output/
+bulk-output/
+list-output/
+range-output/
 # =========================================================================
 # Visual Studio Build Output and Intermediate Directories
 # =========================================================================

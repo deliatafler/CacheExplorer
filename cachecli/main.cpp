@@ -216,10 +216,14 @@ std::uint64_t CachedEntrySize(
             << "  cachecli stats <cache-directory>\n"
             << "  cachecli export <cache-directory> <uuid> "
                "[output-file]\n\n"
-	    << "  cachecli export-png <cache-directory> <uuid> "
+            << "  cachecli export-png <cache-directory> <uuid> "
                "[output-file]\n"
-	       << "  cachecli export-png-all <cache-directory> "
-   "<output-directory> [--overwrite]\n"
+            << "  cachecli export-png-all <cache-directory> "
+               "<output-directory> [--overwrite]\n"
+            << "  cachecli export-png-range <cache-directory> "
+               "<output-directory> <start> <count> [--overwrite]\n"
+            << "  cachecli export-png-list <cache-directory> "
+               "<output-directory> <uuid-file> [--overwrite]\n"
             << "The cache directory may be either:\n"
             << "  - the texturecache directory itself, or\n"
             << "  - its parent Firestorm cache directory.\n";
@@ -323,6 +327,77 @@ std::uint64_t CachedEntrySize(
         {
             return std::nullopt;
         }
+    }
+    std::string TrimWhitespace(const std::string& value)
+    {
+        const std::size_t first =
+            value.find_first_not_of(" \t\r\n");
+
+        if (first == std::string::npos)
+        {
+            return {};
+        }
+
+        const std::size_t last =
+            value.find_last_not_of(" \t\r\n");
+
+        return value.substr(first, last - first + 1);
+    }
+
+    bool ReadUuidFile(
+        const fs::path& uuidFile,
+        std::vector<UUID>& uuids,
+        std::vector<std::string>& errors)
+    {
+        uuids.clear();
+        errors.clear();
+
+        std::ifstream input(uuidFile);
+
+        if (!input)
+        {
+            errors.push_back(
+                "Could not open UUID file: "
+                + uuidFile.string());
+
+            return false;
+        }
+
+        std::string line;
+        std::size_t lineNumber = 0;
+
+        while (std::getline(input, line))
+        {
+            ++lineNumber;
+
+            const std::string trimmed = TrimWhitespace(line);
+
+            if (trimmed.empty() || trimmed.front() == '#')
+            {
+                continue;
+            }
+
+            const std::optional<UUID> uuid =
+                UUID::FromString(trimmed);
+
+            if (!uuid)
+            {
+                std::ostringstream message;
+
+                message
+                    << "Line "
+                    << lineNumber
+                    << ": invalid UUID: "
+                    << trimmed;
+
+                errors.push_back(message.str());
+                continue;
+            }
+
+            uuids.push_back(*uuid);
+        }
+
+        return errors.empty();
     }
 
     bool OpenDatabase(
@@ -707,6 +782,293 @@ int ExportPngAllCommand(
 
     std::cout
         << "\nBulk export results\n"
+        << "-------------------\n"
+        << "Total entries         : "
+        << results.totalEntries << "\n"
+        << "Exported              : "
+        << results.exported << "\n"
+        << "Skipped existing      : "
+        << results.skippedExisting << "\n"
+        << "Incomplete/undecodable: "
+        << results.incompleteTextures << "\n"
+        << "Rebuild failures      : "
+        << results.rebuildFailures << "\n"
+        << "PNG write failures    : "
+        << results.writeFailures << "\n"
+        << "Total errors          : "
+        << results.ErrorCount() << "\n";
+
+    if (!results.messages.empty())
+    {
+        std::cout
+            << "\nFirst "
+            << results.messages.size()
+            << " messages:\n";
+
+        for (const std::string& message : results.messages)
+        {
+            std::cout
+                << "  "
+                << message
+                << "\n";
+        }
+    }
+
+    return results.ErrorCount() == 0 ? 0 : 2;
+}
+
+int ExportPngRangeCommand(
+    const fs::path& suppliedPath,
+    const fs::path& outputDirectory,
+    std::size_t start,
+    std::size_t count,
+    bool overwriteExisting)
+{
+    TextureCacheDatabase database;
+
+    if (!OpenDatabase(suppliedPath, database))
+    {
+        return 1;
+    }
+
+    const std::vector<const CacheEntry*> selectedEntries =
+        TextureSelection::Range(
+            database,
+            start,
+            count);
+
+    std::cout
+        << "Range PNG export\n"
+        << "----------------\n"
+        << "Input cache : "
+        << database.CacheDirectory().string()
+        << "\n"
+        << "Output      : "
+        << fs::absolute(outputDirectory).string()
+        << "\n"
+        << "Start       : "
+        << start
+        << "\n"
+        << "Requested   : "
+        << count
+        << "\n"
+        << "Selected    : "
+        << selectedEntries.size()
+        << "\n"
+        << "Overwrite   : "
+        << (overwriteExisting ? "yes" : "no")
+        << "\n\n";
+
+    if (selectedEntries.empty())
+    {
+        std::cout
+            << "No textures selected.\n";
+
+        return 0;
+    }
+
+    TextureExportOptions options;
+    options.overwriteExisting = overwriteExisting;
+    options.verboseDecoderErrors = false;
+    options.maximumStoredMessages = 50;
+
+    TextureExporter exporter;
+
+    const BulkExportResults results =
+        exporter.ExportPngEntries(
+            database,
+            selectedEntries,
+            outputDirectory,
+            options,
+            [](const TextureExportProgress& progress)
+            {
+                if (progress.processed % 100 != 0 &&
+                    progress.processed != progress.total)
+                {
+                    return;
+                }
+
+                std::cout
+                    << "\rProcessed "
+                    << progress.processed
+                    << " / "
+                    << progress.total
+                    << "  Exported: "
+                    << progress.exported
+                    << "  Incomplete: "
+                    << progress.incompleteTextures
+                    << "  Errors: "
+                    << progress.errors
+                    << "  Skipped: "
+                    << progress.skippedExisting
+                    << std::flush;
+            });
+
+    std::cout << "\n";
+
+    std::cout
+        << "\nRange export results\n"
+        << "--------------------\n"
+        << "Total entries         : "
+        << results.totalEntries << "\n"
+        << "Exported              : "
+        << results.exported << "\n"
+        << "Skipped existing      : "
+        << results.skippedExisting << "\n"
+        << "Incomplete/undecodable: "
+        << results.incompleteTextures << "\n"
+        << "Rebuild failures      : "
+        << results.rebuildFailures << "\n"
+        << "PNG write failures    : "
+        << results.writeFailures << "\n"
+        << "Total errors          : "
+        << results.ErrorCount() << "\n";
+
+    if (!results.messages.empty())
+    {
+        std::cout
+            << "\nFirst "
+            << results.messages.size()
+            << " messages:\n";
+
+        for (const std::string& message : results.messages)
+        {
+            std::cout
+                << "  "
+                << message
+                << "\n";
+        }
+    }
+
+    return results.ErrorCount() == 0 ? 0 : 2;
+}
+
+int ExportPngListCommand(
+    const fs::path& suppliedPath,
+    const fs::path& outputDirectory,
+    const fs::path& uuidFile,
+    bool overwriteExisting)
+{
+    std::vector<UUID> uuids;
+    std::vector<std::string> uuidErrors;
+
+    if (!ReadUuidFile(uuidFile, uuids, uuidErrors))
+    {
+        std::cerr
+            << "Error: Could not read UUID list.\n";
+
+        for (const std::string& error : uuidErrors)
+        {
+            std::cerr
+                << "  "
+                << error
+                << "\n";
+        }
+
+        return 1;
+    }
+
+    if (uuids.empty())
+    {
+        std::cout
+            << "No UUIDs found in "
+            << uuidFile.string()
+            << ".\n";
+
+        return 0;
+    }
+
+    TextureCacheDatabase database;
+
+    if (!OpenDatabase(suppliedPath, database))
+    {
+        return 1;
+    }
+
+    const std::vector<const CacheEntry*> selectedEntries =
+        TextureSelection::ByUuid(
+            database,
+            uuids);
+
+    const std::size_t missingCount =
+        uuids.size() >= selectedEntries.size()
+            ? uuids.size() - selectedEntries.size()
+            : 0;
+
+    std::cout
+        << "List PNG export\n"
+        << "---------------\n"
+        << "Input cache : "
+        << database.CacheDirectory().string()
+        << "\n"
+        << "Output      : "
+        << fs::absolute(outputDirectory).string()
+        << "\n"
+        << "UUID file   : "
+        << fs::absolute(uuidFile).string()
+        << "\n"
+        << "Requested   : "
+        << uuids.size()
+        << "\n"
+        << "Selected    : "
+        << selectedEntries.size()
+        << "\n"
+        << "Missing     : "
+        << missingCount
+        << "\n"
+        << "Overwrite   : "
+        << (overwriteExisting ? "yes" : "no")
+        << "\n\n";
+
+    if (selectedEntries.empty())
+    {
+        std::cout
+            << "No matching cached textures selected.\n";
+
+        return 0;
+    }
+
+    TextureExportOptions options;
+    options.overwriteExisting = overwriteExisting;
+    options.verboseDecoderErrors = false;
+    options.maximumStoredMessages = 50;
+
+    TextureExporter exporter;
+
+    const BulkExportResults results =
+        exporter.ExportPngEntries(
+            database,
+            selectedEntries,
+            outputDirectory,
+            options,
+            [](const TextureExportProgress& progress)
+            {
+                if (progress.processed % 100 != 0 &&
+                    progress.processed != progress.total)
+                {
+                    return;
+                }
+
+                std::cout
+                    << "\rProcessed "
+                    << progress.processed
+                    << " / "
+                    << progress.total
+                    << "  Exported: "
+                    << progress.exported
+                    << "  Incomplete: "
+                    << progress.incompleteTextures
+                    << "  Errors: "
+                    << progress.errors
+                    << "  Skipped: "
+                    << progress.skippedExisting
+                    << std::flush;
+            });
+
+    std::cout << "\n";
+
+    std::cout
+        << "\nList export results\n"
         << "-------------------\n"
         << "Total entries         : "
         << results.totalEntries << "\n"
@@ -1488,6 +1850,108 @@ if (command == "export-png-all")
         overwriteExisting);
 }
 
+if (command == "export-png-range")
+{
+    if (argc < 6 || argc > 7)
+    {
+        std::cerr
+            << "Error: export-png-range requires a cache directory, "
+               "output directory, start, count, and optional --overwrite.\n\n";
+
+        PrintUsage();
+        return 1;
+    }
+
+    const std::optional<std::size_t> start =
+        ParseLimit(argv[4]);
+
+    if (!start)
+    {
+        std::cerr
+            << "Error: Invalid range start: "
+            << argv[4]
+            << "\n";
+
+        return 1;
+    }
+
+    const std::optional<std::size_t> count =
+        ParseLimit(argv[5]);
+
+    if (!count)
+    {
+        std::cerr
+            << "Error: Invalid range count: "
+            << argv[5]
+            << "\n";
+
+        return 1;
+    }
+
+    bool overwriteExisting = false;
+
+    if (argc == 7)
+    {
+        const std::string option = argv[6];
+
+        if (option != "--overwrite")
+        {
+            std::cerr
+                << "Error: Unknown export-png-range option: "
+                << option
+                << "\n";
+
+            return 1;
+        }
+
+        overwriteExisting = true;
+    }
+
+    return ExportPngRangeCommand(
+        argv[2],
+        argv[3],
+        *start,
+        *count,
+        overwriteExisting);
+}
+
+if (command == "export-png-list")
+{
+    if (argc < 5 || argc > 6)
+    {
+        std::cerr
+            << "Error: export-png-list requires a cache directory, "
+               "output directory, UUID file, and optional --overwrite.\n\n";
+
+        PrintUsage();
+        return 1;
+    }
+
+    bool overwriteExisting = false;
+
+    if (argc == 6)
+    {
+        const std::string option = argv[5];
+
+        if (option != "--overwrite")
+        {
+            std::cerr
+                << "Error: Unknown export-png-list option: "
+                << option
+                << "\n";
+
+            return 1;
+        }
+
+        overwriteExisting = true;
+    }
+
+    return ExportPngListCommand(
+        argv[2],
+        argv[3],
+        argv[4],
+        overwriteExisting);
+}
     std::cerr
         << "Error: Unknown command: "
         << command
