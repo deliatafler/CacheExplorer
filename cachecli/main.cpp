@@ -2,6 +2,7 @@
 #include "TextureRebuilder.h"
 #include "UUID.h"
 #include "TextureExporter.h"
+#include "TextureExportState.h"
 #include "TextureSelection.h"
 
 #include <fstream>
@@ -219,11 +220,16 @@ std::uint64_t CachedEntrySize(
             << "  cachecli export-png <cache-directory> <uuid> "
                "[output-file]\n"
             << "  cachecli export-png-all <cache-directory> "
-               "<output-directory> [--overwrite]\n"
+               "<output-directory> [options]\n"
             << "  cachecli export-png-range <cache-directory> "
-               "<output-directory> <start> <count> [--overwrite]\n"
+               "<output-directory> <start> <count> [options]\n"
             << "  cachecli export-png-list <cache-directory> "
-               "<output-directory> <uuid-file> [--overwrite]\n"
+               "<output-directory> <uuid-file> [options]\n"
+            << "\nBulk PNG options:\n"
+            << "  --overwrite          Replace existing PNG files.\n"
+            << "  --state-file <file>  Use a custom export state index.\n"
+            << "  --retry-incomplete   Retry textures marked incomplete.\n"
+            << "  --no-state           Disable export state tracking.\n\n"
             << "The cache directory may be either:\n"
             << "  - the texturecache directory itself, or\n"
             << "  - its parent Firestorm cache directory.\n";
@@ -398,6 +404,151 @@ std::uint64_t CachedEntrySize(
         }
 
         return errors.empty();
+    }
+    struct BulkPngOptions
+    {
+        bool overwriteExisting = false;
+        bool useExportState = true;
+        bool retryIncomplete = false;
+        std::optional<fs::path> stateFile;
+    };
+
+    fs::path DefaultExportStateFile(const fs::path& outputDirectory)
+    {
+        return outputDirectory / ".cacheexplorer-export-state.tsv";
+    }
+
+    bool ParseBulkPngOptions(
+        int argc,
+        char* argv[],
+        int firstOption,
+        const std::string& commandName,
+        BulkPngOptions& options)
+    {
+        options = {};
+
+        for (int index = firstOption; index < argc; ++index)
+        {
+            const std::string option = argv[index];
+
+            if (option == "--overwrite")
+            {
+                options.overwriteExisting = true;
+                continue;
+            }
+
+            if (option == "--retry-incomplete")
+            {
+                options.retryIncomplete = true;
+                continue;
+            }
+
+            if (option == "--no-state")
+            {
+                options.useExportState = false;
+                continue;
+            }
+
+            if (option == "--state-file")
+            {
+                if (index + 1 >= argc)
+                {
+                    std::cerr
+                        << "Error: "
+                        << commandName
+                        << " option --state-file requires a file path.\n";
+
+                    return false;
+                }
+
+                ++index;
+                options.stateFile = fs::path(argv[index]);
+                continue;
+            }
+
+            std::cerr
+                << "Error: Unknown "
+                << commandName
+                << " option: "
+                << option
+                << "\n";
+
+            return false;
+        }
+
+        if (!options.useExportState && options.stateFile)
+        {
+            std::cerr
+                << "Error: --no-state cannot be combined with --state-file.\n";
+
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ConfigureExportState(
+        const fs::path& outputDirectory,
+        const BulkPngOptions& bulkOptions,
+        TextureExportOptions& exportOptions,
+        TextureExportState& exportState,
+        fs::path& stateFile)
+    {
+        exportOptions.overwriteExisting = bulkOptions.overwriteExisting;
+        exportOptions.verboseDecoderErrors = false;
+        exportOptions.maximumStoredMessages = 50;
+        exportOptions.skipKnownIncomplete = !bulkOptions.retryIncomplete;
+        exportOptions.exportState = nullptr;
+        stateFile.clear();
+
+        if (!bulkOptions.useExportState)
+        {
+            return true;
+        }
+
+        stateFile = bulkOptions.stateFile
+            ? *bulkOptions.stateFile
+            : DefaultExportStateFile(outputDirectory);
+
+        std::string stateError;
+
+        if (!exportState.Load(stateFile, stateError))
+        {
+            std::cerr
+                << "Error: Could not load export state: "
+                << stateError
+                << "\n";
+
+            return false;
+        }
+
+        exportOptions.exportState = &exportState;
+        return true;
+    }
+
+    bool SaveExportState(
+        const fs::path& stateFile,
+        const TextureExportOptions& exportOptions,
+        const TextureExportState& exportState)
+    {
+        if (exportOptions.exportState == nullptr)
+        {
+            return true;
+        }
+
+        std::string stateError;
+
+        if (!exportState.Save(stateFile, stateError))
+        {
+            std::cerr
+                << "Error: Could not save export state: "
+                << stateError
+                << "\n";
+
+            return false;
+        }
+
+        return true;
     }
 
     bool OpenDatabase(
@@ -710,7 +861,7 @@ int ExportPngCommand(
 int ExportPngAllCommand(
     const fs::path& suppliedPath,
     const fs::path& outputDirectory,
-    bool overwriteExisting)
+    const BulkPngOptions& bulkOptions)
 {
     TextureCacheDatabase database;
 
@@ -735,13 +886,22 @@ int ExportPngAllCommand(
         << selectedEntries.size()
         << "\n"
         << "Overwrite   : "
-        << (overwriteExisting ? "yes" : "no")
+        << (bulkOptions.overwriteExisting ? "yes" : "no")
         << "\n\n";
 
     TextureExportOptions options;
-    options.overwriteExisting = overwriteExisting;
-    options.verboseDecoderErrors = false;
-    options.maximumStoredMessages = 50;
+    TextureExportState exportState;
+    fs::path stateFile;
+
+    if (!ConfigureExportState(
+            outputDirectory,
+            bulkOptions,
+            options,
+            exportState,
+            stateFile))
+    {
+        return 1;
+    }
 
     TextureExporter exporter;
 
@@ -772,6 +932,8 @@ int ExportPngAllCommand(
                     << progress.errors
                     << "  Skipped: "
                     << progress.skippedExisting
+                    << "  State-skipped: "
+                    << progress.skippedKnownIncomplete
                     << std::flush;
             });
 
@@ -789,6 +951,8 @@ int ExportPngAllCommand(
         << results.exported << "\n"
         << "Skipped existing      : "
         << results.skippedExisting << "\n"
+        << "Skipped known incomplete: "
+        << results.skippedKnownIncomplete << "\n"
         << "Incomplete/undecodable: "
         << results.incompleteTextures << "\n"
         << "Rebuild failures      : "
@@ -814,7 +978,13 @@ int ExportPngAllCommand(
         }
     }
 
-    return results.ErrorCount() == 0 ? 0 : 2;
+    const bool stateSaved =
+        SaveExportState(
+            stateFile,
+            options,
+            exportState);
+
+    return results.ErrorCount() == 0 && stateSaved ? 0 : 2;
 }
 
 int ExportPngRangeCommand(
@@ -822,7 +992,7 @@ int ExportPngRangeCommand(
     const fs::path& outputDirectory,
     std::size_t start,
     std::size_t count,
-    bool overwriteExisting)
+    const BulkPngOptions& bulkOptions)
 {
     TextureCacheDatabase database;
 
@@ -856,7 +1026,7 @@ int ExportPngRangeCommand(
         << selectedEntries.size()
         << "\n"
         << "Overwrite   : "
-        << (overwriteExisting ? "yes" : "no")
+        << (bulkOptions.overwriteExisting ? "yes" : "no")
         << "\n\n";
 
     if (selectedEntries.empty())
@@ -868,9 +1038,18 @@ int ExportPngRangeCommand(
     }
 
     TextureExportOptions options;
-    options.overwriteExisting = overwriteExisting;
-    options.verboseDecoderErrors = false;
-    options.maximumStoredMessages = 50;
+    TextureExportState exportState;
+    fs::path stateFile;
+
+    if (!ConfigureExportState(
+            outputDirectory,
+            bulkOptions,
+            options,
+            exportState,
+            stateFile))
+    {
+        return 1;
+    }
 
     TextureExporter exporter;
 
@@ -901,6 +1080,8 @@ int ExportPngRangeCommand(
                     << progress.errors
                     << "  Skipped: "
                     << progress.skippedExisting
+                    << "  State-skipped: "
+                    << progress.skippedKnownIncomplete
                     << std::flush;
             });
 
@@ -915,6 +1096,8 @@ int ExportPngRangeCommand(
         << results.exported << "\n"
         << "Skipped existing      : "
         << results.skippedExisting << "\n"
+        << "Skipped known incomplete: "
+        << results.skippedKnownIncomplete << "\n"
         << "Incomplete/undecodable: "
         << results.incompleteTextures << "\n"
         << "Rebuild failures      : "
@@ -940,14 +1123,20 @@ int ExportPngRangeCommand(
         }
     }
 
-    return results.ErrorCount() == 0 ? 0 : 2;
+    const bool stateSaved =
+        SaveExportState(
+            stateFile,
+            options,
+            exportState);
+
+    return results.ErrorCount() == 0 && stateSaved ? 0 : 2;
 }
 
 int ExportPngListCommand(
     const fs::path& suppliedPath,
     const fs::path& outputDirectory,
     const fs::path& uuidFile,
-    bool overwriteExisting)
+    const BulkPngOptions& bulkOptions)
 {
     std::vector<UUID> uuids;
     std::vector<std::string> uuidErrors;
@@ -1017,7 +1206,7 @@ int ExportPngListCommand(
         << missingCount
         << "\n"
         << "Overwrite   : "
-        << (overwriteExisting ? "yes" : "no")
+        << (bulkOptions.overwriteExisting ? "yes" : "no")
         << "\n\n";
 
     if (selectedEntries.empty())
@@ -1029,9 +1218,18 @@ int ExportPngListCommand(
     }
 
     TextureExportOptions options;
-    options.overwriteExisting = overwriteExisting;
-    options.verboseDecoderErrors = false;
-    options.maximumStoredMessages = 50;
+    TextureExportState exportState;
+    fs::path stateFile;
+
+    if (!ConfigureExportState(
+            outputDirectory,
+            bulkOptions,
+            options,
+            exportState,
+            stateFile))
+    {
+        return 1;
+    }
 
     TextureExporter exporter;
 
@@ -1062,6 +1260,8 @@ int ExportPngListCommand(
                     << progress.errors
                     << "  Skipped: "
                     << progress.skippedExisting
+                    << "  State-skipped: "
+                    << progress.skippedKnownIncomplete
                     << std::flush;
             });
 
@@ -1076,6 +1276,8 @@ int ExportPngListCommand(
         << results.exported << "\n"
         << "Skipped existing      : "
         << results.skippedExisting << "\n"
+        << "Skipped known incomplete: "
+        << results.skippedKnownIncomplete << "\n"
         << "Incomplete/undecodable: "
         << results.incompleteTextures << "\n"
         << "Rebuild failures      : "
@@ -1101,7 +1303,13 @@ int ExportPngListCommand(
         }
     }
 
-    return results.ErrorCount() == 0 ? 0 : 2;
+    const bool stateSaved =
+        SaveExportState(
+            stateFile,
+            options,
+            exportState);
+
+    return results.ErrorCount() == 0 && stateSaved ? 0 : 2;
 }
 
     int VerifyCommand(const fs::path& suppliedPath)
@@ -1815,48 +2023,41 @@ if (command == "export-png")
 
 if (command == "export-png-all")
 {
-    if (argc < 4 || argc > 5)
+    if (argc < 4)
     {
         std::cerr
-            << "Error: export-png-all requires a cache directory, "
-               "output directory, and optional --overwrite.\n\n";
+            << "Error: export-png-all requires a cache directory "
+               "and output directory.\n\n";
 
         PrintUsage();
         return 1;
     }
 
-    bool overwriteExisting = false;
+    BulkPngOptions bulkOptions;
 
-    if (argc == 5)
+    if (!ParseBulkPngOptions(
+            argc,
+            argv,
+            4,
+            command,
+            bulkOptions))
     {
-        const std::string option = argv[4];
-
-        if (option != "--overwrite")
-        {
-            std::cerr
-                << "Error: Unknown export-png-all option: "
-                << option
-                << "\n";
-
-            return 1;
-        }
-
-        overwriteExisting = true;
+        return 1;
     }
 
     return ExportPngAllCommand(
         argv[2],
         argv[3],
-        overwriteExisting);
+        bulkOptions);
 }
 
 if (command == "export-png-range")
 {
-    if (argc < 6 || argc > 7)
+    if (argc < 6)
     {
         std::cerr
             << "Error: export-png-range requires a cache directory, "
-               "output directory, start, count, and optional --overwrite.\n\n";
+               "output directory, start, and count.\n\n";
 
         PrintUsage();
         return 1;
@@ -1888,23 +2089,16 @@ if (command == "export-png-range")
         return 1;
     }
 
-    bool overwriteExisting = false;
+    BulkPngOptions bulkOptions;
 
-    if (argc == 7)
+    if (!ParseBulkPngOptions(
+            argc,
+            argv,
+            6,
+            command,
+            bulkOptions))
     {
-        const std::string option = argv[6];
-
-        if (option != "--overwrite")
-        {
-            std::cerr
-                << "Error: Unknown export-png-range option: "
-                << option
-                << "\n";
-
-            return 1;
-        }
-
-        overwriteExisting = true;
+        return 1;
     }
 
     return ExportPngRangeCommand(
@@ -1912,46 +2106,40 @@ if (command == "export-png-range")
         argv[3],
         *start,
         *count,
-        overwriteExisting);
+        bulkOptions);
 }
 
 if (command == "export-png-list")
 {
-    if (argc < 5 || argc > 6)
+    if (argc < 5)
     {
         std::cerr
             << "Error: export-png-list requires a cache directory, "
-               "output directory, UUID file, and optional --overwrite.\n\n";
+               "output directory, and UUID file.\n\n";
 
         PrintUsage();
         return 1;
     }
 
-    bool overwriteExisting = false;
+    BulkPngOptions bulkOptions;
 
-    if (argc == 6)
+    if (!ParseBulkPngOptions(
+            argc,
+            argv,
+            5,
+            command,
+            bulkOptions))
     {
-        const std::string option = argv[5];
-
-        if (option != "--overwrite")
-        {
-            std::cerr
-                << "Error: Unknown export-png-list option: "
-                << option
-                << "\n";
-
-            return 1;
-        }
-
-        overwriteExisting = true;
+        return 1;
     }
 
     return ExportPngListCommand(
         argv[2],
         argv[3],
         argv[4],
-        overwriteExisting);
+        bulkOptions);
 }
+
     std::cerr
         << "Error: Unknown command: "
         << command

@@ -1,5 +1,7 @@
 #include "TextureExporter.h"
 
+#include "TextureExportState.h"
+
 #include "J2CDecoder.h"
 #include "PngWriter.h"
 #include "TextureRebuilder.h"
@@ -44,6 +46,7 @@ namespace
         progress.total = results.totalEntries;
         progress.exported = results.exported;
         progress.skippedExisting = results.skippedExisting;
+        progress.skippedKnownIncomplete = results.skippedKnownIncomplete;
         progress.incompleteTextures = results.incompleteTextures;
         progress.errors = results.ErrorCount();
 
@@ -172,6 +175,29 @@ BulkExportResults TextureExporter::ExportPngEntries(
             outputDirectory
             / (entry->uuid.ToString() + ".png");
 
+        if (options.exportState != nullptr &&
+            options.skipKnownIncomplete &&
+            options.exportState->IsKnownIncomplete(*entry))
+        {
+            if (!options.overwriteExisting)
+            {
+                std::error_code existsError;
+
+                if (fs::exists(outputFile, existsError) &&
+                    !existsError)
+                {
+                    ++results.skippedExisting;
+                    options.exportState->MarkSucceeded(*entry);
+                    ReportProgress(results, processed, progressCallback);
+                    continue;
+                }
+            }
+
+            ++results.skippedKnownIncomplete;
+            ReportProgress(results, processed, progressCallback);
+            continue;
+        }
+
         const TexturePngExportResult exportResult =
             ExportPngEntry(
                 database,
@@ -183,14 +209,28 @@ BulkExportResults TextureExporter::ExportPngEntries(
         {
             case TexturePngExportStatus::Exported:
                 ++results.exported;
+                if (options.exportState != nullptr)
+                {
+                    options.exportState->MarkSucceeded(*entry);
+                }
                 break;
 
             case TexturePngExportStatus::SkippedExisting:
                 ++results.skippedExisting;
+                if (options.exportState != nullptr)
+                {
+                    options.exportState->MarkSucceeded(*entry);
+                }
                 break;
 
             case TexturePngExportStatus::Incomplete:
                 ++results.incompleteTextures;
+                if (options.exportState != nullptr)
+                {
+                    options.exportState->MarkIncomplete(
+                        *entry,
+                        exportResult.message);
+                }
                 RecordMessage(
                     results,
                     *entry,

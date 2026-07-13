@@ -9,6 +9,8 @@
 
 #include "TextureCacheDatabase.h"
 
+class TextureExportState;
+
 enum class TexturePngExportStatus
 {
     Exported,
@@ -39,6 +41,7 @@ struct BulkExportResults
     std::size_t totalEntries = 0;
     std::size_t exported = 0;
     std::size_t skippedExisting = 0;
+    std::size_t skippedKnownIncomplete = 0;
     std::size_t incompleteTextures = 0;
     std::size_t rebuildFailures = 0;
     std::size_t writeFailures = 0;
@@ -57,6 +60,7 @@ struct TextureExportProgress
     std::size_t total = 0;
     std::size_t exported = 0;
     std::size_t skippedExisting = 0;
+    std::size_t skippedKnownIncomplete = 0;
     std::size_t incompleteTextures = 0;
     std::size_t errors = 0;
 };
@@ -65,8 +69,10 @@ struct TextureExportOptions
 {
     bool overwriteExisting = false;
     bool verboseDecoderErrors = false;
+    bool skipKnownIncomplete = true;
 
     std::size_t maximumStoredMessages = 50;
+    TextureExportState* exportState = nullptr;
 };
 
 using TextureExportProgressCallback =
