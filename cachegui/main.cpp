@@ -3,6 +3,7 @@
 #include "TextureExportState.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <ctime>
 #include <filesystem>
 #include <iomanip>
@@ -11,6 +12,8 @@
 #include <sstream>
 #include <string>
 #include <system_error>
+#include <thread>
+#include <utility>
 #include <vector>
 #define NOMINMAX
 #define UUID WindowsSdkUUID
@@ -35,12 +38,17 @@ namespace
     constexpr int OverwriteCheckId = 1010;
     constexpr int RetryIncompleteCheckId = 1011;
     constexpr int ProgressBarId = 1012;
+    constexpr int UuidFilterEditId = 1014;
+    constexpr int ClearUuidFilterButtonId = 1015;
     constexpr int TextureListId = 1005;
     constexpr int StatusTextId = 1006;
     constexpr int DetailsTextId = 1007;
     constexpr int PreviewControlId = 1008;
 
     constexpr UINT AutoOpenMessage = WM_APP + 1;
+    constexpr UINT PreviewCompleteMessage = WM_APP + 2;
+    constexpr UINT ExportProgressMessage = WM_APP + 3;
+    constexpr UINT ExportCompleteMessage = WM_APP + 4;
 
     struct AppState
     {
@@ -54,6 +62,8 @@ namespace
         HWND likelyCompleteCheck = nullptr;
         HWND overwriteCheck = nullptr;
         HWND retryIncompleteCheck = nullptr;
+        HWND uuidFilterEdit = nullptr;
+        HWND clearUuidFilterButton = nullptr;
         HWND textureList = nullptr;
         HWND detailsText = nullptr;
         HWND previewControl = nullptr;
@@ -63,10 +73,36 @@ namespace
         TextureCacheDatabase database;
         std::vector<const CacheEntry*> visibleEntries;
         bool likelyCompleteOnly = false;
+        std::wstring uuidFilter;
         int sortColumn = 3;
         bool sortAscending = false;
         std::unique_ptr<gdip::Image> previewImage;
         fs::path previewDirectory;
+        std::uint64_t previewRequestId = 0;
+        std::wstring detailsBase;
+        bool exportInProgress = false;
+    };
+
+    struct PreviewResult
+    {
+        std::uint64_t requestId = 0;
+        std::string uuid;
+        fs::path pngFile;
+        std::wstring message;
+        bool exported = false;
+    };
+
+    struct ExportProgressMessageData
+    {
+        TextureExportProgress progress;
+    };
+
+    struct ExportCompleteMessageData
+    {
+        BulkExportResults results;
+        std::wstring failureMessage;
+        bool overwriteExisting = false;
+        bool retryIncomplete = false;
     };
 
     std::wstring ToWide(const std::string& value)
@@ -367,10 +403,7 @@ namespace
             drawHeight);
     }
 
-    void UpdatePreview(
-        AppState& app,
-        const CacheEntry& entry,
-        std::wostringstream& details)
+    void StartPreview(AppState& app, const CacheEntry& entry)
     {
         ClearPreview(app);
 
@@ -378,50 +411,90 @@ namespace
 
         if (previewDirectory.empty())
         {
-            details << L"\r\n\r\nPreview\r\nTemporary preview directory is unavailable.";
+            SetDetails(app, app.detailsBase + L"\r\n\r\nPreview\r\nTemporary preview directory is unavailable.");
             return;
         }
 
+        const std::uint64_t requestId = ++app.previewRequestId;
         const fs::path previewFile =
             previewDirectory / (ToWide(entry.uuid.ToString()) + L".png");
+        TextureCacheDatabase database = app.database;
+        CacheEntry previewEntry = entry;
+        HWND window = app.window;
 
-        TextureExportOptions options;
-        options.overwriteExisting = true;
-        options.verboseDecoderErrors = false;
-        options.maximumStoredMessages = 0;
+        SetDetails(app, app.detailsBase + L"\r\n\r\nPreview\r\nLoading...");
 
-        TextureExporter exporter;
-        const TexturePngExportResult result = exporter.ExportPngEntry(
-            app.database,
-            entry,
-            previewFile,
-            options);
+        std::thread(
+            [database = std::move(database), previewEntry, previewFile, requestId, window]() mutable
+            {
+                auto resultMessage = std::make_unique<PreviewResult>();
+                resultMessage->requestId = requestId;
+                resultMessage->uuid = previewEntry.uuid.ToString();
+                resultMessage->pngFile = previewFile;
 
-        if (result.status != TexturePngExportStatus::Exported)
+                TextureExportOptions options;
+                options.overwriteExisting = true;
+                options.verboseDecoderErrors = false;
+                options.maximumStoredMessages = 0;
+
+                TextureExporter exporter;
+                const TexturePngExportResult result = exporter.ExportPngEntry(
+                    database,
+                    previewEntry,
+                    previewFile,
+                    options);
+
+                resultMessage->exported = result.status == TexturePngExportStatus::Exported;
+                resultMessage->message = ToWide(result.message);
+
+                auto* rawResult = resultMessage.release();
+                if (!PostMessageW(
+                        window,
+                        PreviewCompleteMessage,
+                        0,
+                        reinterpret_cast<LPARAM>(rawResult)))
+                {
+                    delete rawResult;
+                }
+            }).detach();
+    }
+
+    void ApplyPreviewResult(AppState& app, std::unique_ptr<PreviewResult> result)
+    {
+        if (!result || result->requestId != app.previewRequestId)
         {
-            details
-                << L"\r\n\r\nPreview\r\n"
-                << ToWide(result.message);
             return;
         }
 
-        auto image = std::make_unique<gdip::Image>(previewFile.wstring().c_str());
+        if (!result->exported)
+        {
+            SetDetails(app, app.detailsBase + L"\r\n\r\nPreview\r\n" + result->message);
+            SetStatus(app, L"Preview unavailable: " + result->message);
+            return;
+        }
+
+        auto image = std::make_unique<gdip::Image>(result->pngFile.wstring().c_str());
 
         if (image->GetLastStatus() != gdip::Ok)
         {
-            details << L"\r\n\r\nPreview\r\nPNG was exported but could not be loaded.";
+            SetDetails(app, app.detailsBase + L"\r\n\r\nPreview\r\nPNG was exported but could not be loaded.");
             return;
         }
 
+        std::wostringstream details;
         details
+            << app.detailsBase
             << L"\r\n\r\nPreview\r\n"
             << image->GetWidth()
             << L" x "
             << image->GetHeight();
 
         app.previewImage = std::move(image);
+        SetDetails(app, details.str());
+        SetStatus(app, L"Preview ready: " + ToWide(result->uuid));
         InvalidateRect(app.previewControl, nullptr, TRUE);
     }
+
     void AddColumn(HWND list, int index, int width, const wchar_t* title)
     {
         LVCOLUMNW column{};
@@ -508,7 +581,9 @@ namespace
 
         if (item < 0)
         {
-            SetDetails(app, L"No texture selected.");
+            ++app.previewRequestId;
+            app.detailsBase = L"No texture selected.";
+            SetDetails(app, app.detailsBase);
             ClearPreview(app);
             return;
         }
@@ -517,7 +592,9 @@ namespace
 
         if (index >= app.visibleEntries.size())
         {
-            SetDetails(app, L"No texture selected.");
+            ++app.previewRequestId;
+            app.detailsBase = L"No texture selected.";
+            SetDetails(app, app.detailsBase);
             ClearPreview(app);
             return;
         }
@@ -543,8 +620,8 @@ namespace
             << L"Last used\r\n"
             << FormatTime(entry.timestamp);
 
-        UpdatePreview(app, entry, details);
-        SetDetails(app, details.str());
+        app.detailsBase = details.str();
+        StartPreview(app, entry);
     }
 
     bool IsLikelyComplete(const CacheEntry& entry)
@@ -552,6 +629,30 @@ namespace
         return entry.imageSize > 0 &&
             entry.bodySize > 0 &&
             entry.imageSize > entry.bodySize;
+    }
+
+    bool MatchesUuidFilter(const CacheEntry& entry, const std::wstring& filter)
+    {
+        if (filter.empty())
+        {
+            return true;
+        }
+
+        std::wstring uuid = ToWide(entry.uuid.ToString());
+        std::wstring needle = filter;
+
+        std::transform(
+            uuid.begin(),
+            uuid.end(),
+            uuid.begin(),
+            [](wchar_t value) { return static_cast<wchar_t>(towlower(value)); });
+        std::transform(
+            needle.begin(),
+            needle.end(),
+            needle.begin(),
+            [](wchar_t value) { return static_cast<wchar_t>(towlower(value)); });
+
+        return uuid.find(needle) != std::wstring::npos;
     }
 
     std::wstring SelectedUuidText(HWND list)
@@ -689,6 +790,11 @@ namespace
                 continue;
             }
 
+            if (!MatchesUuidFilter(entry, app.uuidFilter))
+            {
+                continue;
+            }
+
             app.visibleEntries.push_back(&entry);
         }
 
@@ -740,6 +846,9 @@ namespace
 
     bool OpenCache(AppState& app)
     {
+        ++app.previewRequestId;
+        ClearPreview(app);
+
         const fs::path cachePath =
             ResolveTextureCacheDirectory(GetText(app.pathEdit));
         TextureCacheDatabase database;
@@ -747,8 +856,9 @@ namespace
 
         if (result != CacheError::None)
         {
+            app.detailsBase = L"No cache loaded.";
             SetStatus(app, L"Could not open texture.entries in the selected folder.");
-            SetDetails(app, L"No cache loaded.");
+            SetDetails(app, app.detailsBase);
             return false;
         }
 
@@ -796,6 +906,12 @@ namespace
             return;
         }
 
+        if (app.exportInProgress)
+        {
+            SetStatus(app, L"An export is already running.");
+            return;
+        }
+
         const std::optional<fs::path> outputDirectory =
             PickFolder(app.window, L"Choose export directory");
 
@@ -804,63 +920,118 @@ namespace
             return;
         }
 
-        TextureExportState exportState;
         TextureExportOptions options;
         options.overwriteExisting =
             SendMessageW(app.overwriteCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
         options.skipKnownIncomplete =
             SendMessageW(app.retryIncompleteCheck, BM_GETCHECK, 0, 0) != BST_CHECKED;
         options.maximumStoredMessages = 10;
-        options.exportState = &exportState;
 
-        const fs::path stateFile =
-            *outputDirectory / L".cacheexplorer-export-state.tsv";
-        std::string stateError;
+        std::vector<CacheEntry> entryCopies;
+        entryCopies.reserve(entries.size());
 
-        if (!exportState.Load(stateFile, stateError))
+        for (const CacheEntry* entry : entries)
         {
-            SetStatus(app, L"Could not load export state file.");
+            if (entry != nullptr)
+            {
+                entryCopies.push_back(*entry);
+            }
+        }
+
+        if (entryCopies.empty())
+        {
+            SetStatus(app, emptyMessage);
             return;
         }
 
+        app.exportInProgress = true;
         ShowWindow(app.progressBar, SW_SHOW);
         SetExportControlsEnabled(app, false);
-        ScopedWaitCursor waitCursor;
-        SetExportProgress(app, TextureExportProgress{0, entries.size()});
+        SetExportProgress(app, TextureExportProgress{0, entryCopies.size()});
 
-        TextureExporter exporter;
-        const BulkExportResults results = exporter.ExportPngEntries(
-            app.database,
-            entries,
-            *outputDirectory,
-            options,
-            [&app](const TextureExportProgress& progress)
+        TextureCacheDatabase database = app.database;
+        HWND window = app.window;
+        const fs::path stateFile =
+            *outputDirectory / L".cacheexplorer-export-state.tsv";
+
+        std::thread(
+            [database = std::move(database),
+             entryCopies = std::move(entryCopies),
+             outputDirectory = *outputDirectory,
+             stateFile,
+             options,
+             window]() mutable
             {
-                SetExportProgress(app, progress);
-            });
+                auto complete = std::make_unique<ExportCompleteMessageData>();
+                complete->overwriteExisting = options.overwriteExisting;
+                complete->retryIncomplete = !options.skipKnownIncomplete;
 
-        SetExportControlsEnabled(app, true);
-        ShowWindow(app.progressBar, SW_HIDE);
+                TextureExportState exportState;
+                std::string stateError;
 
-        if (!exportState.Save(stateFile, stateError))
-        {
-            SetStatus(app, L"Export finished, but state could not be saved.");
-            return;
-        }
+                if (!exportState.Load(stateFile, stateError))
+                {
+                    complete->failureMessage = L"Could not load export state file.";
+                    auto* rawComplete = complete.release();
+                    if (!PostMessageW(
+                            window,
+                            ExportCompleteMessage,
+                            0,
+                            reinterpret_cast<LPARAM>(rawComplete)))
+                    {
+                        delete rawComplete;
+                    }
+                    return;
+                }
 
-        std::wostringstream status;
-        status
-            << L"Exported " << results.exported
-            << L", skipped existing " << results.skippedExisting
-            << L", skipped incomplete " << results.skippedKnownIncomplete
-            << L", incomplete " << results.incompleteTextures
-            << L", errors " << results.ErrorCount()
-            << L". Overwrite: "
-            << (options.overwriteExisting ? L"on" : L"off")
-            << L", retry incomplete: "
-            << (!options.skipKnownIncomplete ? L"on" : L"off")
-            << L".";
-        SetStatus(app, status.str());
+                TextureExportOptions workerOptions = options;
+                workerOptions.exportState = &exportState;
+
+                std::vector<const CacheEntry*> exportEntries;
+                exportEntries.reserve(entryCopies.size());
+
+                for (const CacheEntry& entry : entryCopies)
+                {
+                    exportEntries.push_back(&entry);
+                }
+
+                TextureExporter exporter;
+                complete->results = exporter.ExportPngEntries(
+                    database,
+                    exportEntries,
+                    outputDirectory,
+                    workerOptions,
+                    [window](const TextureExportProgress& progress)
+                    {
+                        auto progressMessage = std::make_unique<ExportProgressMessageData>();
+                        progressMessage->progress = progress;
+                        auto* rawProgress = progressMessage.release();
+
+                        if (!PostMessageW(
+                                window,
+                                ExportProgressMessage,
+                                0,
+                                reinterpret_cast<LPARAM>(rawProgress)))
+                        {
+                            delete rawProgress;
+                        }
+                    });
+
+                if (!exportState.Save(stateFile, stateError))
+                {
+                    complete->failureMessage = L"Export finished, but state could not be saved.";
+                }
+
+                auto* rawComplete = complete.release();
+                if (!PostMessageW(
+                        window,
+                        ExportCompleteMessage,
+                        0,
+                        reinterpret_cast<LPARAM>(rawComplete)))
+                {
+                    delete rawComplete;
+                }
+            }).detach();
     }
 
     void ExportSelected(AppState& app)
@@ -879,6 +1050,42 @@ namespace
             L"No visible textures to export.");
     }
 
+    void ApplyExportComplete(
+        AppState& app,
+        std::unique_ptr<ExportCompleteMessageData> complete)
+    {
+        app.exportInProgress = false;
+        SetExportControlsEnabled(app, true);
+        ShowWindow(app.progressBar, SW_HIDE);
+
+        if (!complete)
+        {
+            SetStatus(app, L"Export finished, but the result was unavailable.");
+            return;
+        }
+
+        if (!complete->failureMessage.empty())
+        {
+            SetStatus(app, complete->failureMessage);
+            return;
+        }
+
+        const BulkExportResults& results = complete->results;
+        std::wostringstream status;
+        status
+            << L"Exported " << results.exported
+            << L", skipped existing " << results.skippedExisting
+            << L", skipped incomplete " << results.skippedKnownIncomplete
+            << L", incomplete " << results.incompleteTextures
+            << L", errors " << results.ErrorCount()
+            << L". Overwrite: "
+            << (complete->overwriteExisting ? L"on" : L"off")
+            << L", retry incomplete: "
+            << (complete->retryIncomplete ? L"on" : L"off")
+            << L".";
+        SetStatus(app, status.str());
+    }
+
     void ResizeControls(AppState& app, int width, int height)
     {
         constexpr int margin = 12;
@@ -887,6 +1094,8 @@ namespace
         constexpr int exportButtonWidth = 120;
         constexpr int checkWidth = 130;
         constexpr int smallCheckWidth = 95;
+        constexpr int uuidFilterWidth = 260;
+        constexpr int clearFilterWidth = 52;
         constexpr int statusHeight = 24;
         constexpr int progressWidth = 220;
         constexpr int gap = 8;
@@ -942,6 +1151,20 @@ namespace
             margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap + smallCheckWidth + gap,
             margin + rowHeight + gap,
             checkWidth,
+            rowHeight,
+            TRUE);
+        MoveWindow(
+            app.uuidFilterEdit,
+            margin + (exportButtonWidth * 2) + (gap * 2) + (checkWidth * 2) + smallCheckWidth + (gap * 3),
+            margin + rowHeight + gap,
+            uuidFilterWidth,
+            rowHeight,
+            TRUE);
+        MoveWindow(
+            app.clearUuidFilterButton,
+            margin + (exportButtonWidth * 2) + (gap * 2) + (checkWidth * 2) + smallCheckWidth + (gap * 4) + uuidFilterWidth,
+            margin + rowHeight + gap,
+            clearFilterWidth,
             rowHeight,
             TRUE);
         MoveWindow(app.textureList, margin, listTop, listWidth, listHeight, TRUE);
@@ -1074,6 +1297,36 @@ namespace
                     reinterpret_cast<HMENU>(static_cast<INT_PTR>(RetryIncompleteCheckId)),
                     app->instance,
                     nullptr);
+                app->uuidFilterEdit = CreateWindowExW(
+                    WS_EX_CLIENTEDGE,
+                    L"EDIT",
+                    L"",
+                    WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(UuidFilterEditId)),
+                    app->instance,
+                    nullptr);
+                SendMessageW(
+                    app->uuidFilterEdit,
+                    EM_SETCUEBANNER,
+                    TRUE,
+                    reinterpret_cast<LPARAM>(L"UUID contains"));
+                app->clearUuidFilterButton = CreateWindowW(
+                    L"BUTTON",
+                    L"Clear",
+                    WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(ClearUuidFilterButtonId)),
+                    app->instance,
+                    nullptr);
                 app->textureList = CreateWindowExW(
                     WS_EX_CLIENTEDGE,
                     WC_LISTVIEWW,
@@ -1149,6 +1402,45 @@ namespace
                     OpenCache(*app);
                 }
                 return 0;
+
+            case PreviewCompleteMessage:
+            {
+                std::unique_ptr<PreviewResult> result(
+                    reinterpret_cast<PreviewResult*>(lParam));
+
+                if (app != nullptr)
+                {
+                    ApplyPreviewResult(*app, std::move(result));
+                }
+
+                return 0;
+            }
+
+            case ExportProgressMessage:
+            {
+                std::unique_ptr<ExportProgressMessageData> progress(
+                    reinterpret_cast<ExportProgressMessageData*>(lParam));
+
+                if (app != nullptr && app->exportInProgress && progress)
+                {
+                    SetExportProgress(*app, progress->progress);
+                }
+
+                return 0;
+            }
+
+            case ExportCompleteMessage:
+            {
+                std::unique_ptr<ExportCompleteMessageData> complete(
+                    reinterpret_cast<ExportCompleteMessageData*>(lParam));
+
+                if (app != nullptr)
+                {
+                    ApplyExportComplete(*app, std::move(complete));
+                }
+
+                return 0;
+            }
 
             case WM_SIZE:
                 if (app != nullptr)
@@ -1249,6 +1541,32 @@ namespace
 
                     case ExportVisibleButtonId:
                         ExportVisible(*app);
+                        return 0;
+
+                    case UuidFilterEditId:
+                        if (HIWORD(wParam) == EN_CHANGE)
+                        {
+                            app->uuidFilter = GetText(app->uuidFilterEdit);
+
+                            if (app->database.IsOpen())
+                            {
+                                PopulateList(*app);
+                                SetEntryStatus(*app);
+                            }
+                        }
+
+                        return 0;
+
+                    case ClearUuidFilterButtonId:
+                        SetWindowTextW(app->uuidFilterEdit, L"");
+                        app->uuidFilter.clear();
+
+                        if (app->database.IsOpen())
+                        {
+                            PopulateList(*app);
+                            SetEntryStatus(*app);
+                        }
+
                         return 0;
                 }
                 break;
