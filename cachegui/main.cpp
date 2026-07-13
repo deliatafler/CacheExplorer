@@ -109,6 +109,7 @@ namespace
         std::wstring detailsBase;
         bool exportInProgress = false;
         bool scanInProgress = false;
+        std::shared_ptr<std::atomic_bool> scanCancelRequested;
         bool listUpdateInProgress = false;
         std::unordered_map<std::string, bool> previewableByUuid;
         std::unordered_map<std::string, PreviewScanRecord> previewScanByUuid;
@@ -151,6 +152,7 @@ namespace
         std::size_t previewableCount = 0;
         std::size_t unavailableCount = 0;
         std::size_t skippedKnownCount = 0;
+        bool canceled = false;
     };
 
     void PopulateList(AppState& app);
@@ -342,7 +344,7 @@ namespace
         EnableWindow(app.openButton, enabled);
         EnableWindow(app.exportButton, enabled);
         EnableWindow(app.exportVisibleButton, enabled);
-        EnableWindow(app.scanVisibleButton, enabled);
+        EnableWindow(app.scanVisibleButton, TRUE);
         EnableWindow(app.likelyCompleteCheck, enabled);
         UpdatePreviewableControl(app, enabled);
         EnableWindow(app.galleryCheck, TRUE);
@@ -1820,6 +1822,8 @@ namespace
         }
 
         app.scanInProgress = true;
+        app.scanCancelRequested = std::make_shared<std::atomic_bool>(false);
+        SetWindowTextW(app.scanVisibleButton, L"Cancel Scan");
         ShowWindow(app.progressBar, SW_SHOW);
         SetExportControlsEnabled(app, false);
         SetStatus(app, L"Finding previewable textures. This can take a while for large visible sets...");
@@ -1828,12 +1832,14 @@ namespace
 
         TextureCacheDatabase database = app.database;
         HWND window = app.window;
+        std::shared_ptr<std::atomic_bool> cancelRequested = app.scanCancelRequested;
 
         std::thread(
             [database = std::move(database),
              entryCopies = std::move(entryCopies),
              previewDirectory,
              skippedKnownCount,
+             cancelRequested,
              window]() mutable
             {
                 constexpr std::size_t PreviewWorkerCount = 3;
@@ -1872,6 +1878,11 @@ namespace
 
                     while (true)
                     {
+                        if (cancelRequested != nullptr && cancelRequested->load())
+                        {
+                            return;
+                        }
+
                         const std::size_t entryIndex = nextEntry.fetch_add(1);
 
                         if (entryIndex >= entryCopies.size())
@@ -1951,6 +1962,7 @@ namespace
                 complete->previewableCount = previewableCount;
                 complete->unavailableCount = unavailableCount;
                 complete->skippedKnownCount = skippedKnownCount;
+                complete->canceled = cancelRequested != nullptr && cancelRequested->load();
                 auto* rawComplete = complete.release();
 
                 if (!PostMessageW(
@@ -2002,6 +2014,8 @@ namespace
     void ApplyScanComplete(AppState& app, std::unique_ptr<ScanCompleteMessageData> complete)
     {
         app.scanInProgress = false;
+        app.scanCancelRequested.reset();
+        SetWindowTextW(app.scanVisibleButton, L"Find Previews");
         SetExportControlsEnabled(app, true);
         ShowWindow(app.progressBar, SW_HIDE);
 
@@ -2021,7 +2035,7 @@ namespace
 
         std::wostringstream status;
         status
-            << L"Checked "
+            << (complete->canceled ? L"Scan canceled. Checked " : L"Checked ")
             << (complete->total + complete->skippedKnownCount)
             << L" textures. Scanned "
             << complete->total
@@ -2586,6 +2600,18 @@ namespace
                         return 0;
 
                     case ScanVisibleButtonId:
+                        if (app->scanInProgress)
+                        {
+                            if (app->scanCancelRequested != nullptr)
+                            {
+                                app->scanCancelRequested->store(true);
+                            }
+
+                            EnableWindow(app->scanVisibleButton, FALSE);
+                            SetStatus(*app, L"Canceling preview scan...");
+                            return 0;
+                        }
+
                         StartScanVisible(*app);
                         return 0;
 
