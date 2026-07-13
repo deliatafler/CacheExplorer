@@ -59,6 +59,8 @@ namespace
         TextureCacheDatabase database;
         std::vector<const CacheEntry*> visibleEntries;
         bool likelyCompleteOnly = false;
+        int sortColumn = 3;
+        bool sortAscending = false;
         std::unique_ptr<gdip::Image> previewImage;
         fs::path previewDirectory;
     };
@@ -166,6 +168,70 @@ namespace
     {
         SetWindowTextW(app.detailsText, message.c_str());
     }
+
+    void SetEntryStatus(AppState& app)
+    {
+        std::wostringstream status;
+        status
+            << L"Showing "
+            << app.visibleEntries.size()
+            << L" of "
+            << app.database.Entries().size()
+            << L" texture entries.";
+        SetStatus(app, status.str());
+    }
+
+    class ScopedWaitCursor
+    {
+    public:
+        ScopedWaitCursor()
+            : previousCursor_(SetCursor(LoadCursorW(nullptr, IDC_WAIT)))
+        {
+        }
+
+        ~ScopedWaitCursor()
+        {
+            SetCursor(previousCursor_);
+        }
+
+    private:
+        HCURSOR previousCursor_ = nullptr;
+    };
+
+    class ScopedWindowRedraw
+    {
+    public:
+        explicit ScopedWindowRedraw(HWND window)
+            : window_(window)
+        {
+            SendMessageW(window_, WM_SETREDRAW, FALSE, 0);
+        }
+
+        ~ScopedWindowRedraw()
+        {
+            Resume();
+        }
+
+        void Resume()
+        {
+            if (!active_)
+            {
+                return;
+            }
+
+            active_ = false;
+            SendMessageW(window_, WM_SETREDRAW, TRUE, 0);
+            RedrawWindow(
+                window_,
+                nullptr,
+                nullptr,
+                RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+        }
+
+    private:
+        HWND window_ = nullptr;
+        bool active_ = true;
+    };
 
     fs::path PreviewDirectory(AppState& app)
     {
@@ -435,8 +501,128 @@ namespace
             entry.imageSize > entry.bodySize;
     }
 
+    std::wstring SelectedUuidText(HWND list)
+    {
+        const int item = ListView_GetNextItem(list, -1, LVNI_SELECTED);
+
+        if (item < 0)
+        {
+            return {};
+        }
+
+        wchar_t buffer[64]{};
+        ListView_GetItemText(
+            list,
+            item,
+            0,
+            buffer,
+            static_cast<int>(sizeof(buffer) / sizeof(buffer[0])));
+        return buffer;
+    }
+
+    int CompareEntriesByColumn(
+        const CacheEntry& left,
+        const CacheEntry& right,
+        int column)
+    {
+        switch (column)
+        {
+            case 1:
+                if (left.imageSize != right.imageSize)
+                {
+                    return left.imageSize < right.imageSize ? -1 : 1;
+                }
+                break;
+
+            case 2:
+                if (left.bodySize != right.bodySize)
+                {
+                    return left.bodySize < right.bodySize ? -1 : 1;
+                }
+                break;
+
+            case 3:
+                if (left.timestamp != right.timestamp)
+                {
+                    return left.timestamp < right.timestamp ? -1 : 1;
+                }
+                break;
+
+            case 0:
+            default:
+            {
+                const std::string leftUuid = left.uuid.ToString();
+                const std::string rightUuid = right.uuid.ToString();
+
+                if (leftUuid != rightUuid)
+                {
+                    return leftUuid < rightUuid ? -1 : 1;
+                }
+                break;
+            }
+        }
+
+        if (left.cacheIndex != right.cacheIndex)
+        {
+            return left.cacheIndex < right.cacheIndex ? -1 : 1;
+        }
+
+        return 0;
+    }
+
+    void SortVisibleEntries(AppState& app)
+    {
+        std::sort(
+            app.visibleEntries.begin(),
+            app.visibleEntries.end(),
+            [&app](const CacheEntry* left, const CacheEntry* right)
+            {
+                const int comparison =
+                    CompareEntriesByColumn(*left, *right, app.sortColumn);
+
+                if (comparison == 0)
+                {
+                    return false;
+                }
+
+                return app.sortAscending ? comparison < 0 : comparison > 0;
+            });
+    }
+
+    void UpdateSortIndicators(AppState& app)
+    {
+        HWND header = ListView_GetHeader(app.textureList);
+
+        if (header == nullptr)
+        {
+            return;
+        }
+
+        for (int column = 0; column < 4; ++column)
+        {
+            HDITEMW item{};
+            item.mask = HDI_FORMAT;
+
+            if (!Header_GetItem(header, column, &item))
+            {
+                continue;
+            }
+
+            item.fmt &= ~(HDF_SORTUP | HDF_SORTDOWN);
+
+            if (column == app.sortColumn)
+            {
+                item.fmt |= app.sortAscending ? HDF_SORTUP : HDF_SORTDOWN;
+            }
+
+            Header_SetItem(header, column, &item);
+        }
+    }
+
     void PopulateList(AppState& app)
     {
+        const std::wstring selectedUuid = SelectedUuidText(app.textureList);
+        ScopedWindowRedraw listRedraw(app.textureList);
         ListView_DeleteAllItems(app.textureList);
         app.visibleEntries.clear();
 
@@ -451,7 +637,17 @@ namespace
             }
 
             app.visibleEntries.push_back(&entry);
-            const int itemIndex = static_cast<int>(app.visibleEntries.size() - 1);
+        }
+
+        SortVisibleEntries(app);
+        UpdateSortIndicators(app);
+
+        int selectedIndex = -1;
+
+        for (std::size_t index = 0; index < app.visibleEntries.size(); ++index)
+        {
+            const CacheEntry& entry = *app.visibleEntries[index];
+            const int itemIndex = static_cast<int>(index);
             const std::wstring uuid = ToWide(entry.uuid.ToString());
 
             LVITEMW item{};
@@ -464,17 +660,28 @@ namespace
             SetItemText(app.textureList, itemIndex, 1, std::to_wstring(entry.imageSize));
             SetItemText(app.textureList, itemIndex, 2, std::to_wstring(entry.bodySize));
             SetItemText(app.textureList, itemIndex, 3, FormatTime(entry.timestamp));
+
+            if (!selectedUuid.empty() && uuid == selectedUuid)
+            {
+                selectedIndex = itemIndex;
+            }
         }
 
-        if (!app.visibleEntries.empty())
+        if (selectedIndex < 0 && !app.visibleEntries.empty())
+        {
+            selectedIndex = 0;
+        }
+
+        if (selectedIndex >= 0)
         {
             ListView_SetItemState(
                 app.textureList,
-                0,
+                selectedIndex,
                 LVIS_SELECTED | LVIS_FOCUSED,
                 LVIS_SELECTED | LVIS_FOCUSED);
         }
 
+        listRedraw.Resume();
         UpdateDetails(app);
     }
 
@@ -496,9 +703,7 @@ namespace
         SetWindowTextW(app.pathEdit, app.database.CacheDirectory().wstring().c_str());
         PopulateList(app);
 
-        std::wostringstream status;
-        status << L"Showing " << app.visibleEntries.size() << L" of " << app.database.Entries().size() << L" texture entries.";
-        SetStatus(app, status.str());
+        SetEntryStatus(app);
         return true;
     }
 
@@ -839,6 +1044,29 @@ namespace
                     {
                         UpdateDetails(*app);
                     }
+                    else if (header->idFrom == TextureListId &&
+                        header->code == LVN_COLUMNCLICK)
+                    {
+                        const NMLISTVIEW* listView =
+                            reinterpret_cast<const NMLISTVIEW*>(lParam);
+
+                        if (app->sortColumn == listView->iSubItem)
+                        {
+                            app->sortAscending = !app->sortAscending;
+                        }
+                        else
+                        {
+                            app->sortColumn = listView->iSubItem;
+                            app->sortAscending = listView->iSubItem != 3;
+                        }
+
+                        SetStatus(*app, L"Sorting...");
+                        UpdateWindow(app->statusText);
+
+                        ScopedWaitCursor waitCursor;
+                        PopulateList(*app);
+                        SetEntryStatus(*app);
+                    }
                 }
                 return 0;
 
@@ -886,14 +1114,7 @@ namespace
                         {
                             PopulateList(*app);
 
-                            std::wostringstream status;
-                            status
-                                << L"Showing "
-                                << app->visibleEntries.size()
-                                << L" of "
-                                << app->database.Entries().size()
-                                << L" texture entries.";
-                            SetStatus(*app, status.str());
+                            SetEntryStatus(*app);
                         }
 
                         return 0;
