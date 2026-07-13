@@ -30,6 +30,7 @@ namespace
     constexpr int BrowseButtonId = 1002;
     constexpr int OpenButtonId = 1003;
     constexpr int ExportButtonId = 1004;
+    constexpr int ExportVisibleButtonId = 1013;
     constexpr int LikelyCompleteCheckId = 1009;
     constexpr int OverwriteCheckId = 1010;
     constexpr int RetryIncompleteCheckId = 1011;
@@ -49,6 +50,7 @@ namespace
         HWND browseButton = nullptr;
         HWND openButton = nullptr;
         HWND exportButton = nullptr;
+        HWND exportVisibleButton = nullptr;
         HWND likelyCompleteCheck = nullptr;
         HWND overwriteCheck = nullptr;
         HWND retryIncompleteCheck = nullptr;
@@ -205,6 +207,7 @@ namespace
         EnableWindow(app.browseButton, enabled);
         EnableWindow(app.openButton, enabled);
         EnableWindow(app.exportButton, enabled);
+        EnableWindow(app.exportVisibleButton, enabled);
         EnableWindow(app.likelyCompleteCheck, enabled);
         EnableWindow(app.overwriteCheck, enabled);
         EnableWindow(app.retryIncompleteCheck, enabled);
@@ -782,13 +785,14 @@ namespace
         return selectedEntries;
     }
 
-    void ExportSelected(AppState& app)
+    void ExportEntries(
+        AppState& app,
+        const std::vector<const CacheEntry*>& entries,
+        const wchar_t* emptyMessage)
     {
-        const std::vector<const CacheEntry*> entries = SelectedEntries(app);
-
         if (entries.empty())
         {
-            SetStatus(app, L"Select one or more textures to export.");
+            SetStatus(app, emptyMessage);
             return;
         }
 
@@ -859,11 +863,28 @@ namespace
         SetStatus(app, status.str());
     }
 
+    void ExportSelected(AppState& app)
+    {
+        ExportEntries(
+            app,
+            SelectedEntries(app),
+            L"Select one or more textures to export.");
+    }
+
+    void ExportVisible(AppState& app)
+    {
+        ExportEntries(
+            app,
+            app.visibleEntries,
+            L"No visible textures to export.");
+    }
+
     void ResizeControls(AppState& app, int width, int height)
     {
         constexpr int margin = 12;
         constexpr int rowHeight = 28;
         constexpr int buttonWidth = 90;
+        constexpr int exportButtonWidth = 120;
         constexpr int checkWidth = 130;
         constexpr int smallCheckWidth = 95;
         constexpr int statusHeight = 24;
@@ -894,24 +915,31 @@ namespace
             buttonWidth,
             rowHeight,
             TRUE);
-        MoveWindow(app.exportButton, margin, margin + rowHeight + gap, 130, rowHeight, TRUE);
+        MoveWindow(app.exportButton, margin, margin + rowHeight + gap, exportButtonWidth, rowHeight, TRUE);
+        MoveWindow(
+            app.exportVisibleButton,
+            margin + exportButtonWidth + gap,
+            margin + rowHeight + gap,
+            exportButtonWidth,
+            rowHeight,
+            TRUE);
         MoveWindow(
             app.likelyCompleteCheck,
-            margin + 130 + gap,
+            margin + (exportButtonWidth * 2) + (gap * 2),
             margin + rowHeight + gap,
             checkWidth,
             rowHeight,
             TRUE);
         MoveWindow(
             app.overwriteCheck,
-            margin + 130 + gap + checkWidth + gap,
+            margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap,
             margin + rowHeight + gap,
             smallCheckWidth,
             rowHeight,
             TRUE);
         MoveWindow(
             app.retryIncompleteCheck,
-            margin + 130 + gap + checkWidth + gap + smallCheckWidth + gap,
+            margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap + smallCheckWidth + gap,
             margin + rowHeight + gap,
             checkWidth,
             rowHeight,
@@ -996,6 +1024,18 @@ namespace
                     0,
                     window,
                     reinterpret_cast<HMENU>(static_cast<INT_PTR>(ExportButtonId)),
+                    app->instance,
+                    nullptr);
+                app->exportVisibleButton = CreateWindowW(
+                    L"BUTTON",
+                    L"Export Visible",
+                    WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(ExportVisibleButtonId)),
                     app->instance,
                     nullptr);
                 app->likelyCompleteCheck = CreateWindowW(
@@ -1206,6 +1246,10 @@ namespace
                     case ExportButtonId:
                         ExportSelected(*app);
                         return 0;
+
+                    case ExportVisibleButtonId:
+                        ExportVisible(*app);
+                        return 0;
                 }
                 break;
 
@@ -1222,7 +1266,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand)
 {
     INITCOMMONCONTROLSEX controls{};
     controls.dwSize = sizeof(controls);
-    controls.dwICC = ICC_LISTVIEW_CLASSES;
+    controls.dwICC = ICC_LISTVIEW_CLASSES | ICC_PROGRESS_CLASS;
     InitCommonControlsEx(&controls);
 
     const HRESULT comResult = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
