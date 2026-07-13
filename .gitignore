@@ -1,0 +1,60 @@
+test-output
+# =========================================================================
+# Visual Studio Build Output and Intermediate Directories
+# =========================================================================
+# Excludes compiled binaries, temporary object files, and build logs.
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm64/
+[Aa]rm/
+Build/
+bin/
+obj/
+
+# =========================================================================
+# Visual C++ Compiler & Linker Artifacts
+# =========================================================================
+*.obj
+*.ilk
+*.pdb
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.rsp
+*.pgc
+*.pgd
+*.meta
+*.pch
+*.gch
+
+# =========================================================================
+# Visual Studio IntelliSense, Cache, and System Files
+# =========================================================================
+# SQL Server Compact and SQLite databases used for fast code navigation.
+*.sdf
+*.opensdf
+*.opendb
+*.ncb
+*.aps
+*.idb
+
+# Visual Studio 2015+ cache directory containing IntelliSense data.
+.vs/
+
+# =========================================================================
+# User-Specific Configurations (Do NOT share with team)
+# =========================================================================
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# =========================================================================
+# Package Managers and External Dependencies (Optional)
+# =========================================================================
+# If you use vcpkg, ignore the locally installed artifacts.
+vcpkg_installed/
+
