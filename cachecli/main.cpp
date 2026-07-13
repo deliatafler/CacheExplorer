@@ -550,6 +550,127 @@ std::uint64_t CachedEntrySize(
 
         return true;
     }
+    void PrintBulkExportProgress(const TextureExportProgress& progress)
+    {
+        if (progress.processed % 100 != 0 &&
+            progress.processed != progress.total)
+        {
+            return;
+        }
+
+        std::cout
+            << "\rProcessed "
+            << progress.processed
+            << " / "
+            << progress.total
+            << "  Exported: "
+            << progress.exported
+            << "  Incomplete: "
+            << progress.incompleteTextures
+            << "  Errors: "
+            << progress.errors
+            << "  Skipped: "
+            << progress.skippedExisting
+            << "  State-skipped: "
+            << progress.skippedKnownIncomplete
+            << std::flush;
+    }
+
+    void PrintBulkExportResults(
+        const std::string& title,
+        const std::string& underline,
+        const BulkExportResults& results)
+    {
+        std::cout
+            << "\n"
+            << title
+            << "\n"
+            << underline
+            << "\n"
+            << "Total entries         : "
+            << results.totalEntries << "\n"
+            << "Exported              : "
+            << results.exported << "\n"
+            << "Skipped existing      : "
+            << results.skippedExisting << "\n"
+            << "Skipped known incomplete: "
+            << results.skippedKnownIncomplete << "\n"
+            << "Incomplete/undecodable: "
+            << results.incompleteTextures << "\n"
+            << "Rebuild failures      : "
+            << results.rebuildFailures << "\n"
+            << "PNG write failures    : "
+            << results.writeFailures << "\n"
+            << "Total errors          : "
+            << results.ErrorCount() << "\n";
+
+        if (!results.messages.empty())
+        {
+            std::cout
+                << "\nFirst "
+                << results.messages.size()
+                << " messages:\n";
+
+            for (const std::string& message : results.messages)
+            {
+                std::cout
+                    << "  "
+                    << message
+                    << "\n";
+            }
+        }
+    }
+
+    int ExportSelectedPngEntries(
+        const TextureCacheDatabase& database,
+        const std::vector<const CacheEntry*>& selectedEntries,
+        const fs::path& outputDirectory,
+        const BulkPngOptions& bulkOptions,
+        const std::string& resultsTitle,
+        const std::string& resultsUnderline)
+    {
+        TextureExportOptions options;
+        TextureExportState exportState;
+        fs::path stateFile;
+
+        if (!ConfigureExportState(
+                outputDirectory,
+                bulkOptions,
+                options,
+                exportState,
+                stateFile))
+        {
+            return 1;
+        }
+
+        TextureExporter exporter;
+
+        const BulkExportResults results =
+            exporter.ExportPngEntries(
+                database,
+                selectedEntries,
+                outputDirectory,
+                options,
+                PrintBulkExportProgress);
+
+        if (!selectedEntries.empty())
+        {
+            std::cout << "\n";
+        }
+
+        PrintBulkExportResults(
+            resultsTitle,
+            resultsUnderline,
+            results);
+
+        const bool stateSaved =
+            SaveExportState(
+                stateFile,
+                options,
+                exportState);
+
+        return results.ErrorCount() == 0 && stateSaved ? 0 : 2;
+    }
 
     bool OpenDatabase(
         const fs::path& suppliedPath,
@@ -889,102 +1010,13 @@ int ExportPngAllCommand(
         << (bulkOptions.overwriteExisting ? "yes" : "no")
         << "\n\n";
 
-    TextureExportOptions options;
-    TextureExportState exportState;
-    fs::path stateFile;
-
-    if (!ConfigureExportState(
-            outputDirectory,
-            bulkOptions,
-            options,
-            exportState,
-            stateFile))
-    {
-        return 1;
-    }
-
-    TextureExporter exporter;
-
-    const BulkExportResults results =
-        exporter.ExportPngEntries(
-            database,
-            selectedEntries,
-            outputDirectory,
-            options,
-            [](const TextureExportProgress& progress)
-            {
-                if (progress.processed % 100 != 0 &&
-                    progress.processed != progress.total)
-                {
-                    return;
-                }
-
-                std::cout
-                    << "\rProcessed "
-                    << progress.processed
-                    << " / "
-                    << progress.total
-                    << "  Exported: "
-                    << progress.exported
-                    << "  Incomplete: "
-                    << progress.incompleteTextures
-                    << "  Errors: "
-                    << progress.errors
-                    << "  Skipped: "
-                    << progress.skippedExisting
-                    << "  State-skipped: "
-                    << progress.skippedKnownIncomplete
-                    << std::flush;
-            });
-
-    if (!selectedEntries.empty())
-    {
-        std::cout << "\n";
-    }
-
-    std::cout
-        << "\nBulk export results\n"
-        << "-------------------\n"
-        << "Total entries         : "
-        << results.totalEntries << "\n"
-        << "Exported              : "
-        << results.exported << "\n"
-        << "Skipped existing      : "
-        << results.skippedExisting << "\n"
-        << "Skipped known incomplete: "
-        << results.skippedKnownIncomplete << "\n"
-        << "Incomplete/undecodable: "
-        << results.incompleteTextures << "\n"
-        << "Rebuild failures      : "
-        << results.rebuildFailures << "\n"
-        << "PNG write failures    : "
-        << results.writeFailures << "\n"
-        << "Total errors          : "
-        << results.ErrorCount() << "\n";
-
-    if (!results.messages.empty())
-    {
-        std::cout
-            << "\nFirst "
-            << results.messages.size()
-            << " messages:\n";
-
-        for (const std::string& message : results.messages)
-        {
-            std::cout
-                << "  "
-                << message
-                << "\n";
-        }
-    }
-
-    const bool stateSaved =
-        SaveExportState(
-            stateFile,
-            options,
-            exportState);
-
-    return results.ErrorCount() == 0 && stateSaved ? 0 : 2;
+    return ExportSelectedPngEntries(
+        database,
+        selectedEntries,
+        outputDirectory,
+        bulkOptions,
+        "Bulk export results",
+        "-------------------");
 }
 
 int ExportPngRangeCommand(
@@ -1037,99 +1069,13 @@ int ExportPngRangeCommand(
         return 0;
     }
 
-    TextureExportOptions options;
-    TextureExportState exportState;
-    fs::path stateFile;
-
-    if (!ConfigureExportState(
-            outputDirectory,
-            bulkOptions,
-            options,
-            exportState,
-            stateFile))
-    {
-        return 1;
-    }
-
-    TextureExporter exporter;
-
-    const BulkExportResults results =
-        exporter.ExportPngEntries(
-            database,
-            selectedEntries,
-            outputDirectory,
-            options,
-            [](const TextureExportProgress& progress)
-            {
-                if (progress.processed % 100 != 0 &&
-                    progress.processed != progress.total)
-                {
-                    return;
-                }
-
-                std::cout
-                    << "\rProcessed "
-                    << progress.processed
-                    << " / "
-                    << progress.total
-                    << "  Exported: "
-                    << progress.exported
-                    << "  Incomplete: "
-                    << progress.incompleteTextures
-                    << "  Errors: "
-                    << progress.errors
-                    << "  Skipped: "
-                    << progress.skippedExisting
-                    << "  State-skipped: "
-                    << progress.skippedKnownIncomplete
-                    << std::flush;
-            });
-
-    std::cout << "\n";
-
-    std::cout
-        << "\nRange export results\n"
-        << "--------------------\n"
-        << "Total entries         : "
-        << results.totalEntries << "\n"
-        << "Exported              : "
-        << results.exported << "\n"
-        << "Skipped existing      : "
-        << results.skippedExisting << "\n"
-        << "Skipped known incomplete: "
-        << results.skippedKnownIncomplete << "\n"
-        << "Incomplete/undecodable: "
-        << results.incompleteTextures << "\n"
-        << "Rebuild failures      : "
-        << results.rebuildFailures << "\n"
-        << "PNG write failures    : "
-        << results.writeFailures << "\n"
-        << "Total errors          : "
-        << results.ErrorCount() << "\n";
-
-    if (!results.messages.empty())
-    {
-        std::cout
-            << "\nFirst "
-            << results.messages.size()
-            << " messages:\n";
-
-        for (const std::string& message : results.messages)
-        {
-            std::cout
-                << "  "
-                << message
-                << "\n";
-        }
-    }
-
-    const bool stateSaved =
-        SaveExportState(
-            stateFile,
-            options,
-            exportState);
-
-    return results.ErrorCount() == 0 && stateSaved ? 0 : 2;
+    return ExportSelectedPngEntries(
+        database,
+        selectedEntries,
+        outputDirectory,
+        bulkOptions,
+        "Range export results",
+        "--------------------");
 }
 
 int ExportPngListCommand(
@@ -1217,99 +1163,13 @@ int ExportPngListCommand(
         return 0;
     }
 
-    TextureExportOptions options;
-    TextureExportState exportState;
-    fs::path stateFile;
-
-    if (!ConfigureExportState(
-            outputDirectory,
-            bulkOptions,
-            options,
-            exportState,
-            stateFile))
-    {
-        return 1;
-    }
-
-    TextureExporter exporter;
-
-    const BulkExportResults results =
-        exporter.ExportPngEntries(
-            database,
-            selectedEntries,
-            outputDirectory,
-            options,
-            [](const TextureExportProgress& progress)
-            {
-                if (progress.processed % 100 != 0 &&
-                    progress.processed != progress.total)
-                {
-                    return;
-                }
-
-                std::cout
-                    << "\rProcessed "
-                    << progress.processed
-                    << " / "
-                    << progress.total
-                    << "  Exported: "
-                    << progress.exported
-                    << "  Incomplete: "
-                    << progress.incompleteTextures
-                    << "  Errors: "
-                    << progress.errors
-                    << "  Skipped: "
-                    << progress.skippedExisting
-                    << "  State-skipped: "
-                    << progress.skippedKnownIncomplete
-                    << std::flush;
-            });
-
-    std::cout << "\n";
-
-    std::cout
-        << "\nList export results\n"
-        << "-------------------\n"
-        << "Total entries         : "
-        << results.totalEntries << "\n"
-        << "Exported              : "
-        << results.exported << "\n"
-        << "Skipped existing      : "
-        << results.skippedExisting << "\n"
-        << "Skipped known incomplete: "
-        << results.skippedKnownIncomplete << "\n"
-        << "Incomplete/undecodable: "
-        << results.incompleteTextures << "\n"
-        << "Rebuild failures      : "
-        << results.rebuildFailures << "\n"
-        << "PNG write failures    : "
-        << results.writeFailures << "\n"
-        << "Total errors          : "
-        << results.ErrorCount() << "\n";
-
-    if (!results.messages.empty())
-    {
-        std::cout
-            << "\nFirst "
-            << results.messages.size()
-            << " messages:\n";
-
-        for (const std::string& message : results.messages)
-        {
-            std::cout
-                << "  "
-                << message
-                << "\n";
-        }
-    }
-
-    const bool stateSaved =
-        SaveExportState(
-            stateFile,
-            options,
-            exportState);
-
-    return results.ErrorCount() == 0 && stateSaved ? 0 : 2;
+    return ExportSelectedPngEntries(
+        database,
+        selectedEntries,
+        outputDirectory,
+        bulkOptions,
+        "List export results",
+        "-------------------");
 }
 
     int VerifyCommand(const fs::path& suppliedPath)
