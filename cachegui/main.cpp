@@ -35,6 +35,7 @@ namespace
     constexpr int OpenButtonId = 1003;
     constexpr int ExportButtonId = 1004;
     constexpr int ExportVisibleButtonId = 1013;
+    constexpr int ScanVisibleButtonId = 1017;
     constexpr int LikelyCompleteCheckId = 1009;
     constexpr int PreviewableCheckId = 1016;
     constexpr int OverwriteCheckId = 1010;
@@ -51,6 +52,8 @@ namespace
     constexpr UINT PreviewCompleteMessage = WM_APP + 2;
     constexpr UINT ExportProgressMessage = WM_APP + 3;
     constexpr UINT ExportCompleteMessage = WM_APP + 4;
+    constexpr UINT ScanProgressMessage = WM_APP + 5;
+    constexpr UINT ScanCompleteMessage = WM_APP + 6;
 
     struct AppState
     {
@@ -61,6 +64,7 @@ namespace
         HWND openButton = nullptr;
         HWND exportButton = nullptr;
         HWND exportVisibleButton = nullptr;
+        HWND scanVisibleButton = nullptr;
         HWND likelyCompleteCheck = nullptr;
         HWND previewableCheck = nullptr;
         HWND overwriteCheck = nullptr;
@@ -87,6 +91,7 @@ namespace
         std::uint64_t previewRequestId = 0;
         std::wstring detailsBase;
         bool exportInProgress = false;
+        bool scanInProgress = false;
         std::unordered_map<std::string, bool> previewableByUuid;
     };
 
@@ -110,6 +115,22 @@ namespace
         std::wstring failureMessage;
         bool overwriteExisting = false;
         bool retryIncomplete = false;
+    };
+    struct ScanProgressMessageData
+    {
+        std::string uuid;
+        bool previewable = false;
+        std::size_t processed = 0;
+        std::size_t total = 0;
+        std::size_t previewableCount = 0;
+        std::size_t unavailableCount = 0;
+    };
+
+    struct ScanCompleteMessageData
+    {
+        std::size_t total = 0;
+        std::size_t previewableCount = 0;
+        std::size_t unavailableCount = 0;
     };
 
     void PopulateList(AppState& app);
@@ -275,6 +296,7 @@ namespace
         EnableWindow(app.openButton, enabled);
         EnableWindow(app.exportButton, enabled);
         EnableWindow(app.exportVisibleButton, enabled);
+        EnableWindow(app.scanVisibleButton, enabled);
         EnableWindow(app.likelyCompleteCheck, enabled);
         EnableWindow(app.previewableCheck, enabled);
         EnableWindow(app.overwriteCheck, enabled);
@@ -282,6 +304,44 @@ namespace
         EnableWindow(app.uuidFilterEdit, enabled);
         EnableWindow(app.clearUuidFilterButton, enabled);
         EnableWindow(app.textureList, enabled);
+    }
+
+    void SetScanProgress(
+        AppState& app,
+        std::size_t processed,
+        std::size_t total,
+        std::size_t previewableCount,
+        std::size_t unavailableCount)
+    {
+        SendMessageW(
+            app.progressBar,
+            PBM_SETRANGE32,
+            0,
+            static_cast<LPARAM>(std::min<std::size_t>(
+                total,
+                static_cast<std::size_t>(std::numeric_limits<int>::max()))));
+        SendMessageW(
+            app.progressBar,
+            PBM_SETPOS,
+            static_cast<WPARAM>(std::min<std::size_t>(
+                processed,
+                static_cast<std::size_t>(std::numeric_limits<int>::max()))),
+            0);
+
+        std::wostringstream status;
+        status
+            << L"Scanning "
+            << processed
+            << L" of "
+            << total
+            << L". Previewable "
+            << previewableCount
+            << L", unavailable "
+            << unavailableCount
+            << L".";
+        SetStatus(app, status.str());
+        UpdateWindow(app.statusText);
+        UpdateWindow(app.progressBar);
     }
 
     void SetExportProgress(AppState& app, const TextureExportProgress& progress)
@@ -992,9 +1052,9 @@ namespace
             return;
         }
 
-        if (app.exportInProgress)
+        if (app.exportInProgress || app.scanInProgress)
         {
-            SetStatus(app, L"An export is already running.");
+            SetStatus(app, L"Another background operation is already running.");
             return;
         }
 
@@ -1172,16 +1232,185 @@ namespace
         SetStatus(app, status.str());
     }
 
+    void StartScanVisible(AppState& app)
+    {
+        if (app.visibleEntries.empty())
+        {
+            SetStatus(app, L"No visible textures to scan.");
+            return;
+        }
+
+        if (app.exportInProgress || app.scanInProgress)
+        {
+            SetStatus(app, L"Another background operation is already running.");
+            return;
+        }
+
+        const fs::path previewDirectory = PreviewDirectory(app);
+
+        if (previewDirectory.empty())
+        {
+            SetStatus(app, L"Temporary preview directory is unavailable.");
+            return;
+        }
+
+        std::vector<CacheEntry> entryCopies;
+        entryCopies.reserve(app.visibleEntries.size());
+
+        for (const CacheEntry* entry : app.visibleEntries)
+        {
+            if (entry != nullptr)
+            {
+                entryCopies.push_back(*entry);
+            }
+        }
+
+        if (entryCopies.empty())
+        {
+            SetStatus(app, L"No visible textures to scan.");
+            return;
+        }
+
+        app.scanInProgress = true;
+        ShowWindow(app.progressBar, SW_SHOW);
+        SetExportControlsEnabled(app, false);
+        SetScanProgress(app, 0, entryCopies.size(), 0, 0);
+
+        TextureCacheDatabase database = app.database;
+        HWND window = app.window;
+
+        std::thread(
+            [database = std::move(database),
+             entryCopies = std::move(entryCopies),
+             previewDirectory,
+             window]() mutable
+            {
+                std::size_t processed = 0;
+                std::size_t previewableCount = 0;
+                std::size_t unavailableCount = 0;
+                TextureExporter exporter;
+
+                for (const CacheEntry& entry : entryCopies)
+                {
+                    const fs::path previewFile =
+                        previewDirectory / (ToWide(entry.uuid.ToString()) + L".png");
+
+                    TextureExportOptions options;
+                    options.overwriteExisting = true;
+                    options.verboseDecoderErrors = false;
+                    options.maximumStoredMessages = 0;
+
+                    const TexturePngExportResult result = exporter.ExportPngEntry(
+                        database,
+                        entry,
+                        previewFile,
+                        options);
+                    const bool previewable = result.status == TexturePngExportStatus::Exported;
+
+                    ++processed;
+
+                    if (previewable)
+                    {
+                        ++previewableCount;
+                    }
+                    else
+                    {
+                        ++unavailableCount;
+                    }
+
+                    auto progress = std::make_unique<ScanProgressMessageData>();
+                    progress->uuid = entry.uuid.ToString();
+                    progress->previewable = previewable;
+                    progress->processed = processed;
+                    progress->total = entryCopies.size();
+                    progress->previewableCount = previewableCount;
+                    progress->unavailableCount = unavailableCount;
+                    auto* rawProgress = progress.release();
+
+                    if (!PostMessageW(
+                            window,
+                            ScanProgressMessage,
+                            0,
+                            reinterpret_cast<LPARAM>(rawProgress)))
+                    {
+                        delete rawProgress;
+                    }
+                }
+
+                auto complete = std::make_unique<ScanCompleteMessageData>();
+                complete->total = entryCopies.size();
+                complete->previewableCount = previewableCount;
+                complete->unavailableCount = unavailableCount;
+                auto* rawComplete = complete.release();
+
+                if (!PostMessageW(
+                        window,
+                        ScanCompleteMessage,
+                        0,
+                        reinterpret_cast<LPARAM>(rawComplete)))
+                {
+                    delete rawComplete;
+                }
+            }).detach();
+    }
+
+    void ApplyScanProgress(AppState& app, std::unique_ptr<ScanProgressMessageData> progress)
+    {
+        if (!progress || !app.scanInProgress)
+        {
+            return;
+        }
+
+        app.previewableByUuid[progress->uuid] = progress->previewable;
+        SetScanProgress(
+            app,
+            progress->processed,
+            progress->total,
+            progress->previewableCount,
+            progress->unavailableCount);
+    }
+
+    void ApplyScanComplete(AppState& app, std::unique_ptr<ScanCompleteMessageData> complete)
+    {
+        app.scanInProgress = false;
+        SetExportControlsEnabled(app, true);
+        ShowWindow(app.progressBar, SW_HIDE);
+
+        if (app.previewableOnly)
+        {
+            PopulateList(app);
+        }
+
+        if (!complete)
+        {
+            SetStatus(app, L"Scan finished, but the result was unavailable.");
+            return;
+        }
+
+        std::wostringstream status;
+        status
+            << L"Scanned "
+            << complete->total
+            << L" textures. Previewable "
+            << complete->previewableCount
+            << L", unavailable "
+            << complete->unavailableCount
+            << L".";
+        SetStatus(app, status.str());
+    }
+
     void ResizeControls(AppState& app, int width, int height)
     {
         constexpr int margin = 12;
         constexpr int rowHeight = 28;
         constexpr int buttonWidth = 90;
-        constexpr int exportButtonWidth = 120;
-        constexpr int checkWidth = 130;
-        constexpr int previewableWidth = 105;
-        constexpr int smallCheckWidth = 95;
-        constexpr int uuidFilterWidth = 260;
+        constexpr int exportButtonWidth = 112;
+        constexpr int scanButtonWidth = 100;
+        constexpr int checkWidth = 118;
+        constexpr int previewableWidth = 100;
+        constexpr int smallCheckWidth = 88;
+        constexpr int retryCheckWidth = 122;
+        constexpr int uuidFilterWidth = 210;
         constexpr int clearFilterWidth = 52;
         constexpr int statusHeight = 24;
         constexpr int progressWidth = 220;
@@ -1211,56 +1440,26 @@ namespace
             buttonWidth,
             rowHeight,
             TRUE);
-        MoveWindow(app.exportButton, margin, margin + rowHeight + gap, exportButtonWidth, rowHeight, TRUE);
-        MoveWindow(
-            app.exportVisibleButton,
-            margin + exportButtonWidth + gap,
-            margin + rowHeight + gap,
-            exportButtonWidth,
-            rowHeight,
-            TRUE);
-        MoveWindow(
-            app.likelyCompleteCheck,
-            margin + (exportButtonWidth * 2) + (gap * 2),
-            margin + rowHeight + gap,
-            checkWidth,
-            rowHeight,
-            TRUE);
-        MoveWindow(
-            app.previewableCheck,
-            margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap,
-            margin + rowHeight + gap,
-            previewableWidth,
-            rowHeight,
-            TRUE);
-        MoveWindow(
-            app.overwriteCheck,
-            margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap + previewableWidth + gap,
-            margin + rowHeight + gap,
-            smallCheckWidth,
-            rowHeight,
-            TRUE);
-        MoveWindow(
-            app.retryIncompleteCheck,
-            margin + (exportButtonWidth * 2) + (gap * 2) + checkWidth + gap + previewableWidth + gap + smallCheckWidth + gap,
-            margin + rowHeight + gap,
-            checkWidth,
-            rowHeight,
-            TRUE);
-        MoveWindow(
-            app.uuidFilterEdit,
-            margin + (exportButtonWidth * 2) + (gap * 2) + (checkWidth * 2) + previewableWidth + smallCheckWidth + (gap * 4),
-            margin + rowHeight + gap,
-            uuidFilterWidth,
-            rowHeight,
-            TRUE);
-        MoveWindow(
-            app.clearUuidFilterButton,
-            margin + (exportButtonWidth * 2) + (gap * 2) + (checkWidth * 2) + previewableWidth + smallCheckWidth + (gap * 5) + uuidFilterWidth,
-            margin + rowHeight + gap,
-            clearFilterWidth,
-            rowHeight,
-            TRUE);
+        int toolbarLeft = margin;
+        const int toolbarTop = margin + rowHeight + gap;
+
+        MoveWindow(app.exportButton, toolbarLeft, toolbarTop, exportButtonWidth, rowHeight, TRUE);
+        toolbarLeft += exportButtonWidth + gap;
+        MoveWindow(app.exportVisibleButton, toolbarLeft, toolbarTop, exportButtonWidth, rowHeight, TRUE);
+        toolbarLeft += exportButtonWidth + gap;
+        MoveWindow(app.scanVisibleButton, toolbarLeft, toolbarTop, scanButtonWidth, rowHeight, TRUE);
+        toolbarLeft += scanButtonWidth + gap;
+        MoveWindow(app.likelyCompleteCheck, toolbarLeft, toolbarTop, checkWidth, rowHeight, TRUE);
+        toolbarLeft += checkWidth + gap;
+        MoveWindow(app.previewableCheck, toolbarLeft, toolbarTop, previewableWidth, rowHeight, TRUE);
+        toolbarLeft += previewableWidth + gap;
+        MoveWindow(app.overwriteCheck, toolbarLeft, toolbarTop, smallCheckWidth, rowHeight, TRUE);
+        toolbarLeft += smallCheckWidth + gap;
+        MoveWindow(app.retryIncompleteCheck, toolbarLeft, toolbarTop, retryCheckWidth, rowHeight, TRUE);
+        toolbarLeft += retryCheckWidth + gap;
+        MoveWindow(app.uuidFilterEdit, toolbarLeft, toolbarTop, uuidFilterWidth, rowHeight, TRUE);
+        toolbarLeft += uuidFilterWidth + gap;
+        MoveWindow(app.clearUuidFilterButton, toolbarLeft, toolbarTop, clearFilterWidth, rowHeight, TRUE);
         MoveWindow(app.textureList, margin, listTop, listWidth, listHeight, TRUE);
         MoveWindow(app.detailsText, detailsLeft, listTop, detailsWidth, detailsHeight, TRUE);
         MoveWindow(
@@ -1353,6 +1552,18 @@ namespace
                     0,
                     window,
                     reinterpret_cast<HMENU>(static_cast<INT_PTR>(ExportVisibleButtonId)),
+                    app->instance,
+                    nullptr);
+                app->scanVisibleButton = CreateWindowW(
+                    L"BUTTON",
+                    L"Scan Visible",
+                    WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                    0,
+                    0,
+                    0,
+                    0,
+                    window,
+                    reinterpret_cast<HMENU>(static_cast<INT_PTR>(ScanVisibleButtonId)),
                     app->instance,
                     nullptr);
                 app->likelyCompleteCheck = CreateWindowW(
@@ -1548,6 +1759,32 @@ namespace
                 return 0;
             }
 
+            case ScanProgressMessage:
+            {
+                std::unique_ptr<ScanProgressMessageData> progress(
+                    reinterpret_cast<ScanProgressMessageData*>(lParam));
+
+                if (app != nullptr)
+                {
+                    ApplyScanProgress(*app, std::move(progress));
+                }
+
+                return 0;
+            }
+
+            case ScanCompleteMessage:
+            {
+                std::unique_ptr<ScanCompleteMessageData> complete(
+                    reinterpret_cast<ScanCompleteMessageData*>(lParam));
+
+                if (app != nullptr)
+                {
+                    ApplyScanComplete(*app, std::move(complete));
+                }
+
+                return 0;
+            }
+
             case WM_SIZE:
                 if (app != nullptr)
                 {
@@ -1660,6 +1897,10 @@ namespace
 
                     case ExportVisibleButtonId:
                         ExportVisible(*app);
+                        return 0;
+
+                    case ScanVisibleButtonId:
+                        StartScanVisible(*app);
                         return 0;
 
                     case UuidFilterEditId:
