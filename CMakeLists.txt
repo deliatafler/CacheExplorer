@@ -15,3 +15,4 @@ endif()
 
 add_subdirectory(cachelib)
 add_subdirectory(cachecli)
+add_subdirectory(cachegui)
