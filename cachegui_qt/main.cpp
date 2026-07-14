@@ -7,6 +7,7 @@
 #include "PreviewDecodeWorker.h"
 #include "PreviewImage.h"
 #include "PreviewPanel.h"
+#include "PreviewStatus.h"
 #include "QtActionState.h"
 #include "QtHelpers.h"
 #include "QtSelection.h"
@@ -322,9 +323,8 @@ namespace
             if (result != CacheError::None)
             {
                 tableModel_.SetDatabase(nullptr);
-                previewCache_.Clear();
                 ClearGalleryPreviewQueue();
-                tableModel_.NotifyAllPreviewStatusesChanged();
+                ClearPreviewStatuses(previewCache_, tableModel_);
                 previewPanel_.Clear();
                 UpdateActionState();
                 SetBusy(false);
@@ -337,9 +337,8 @@ namespace
 
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
             PopulateTable();
-            previewCache_.Clear();
             ClearGalleryPreviewQueue();
-            tableModel_.NotifyAllPreviewStatusesChanged();
+            ClearPreviewStatuses(previewCache_, tableModel_);
             previewPanel_.Clear();
             UpdateActionState();
             SetBusy(false);
@@ -432,8 +431,7 @@ namespace
             previewWorkerActive_ = true;
             activePreviewRequestId_ = requestId;
             activePreviewRequestKind_ = requestKind;
-            previewCache_.SetChecking(entry);
-            tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
+            SetPreviewChecking(previewCache_, tableModel_, entry);
             UpdateActionState();
 
             previewFuture_ = std::async(
@@ -487,10 +485,11 @@ namespace
 
             if (!result.succeeded)
             {
-                previewCache_.SetUnavailable(
+                SetPreviewUnavailable(
+                    previewCache_,
+                    tableModel_,
                     result.entry,
                     ToQString(result.message));
-                tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
 
                 if (requestKind == PreviewRequestKind::Manual)
                 {
@@ -570,8 +569,7 @@ namespace
 
             galleryPreviewWorkerActive_ = true;
             activeGalleryPreviewRequestId_ = requestId;
-            previewCache_.SetChecking(entry);
-            tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
+            SetPreviewChecking(previewCache_, tableModel_, entry);
             UpdateGalleryActivity();
 
             galleryPreviewFuture_ = std::async(
@@ -620,10 +618,11 @@ namespace
         {
             if (!result.succeeded)
             {
-                previewCache_.SetUnavailable(
+                SetPreviewUnavailable(
+                    previewCache_,
+                    tableModel_,
                     result.entry,
                     ToQString(result.message));
-                tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
                 StartNextQueuedGalleryPreview();
                 return;
             }
@@ -656,17 +655,21 @@ namespace
         {
             if (!CreatePreviewPixmap(decodedImage, pixmap, errorMessage))
             {
-                previewCache_.SetLoadFailed(entry, errorMessage);
-                tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
+                SetPreviewLoadFailed(
+                    previewCache_,
+                    tableModel_,
+                    entry,
+                    errorMessage);
                 return false;
             }
 
-            previewCache_.SetPreviewable(
+            SetPreviewable(
+                previewCache_,
+                tableModel_,
                 entry,
                 pixmap,
                 decodedImage.width,
                 decodedImage.height);
-            tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
             return true;
         }
 

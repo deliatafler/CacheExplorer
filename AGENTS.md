@@ -281,6 +281,8 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/PreviewPanel.*` contains Qt-only preview label/pixmap display state and scaling.
 
+`cachegui_qt/PreviewStatus.*` contains Qt preview cache/model notification helpers.
+
 `cachegui_qt/QtActionState.*` contains Qt button enable/disable rules for the main window.
 
 `cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
