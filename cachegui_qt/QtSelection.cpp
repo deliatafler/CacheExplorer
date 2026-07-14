@@ -1,6 +1,8 @@
 #include "QtSelection.h"
 
 #include "CacheEntryTableModel.h"
+#include "PreviewCache.h"
+#include "QtHelpers.h"
 
 #include <QAbstractItemView>
 #include <QItemSelectionModel>
@@ -110,4 +112,28 @@ void SyncActiveViewSelection(
 
     table.selectRow(selectedIndex.row());
     table.scrollTo(selectedIndex, QAbstractItemView::PositionAtCenter);
+}
+
+CachedSelectionPreview CachedPreviewForSelection(
+    const CacheEntry& entry,
+    const PreviewCache& previewCache)
+{
+    const PreviewRecord* record = previewCache.Find(entry);
+
+    if (record == nullptr ||
+        record->state != PreviewState::Previewable ||
+        record->pixmap.isNull())
+    {
+        return {};
+    }
+
+    CachedSelectionPreview preview;
+    preview.available = true;
+    preview.pixmap = record->pixmap;
+    preview.statusText =
+        PreviewReadyStatus(
+            entry.uuid.ToString(),
+            record->width,
+            record->height);
+    return preview;
 }

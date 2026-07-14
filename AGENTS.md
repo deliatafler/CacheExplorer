@@ -295,7 +295,7 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 
 `cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
 
-`cachegui_qt/QtSelection.*` contains Qt table/gallery selection synchronization helpers.
+`cachegui_qt/QtSelection.*` contains Qt table/gallery selection synchronization helpers and selected cached-preview lookup.
 
 `cachegui_qt/QtTextureExport.*` contains Qt GUI export filenames, status text, and option defaults around `TextureExporter`; reusable export behavior must remain in `cachelib`.
 

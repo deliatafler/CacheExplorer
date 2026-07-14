@@ -689,21 +689,16 @@ namespace
                 return;
             }
 
-            const PreviewRecord* record = previewCache_.Find(*entry);
+            const CachedSelectionPreview preview =
+                CachedPreviewForSelection(*entry, previewCache_);
 
-            if (record == nullptr ||
-                record->state != PreviewState::Previewable ||
-                record->pixmap.isNull())
+            if (!preview.available)
             {
                 return;
             }
 
-            previewPanel_.SetPixmap(record->pixmap);
-            statusLabel_->setText(
-                PreviewReadyStatus(
-                    entry->uuid.ToString(),
-                    record->width,
-                    record->height));
+            previewPanel_.SetPixmap(preview.pixmap);
+            statusLabel_->setText(preview.statusText);
         }
 
         void PreviewSelected()

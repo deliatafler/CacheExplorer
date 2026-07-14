@@ -3,11 +3,21 @@
 #include "TextureCacheDatabase.h"
 
 #include <QModelIndex>
+#include <QPixmap>
+#include <QString>
 
 class CacheEntryTableModel;
 class QListView;
+class PreviewCache;
 class QSortFilterProxyModel;
 class QTableView;
+
+struct CachedSelectionPreview
+{
+    bool available = false;
+    QPixmap pixmap;
+    QString statusText;
+};
 
 QModelIndex SelectedProxyIndex(
     bool galleryMode,
@@ -33,3 +43,7 @@ void SyncActiveViewSelection(
     const QModelIndex& selectedIndex,
     QTableView& table,
     QListView& galleryView);
+
+CachedSelectionPreview CachedPreviewForSelection(
+    const CacheEntry& entry,
+    const PreviewCache& previewCache);
