@@ -321,12 +321,18 @@ Qt preview decode now runs off the UI thread via `std::async`, with a Qt timer p
 
 Qt preview state is centralized in `PreviewCache`, which tracks unknown/checking/previewable/unavailable/load-failed state plus cached preview pixmaps. The table model reads status from this cache, and reselecting a previewable entry should show the cached pixmap without decoding again.
 
+The Qt cleanup/polish pass has reduced most repeated preview, gallery,
+selection, and export mechanics out of `MainWindow`. Treat further cleanup as
+opportunistic unless it directly supports a feature or removes obvious
+duplication.
+
 Good next low-risk slices:
 
 * Prefer prebuilt shared Qt for fast local development.
 * Keep the vcpkg static Qt path available for reproducible/distribution builds, ideally with binary caching in CI.
-* Improve Qt gallery thumbnail scheduling and UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
-* Improve `cachegui_qt` preview scaling, incomplete-texture feedback, and the bounded "Try Next Preview" workflow.
+* Improve Qt gallery UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
+* Improve `cachegui_qt` preview presentation and Gallery layout behavior based on real-cache validation.
+* Continue packaging/deployment work for the Qt GUI.
 * Defer Win32 cleanup unless needed to keep the legacy target building.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.
 

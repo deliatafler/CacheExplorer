@@ -18,12 +18,9 @@
 #include "TextureCacheDatabase.h"
 #include "TryNextPreviewState.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
-#include <sstream>
-#include <string>
 
 #include <QApplication>
 #include <QGridLayout>

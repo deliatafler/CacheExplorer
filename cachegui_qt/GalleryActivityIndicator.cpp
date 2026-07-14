@@ -35,13 +35,13 @@ void GalleryActivityIndicator::Update(const GalleryActivityState& state)
 
     if (state.searchPending)
     {
-        label_->setText(QStringLiteral("Scanning visible items..."));
+        label_->setText(QStringLiteral("Finding visible thumbnails..."));
         return;
     }
 
     if (state.refreshPending)
     {
-        label_->setText(QStringLiteral("Refreshing thumbnails..."));
+        label_->setText(QStringLiteral("Refreshing visible thumbnails..."));
         return;
     }
 
@@ -52,11 +52,11 @@ void GalleryActivityIndicator::Update(const GalleryActivityState& state)
                 state.queueTotal,
                 state.queueCompleted + (state.workerActive ? 1u : 0u));
         label_->setText(
-            QStringLiteral("Checking thumbnails %1 / %2")
+            QStringLiteral("Loading thumbnails %1 / %2")
                 .arg(static_cast<qulonglong>(current))
                 .arg(static_cast<qulonglong>(state.queueTotal)));
         return;
     }
 
-    label_->setText(QStringLiteral("Checking thumbnails..."));
+    label_->setText(QStringLiteral("Loading thumbnails..."));
 }
