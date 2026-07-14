@@ -321,12 +321,8 @@ namespace
             if (result != CacheError::None)
             {
                 tableModel_.SetDatabase(nullptr);
-                ClearGalleryPreviewQueue();
-                ClearPreviewStatuses(previewCache_, tableModel_);
-                previewPanel_.Clear();
-                UpdateActionState();
+                ClearPreviewUiState();
                 SetBusy(false);
-                UpdateGalleryActivity();
                 statusLabel_->setText(
                     QStringLiteral("Could not open cache: ")
                     + QString::fromUtf8(CacheErrorMessage(result)));
@@ -335,13 +331,16 @@ namespace
 
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
             PopulateTable();
+            ClearPreviewUiState();
+            SetBusy(false);
+            ScheduleGalleryPreviewSearch();
+        }
+
+        void ClearPreviewUiState()
+        {
             ClearGalleryPreviewQueue();
             ClearPreviewStatuses(previewCache_, tableModel_);
             previewPanel_.Clear();
-            UpdateActionState();
-            SetBusy(false);
-            UpdateGalleryActivity();
-            ScheduleGalleryPreviewSearch();
         }
 
         void PopulateTable()
