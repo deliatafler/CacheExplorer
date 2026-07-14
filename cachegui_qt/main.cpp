@@ -390,11 +390,13 @@ namespace
         void SetBusy(bool busy, const QString& message = {})
         {
             busy_ = busy;
-            openButton_->setEnabled(!busy);
-            browseButton_->setEnabled(!busy);
-            pathEdit_->setEnabled(!busy);
-            table_->setEnabled(!busy);
-            galleryView_->setEnabled(!busy);
+            ApplyBusyState(
+                busy_,
+                *openButton_,
+                *browseButton_,
+                *pathEdit_,
+                *table_,
+                *galleryView_);
             UpdateActionState();
             UpdateGalleryActivity();
 
@@ -403,15 +405,6 @@ namespace
                 statusLabel_->setText(message);
             }
 
-            if (busy)
-            {
-                QApplication::setOverrideCursor(Qt::WaitCursor);
-                QApplication::processEvents();
-            }
-            else
-            {
-                QApplication::restoreOverrideCursor();
-            }
         }
 
         void SelectEntry(const CacheEntry& entry)

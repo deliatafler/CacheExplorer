@@ -1,6 +1,9 @@
 #pragma once
 
 class QPushButton;
+class QLineEdit;
+class QListView;
+class QTableView;
 
 struct MainActionState
 {
@@ -17,3 +20,11 @@ void ApplyMainActionState(
     QPushButton& tryNextButton,
     QPushButton& exportButton,
     QPushButton& viewToggleButton);
+
+void ApplyBusyState(
+    bool busy,
+    QPushButton& openButton,
+    QPushButton& browseButton,
+    QLineEdit& pathEdit,
+    QTableView& table,
+    QListView& galleryView);
