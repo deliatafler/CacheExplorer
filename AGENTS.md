@@ -8,14 +8,17 @@ The project must not link against or depend on Firestorm itself. Firestorm sourc
 
 ## Architecture
 
-The project has two current targets:
+The project has three current targets:
 
 * `cachelib`: reusable cache-reading, reconstruction, decoding, and export library
 * `cachecli`: thin command-line frontend
+* `cachegui`: native Win32 GUI frontend
 
-A future `cachegui` target will depend directly on `cachelib`. The GUI must not wrap or invoke the CLI.
+The GUI depends directly on `cachelib`. The GUI must not wrap or invoke the CLI.
 
 Business logic belongs in `cachelib`. CLI-specific argument parsing and console presentation belong in `cachecli`.
+
+Future GUI work should consider whether moving to a cross-platform framework would make sense so contributors can build and run the GUI on macOS and Linux as well as Windows. Treat this as a future evaluation item, not a reason to rewrite the current Win32 GUI prematurely.
 
 ## Platform and build
 
@@ -219,6 +222,17 @@ Complete these tasks in order:
 
 2. Propose next steps for continuing GUI development.
 
+## Current GUI work
+
+The first GUI cleanup step extracted standalone Win32 utility helpers into `cachegui/GuiUtils.*` without changing behavior.
+
+Good next low-risk slices:
+
+* Move GUI control IDs and custom window-message IDs into a small header.
+* Move `AppState` and message payload structs into a GUI state header.
+* Split preview/gathered-preview-index behavior from `main.cpp` while keeping UI drawing in the GUI target.
+* After the native GUI is easier to reason about, evaluate a cross-platform GUI framework as a separate design decision.
+
 ## Coding guidelines
 
 * C++17 only
@@ -233,4 +247,3 @@ Complete these tasks in order:
 * build and test after changes
 
 Keep this file up-to-date so you know where we left off if the Codex session is lost.
-

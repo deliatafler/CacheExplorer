@@ -1,4 +1,5 @@
 add_executable(cachegui WIN32
+    GuiUtils.cpp
     main.cpp
 )
 
