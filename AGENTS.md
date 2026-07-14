@@ -291,6 +291,8 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/QtTextureExport.*` contains Qt GUI export option defaults around `TextureExporter`; reusable export behavior must remain in `cachelib`.
 
+`cachegui_qt/QtViewMode.*` contains Qt table/gallery stacked-widget and toggle-button state helpers.
+
 `cachegui_qt/TryNextPreviewState.*` contains the Qt GUI "Try Next Preview" row/attempt bookkeeping. It should not inspect Qt models or start preview workers directly.
 
 `cachegui_qt/CacheEntryTableModel.*` contains the Qt model for cache entries, table sorting data roles, preview status text, and generated gallery placeholder icons.

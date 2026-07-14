@@ -12,6 +12,7 @@
 #include "QtHelpers.h"
 #include "QtSelection.h"
 #include "QtTextureExport.h"
+#include "QtViewMode.h"
 #include "TextureCacheDatabase.h"
 #include "TryNextPreviewState.h"
 
@@ -781,17 +782,17 @@ namespace
         void ToggleViewMode()
         {
             const QModelIndex selectedIndex = SelectedProxyIndex();
-            galleryMode_ = !galleryMode_;
+            galleryMode_ = ToggleGalleryMode(galleryMode_);
             if (!galleryMode_)
             {
                 ClearGalleryPreviewQueue();
             }
-            viewStack_->setCurrentWidget(
-                galleryMode_
-                    ? static_cast<QWidget*>(galleryView_)
-                    : static_cast<QWidget*>(table_));
-            viewToggleButton_->setText(
-                galleryMode_ ? QStringLiteral("Table") : QStringLiteral("Gallery"));
+            ApplyViewMode(
+                galleryMode_,
+                *viewStack_,
+                *table_,
+                *galleryView_,
+                *viewToggleButton_);
             SyncActiveViewSelection(selectedIndex);
             UpdateActionState();
             ShowCachedPreviewForSelection();
