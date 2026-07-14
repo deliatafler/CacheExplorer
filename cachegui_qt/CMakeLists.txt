@@ -22,6 +22,8 @@ add_executable(cachegui_qt WIN32
     PreviewPanel.h
     PreviewStatus.cpp
     PreviewStatus.h
+    PreviewWorkerState.cpp
+    PreviewWorkerState.h
     QtActionState.cpp
     QtActionState.h
     QtFileDialogs.cpp

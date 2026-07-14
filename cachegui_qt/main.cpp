@@ -8,6 +8,7 @@
 #include "PreviewImage.h"
 #include "PreviewPanel.h"
 #include "PreviewStatus.h"
+#include "PreviewWorkerState.h"
 #include "QtActionState.h"
 #include "QtFileDialogs.h"
 #include "QtHelpers.h"
@@ -18,10 +19,8 @@
 #include "TryNextPreviewState.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cstdint>
 #include <filesystem>
-#include <future>
 #include <sstream>
 #include <string>
 
@@ -374,7 +373,7 @@ namespace
                 MainActionState{
                     busy_,
                     SelectedEntry() != nullptr,
-                    previewWorkerActive_,
+                    previewWorker_.IsActive(),
                     tryNextPreview_.IsActive(),
                     database_.IsOpen()},
                 *previewButton_,
@@ -417,7 +416,7 @@ namespace
             const CacheEntry& entry,
             PreviewRequestKind requestKind)
         {
-            if (previewWorkerActive_ || !database_.IsOpen())
+            if (previewWorker_.IsActive() || !database_.IsOpen())
             {
                 return;
             }
@@ -425,18 +424,18 @@ namespace
             const std::uint64_t requestId = nextPreviewRequestId_++;
             const fs::path cacheDirectory = database_.CacheDirectory();
 
-            previewWorkerActive_ = true;
-            activePreviewRequestId_ = requestId;
             activePreviewRequestKind_ = requestKind;
             SetPreviewChecking(previewCache_, tableModel_, entry);
             UpdateActionState();
 
-            previewFuture_ = std::async(
-                std::launch::async,
-                [requestId, cacheDirectory, entry]()
-                {
-                    return DecodePreview(requestId, cacheDirectory, entry);
-                });
+            previewWorker_.Start(
+                requestId,
+                std::async(
+                    std::launch::async,
+                    [requestId, cacheDirectory, entry]()
+                    {
+                        return DecodePreview(requestId, cacheDirectory, entry);
+                    }));
 
             if (!previewPollTimer_->isActive())
             {
@@ -450,23 +449,23 @@ namespace
 
         void PollPreviewWorker()
         {
-            if (!previewWorkerActive_)
+            if (!previewWorker_.IsActive())
             {
                 previewPollTimer_->stop();
                 return;
             }
 
-            if (previewFuture_.wait_for(std::chrono::seconds(0)) !=
-                std::future_status::ready)
+            if (!previewWorker_.IsReady())
             {
                 return;
             }
 
-            PreviewDecodeResult result = previewFuture_.get();
-            previewWorkerActive_ = false;
+            const std::uint64_t activeRequestId =
+                previewWorker_.ActiveRequestId();
+            PreviewDecodeResult result = previewWorker_.TakeResult();
             previewPollTimer_->stop();
 
-            if (result.requestId != activePreviewRequestId_)
+            if (result.requestId != activeRequestId)
             {
                 UpdateActionState();
                 return;
@@ -556,7 +555,7 @@ namespace
 
         void StartGalleryPreviewRequest(const CacheEntry& entry)
         {
-            if (galleryPreviewWorkerActive_ || !database_.IsOpen())
+            if (galleryPreviewWorker_.IsActive() || !database_.IsOpen())
             {
                 return;
             }
@@ -564,17 +563,17 @@ namespace
             const std::uint64_t requestId = nextPreviewRequestId_++;
             const fs::path cacheDirectory = database_.CacheDirectory();
 
-            galleryPreviewWorkerActive_ = true;
-            activeGalleryPreviewRequestId_ = requestId;
             SetPreviewChecking(previewCache_, tableModel_, entry);
             UpdateGalleryActivity();
 
-            galleryPreviewFuture_ = std::async(
-                std::launch::async,
-                [requestId, cacheDirectory, entry]()
-                {
-                    return DecodePreview(requestId, cacheDirectory, entry);
-                });
+            galleryPreviewWorker_.Start(
+                requestId,
+                std::async(
+                    std::launch::async,
+                    [requestId, cacheDirectory, entry]()
+                    {
+                        return DecodePreview(requestId, cacheDirectory, entry);
+                    }));
 
             if (!galleryPreviewPollTimer_->isActive())
             {
@@ -584,24 +583,24 @@ namespace
 
         void PollGalleryPreviewWorker()
         {
-            if (!galleryPreviewWorkerActive_)
+            if (!galleryPreviewWorker_.IsActive())
             {
                 galleryPreviewPollTimer_->stop();
                 return;
             }
 
-            if (galleryPreviewFuture_.wait_for(std::chrono::seconds(0)) !=
-                std::future_status::ready)
+            if (!galleryPreviewWorker_.IsReady())
             {
                 return;
             }
 
-            PreviewDecodeResult result = galleryPreviewFuture_.get();
-            galleryPreviewWorkerActive_ = false;
+            const std::uint64_t activeRequestId =
+                galleryPreviewWorker_.ActiveRequestId();
+            PreviewDecodeResult result = galleryPreviewWorker_.TakeResult();
             galleryPreviewPollTimer_->stop();
             UpdateGalleryActivity();
 
-            if (result.requestId != activeGalleryPreviewRequestId_)
+            if (result.requestId != activeRequestId)
             {
                 ScheduleGalleryPreviewSearch();
                 return;
@@ -829,7 +828,7 @@ namespace
 
                     galleryPreviewSearchPending_ = false;
 
-                    if (galleryPreviewWorkerActive_)
+                    if (galleryPreviewWorker_.IsActive())
                     {
                         galleryPreviewQueue_.RequestRefresh();
                         UpdateGalleryActivity();
@@ -847,7 +846,7 @@ namespace
             if (!galleryMode_ ||
                 !database_.IsOpen() ||
                 busy_ ||
-                galleryPreviewWorkerActive_ ||
+                galleryPreviewWorker_.IsActive() ||
                 tryNextPreview_.IsActive())
             {
                 return;
@@ -899,7 +898,7 @@ namespace
                 GalleryActivityState{
                     galleryMode_,
                     database_.IsOpen(),
-                    galleryPreviewWorkerActive_,
+                    galleryPreviewWorker_.IsActive(),
                     galleryPreviewSearchPending_,
                     galleryPreviewQueue_.RefreshPending(),
                     galleryPreviewQueue_.HasEntries(),
@@ -966,20 +965,16 @@ namespace
         QSortFilterProxyModel* proxyModel_ = nullptr;
         QTimer* previewPollTimer_ = nullptr;
         QTimer* galleryPreviewPollTimer_ = nullptr;
-        std::future<PreviewDecodeResult> previewFuture_;
-        std::future<PreviewDecodeResult> galleryPreviewFuture_;
         GalleryPreviewQueue galleryPreviewQueue_;
         TextureCacheDatabase database_;
         bool busy_ = false;
-        bool previewWorkerActive_ = false;
-        bool galleryPreviewWorkerActive_ = false;
+        PreviewWorkerState previewWorker_;
+        PreviewWorkerState galleryPreviewWorker_;
         PreviewRequestKind activePreviewRequestKind_ = PreviewRequestKind::Manual;
         TryNextPreviewState tryNextPreview_;
         bool galleryMode_ = false;
         bool galleryPreviewSearchPending_ = false;
         std::uint64_t nextPreviewRequestId_ = 1;
-        std::uint64_t activePreviewRequestId_ = 0;
-        std::uint64_t activeGalleryPreviewRequestId_ = 0;
     };
 }
 

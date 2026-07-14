@@ -283,6 +283,8 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/PreviewStatus.*` contains Qt preview cache/model notification helpers.
 
+`cachegui_qt/PreviewWorkerState.*` contains async preview request state shared by manual and gallery preview workers.
+
 `cachegui_qt/QtActionState.*` contains Qt button enable/disable rules for the main window.
 
 `cachegui_qt/QtFileDialogs.*` contains Qt file/folder dialog helpers for browse/export commands.
