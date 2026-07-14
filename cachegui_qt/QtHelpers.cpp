@@ -79,3 +79,25 @@ const char* CacheErrorMessage(CacheError error)
 
     return "Unknown cache error.";
 }
+
+QString LoadedCacheStatus(
+    std::size_t validEntryCount,
+    std::uint32_t slotCount,
+    float cacheVersion)
+{
+    return QStringLiteral("Loaded %1 valid texture entries from %2 slots. Cache version %3.")
+        .arg(validEntryCount)
+        .arg(slotCount)
+        .arg(cacheVersion);
+}
+
+QString PreviewReadyStatus(
+    const std::string& uuidText,
+    std::uint32_t width,
+    std::uint32_t height)
+{
+    return QStringLiteral("Preview ready: %1 (%2 x %3)")
+        .arg(ToQString(uuidText))
+        .arg(width)
+        .arg(height);
+}

@@ -354,10 +354,10 @@ namespace
 
             const CacheHeader& header = database_.Header();
             statusLabel_->setText(
-                QStringLiteral("Loaded %1 valid texture entries from %2 slots. Cache version %3.")
-                    .arg(entries.size())
-                    .arg(header.entryCount)
-                    .arg(header.version));
+                LoadedCacheStatus(
+                    entries.size(),
+                    header.entryCount,
+                    header.version));
         }
 
         const CacheEntry* SelectedEntry() const
@@ -390,6 +390,7 @@ namespace
             busy_ = busy;
             openButton_->setEnabled(!busy);
             browseButton_->setEnabled(!busy);
+            pathEdit_->setEnabled(!busy);
             table_->setEnabled(!busy);
             galleryView_->setEnabled(!busy);
             UpdateActionState();
@@ -555,10 +556,10 @@ namespace
             SelectEntry(result.entry);
             tryNextPreview_.Stop();
             statusLabel_->setText(
-                QStringLiteral("Preview ready: %1 (%2 x %3)")
-                    .arg(ToQString(result.entry.uuid.ToString()))
-                    .arg(result.image.width)
-                    .arg(result.image.height));
+                PreviewReadyStatus(
+                    result.entry.uuid.ToString(),
+                    result.image.width,
+                    result.image.height));
             UpdateActionState();
         }
 
@@ -694,10 +695,10 @@ namespace
 
             previewPanel_.SetPixmap(record->pixmap);
             statusLabel_->setText(
-                QStringLiteral("Preview ready: %1 (%2 x %3)")
-                    .arg(ToQString(entry->uuid.ToString()))
-                    .arg(record->width)
-                    .arg(record->height));
+                PreviewReadyStatus(
+                    entry->uuid.ToString(),
+                    record->width,
+                    record->height));
         }
 
         void PreviewSelected()

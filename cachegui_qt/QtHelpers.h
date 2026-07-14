@@ -2,6 +2,8 @@
 
 #include "TextureCacheDatabase.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 
@@ -19,3 +21,13 @@ std::filesystem::path ResolveTextureCacheDirectory(
 QString DefaultCachePath();
 
 const char* CacheErrorMessage(CacheError error);
+
+QString LoadedCacheStatus(
+    std::size_t validEntryCount,
+    std::uint32_t slotCount,
+    float cacheVersion);
+
+QString PreviewReadyStatus(
+    const std::string& uuidText,
+    std::uint32_t width,
+    std::uint32_t height);
