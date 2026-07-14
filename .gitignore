@@ -62,4 +62,6 @@ obj/
 # =========================================================================
 # If you use vcpkg, ignore the locally installed artifacts.
 vcpkg_installed/
+.qt-prebuilt-test/
+aqtinstall.log
 

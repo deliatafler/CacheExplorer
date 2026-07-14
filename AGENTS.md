@@ -69,6 +69,15 @@ cmake -S . -B build-qt -A x64 \
 cmake --build build-qt --config Release --target cachegui_qt
 ```
 
+Validated prebuilt-Qt developer build:
+
+* Qt 6.8.3 `win64_msvc2022_64` installed with `aqtinstall` into `.qt-prebuilt-test/Qt/6.8.3/msvc2022_64`.
+* Fresh configure used `build-qt-prebuilt`, `CMAKE_PREFIX_PATH` pointing at that Qt tree, `x64-windows-static`, and no `qt-gui` vcpkg manifest feature. vcpkg restored only OpenJPEG/libpng/zlib from binary cache.
+* Configure completed in about 18 seconds; `cmake --build build-qt-prebuilt --config Release --target cachegui_qt` completed in about 7 seconds.
+* The resulting GUI launches when the prebuilt Qt `bin` directory is on `PATH`.
+* Link warnings are expected for this developer path right now: official shared Qt uses the dynamic MSVC runtime, while the project/vcpkg static triplet uses the static runtime (`LNK4098` and related runtime import warnings). This is acceptable for developer validation, but packaging should either use the static Qt/vcpkg path or a consistent dynamic-runtime configuration.
+* `windeployqt --dry-run --release build-qt-prebuilt/cachegui_qt/Release/cachegui_qt.exe` identifies the expected Qt DLL/plugin deployment set. Run it from a proper Visual Studio developer environment for packaging so `VCINSTALLDIR` is set.
+
 Experimental Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow:
 
 ```bash
