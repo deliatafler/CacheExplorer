@@ -33,6 +33,7 @@
 #include <QPixmap>
 #include <QPushButton>
 #include <QScrollBar>
+#include <QResizeEvent>
 #include <QSortFilterProxyModel>
 #include <QStandardPaths>
 #include <QStackedWidget>
@@ -989,6 +990,17 @@ namespace
                 {
                     PollGalleryPreviewWorker();
                 });
+        }
+
+    protected:
+        void resizeEvent(QResizeEvent* event) override
+        {
+            QMainWindow::resizeEvent(event);
+
+            if (!previewPixmap_.isNull())
+            {
+                ShowPreviewPixmap();
+            }
         }
 
     private:
