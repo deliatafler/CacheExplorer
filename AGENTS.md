@@ -57,6 +57,8 @@ Executable:
 build/cachecli/Release/cachecli.exe
 ```
 
+See `docs/qt-build.md` for detailed Qt GUI build, prebuilt-Qt, static-Qt, and deployment notes.
+
 Primary Qt GUI build with a prebuilt shared Qt installation. This is the preferred developer path because it avoids rebuilding Qt locally:
 
 ```bash
@@ -68,15 +70,6 @@ cmake -S . -B build-qt -A x64 \
 
 cmake --build build-qt --config Release --target cachegui_qt
 ```
-
-Validated prebuilt-Qt developer build:
-
-* Qt 6.8.3 `win64_msvc2022_64` installed with `aqtinstall` into `.qt-prebuilt-test/Qt/6.8.3/msvc2022_64`.
-* Fresh configure used `build-qt-prebuilt`, `CMAKE_PREFIX_PATH` pointing at that Qt tree, `x64-windows-static`, and no `qt-gui` vcpkg manifest feature. vcpkg restored only OpenJPEG/libpng/zlib from binary cache.
-* Configure completed in about 18 seconds; `cmake --build build-qt-prebuilt --config Release --target cachegui_qt` completed in about 7 seconds.
-* The resulting GUI launches when the prebuilt Qt `bin` directory is on `PATH`.
-* Link warnings are expected for this developer path right now: official shared Qt uses the dynamic MSVC runtime, while the project/vcpkg static triplet uses the static runtime (`LNK4098` and related runtime import warnings). This is acceptable for developer validation, but packaging should either use the static Qt/vcpkg path or a consistent dynamic-runtime configuration.
-* `windeployqt --dry-run --release build-qt-prebuilt/cachegui_qt/Release/cachegui_qt.exe` identifies the expected Qt DLL/plugin deployment set. Run it from a proper Visual Studio developer environment for packaging so `VCINSTALLDIR` is set.
 
 Primary Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow:
 
@@ -90,7 +83,7 @@ cmake -S . -B build-qt -A x64 \
 cmake --build build-qt --config Release --target cachegui_qt
 ```
 
-The `qt-gui` vcpkg feature requests a minimal target Qt Widgets set, but the first Windows static vcpkg configure can still take a long time because host-side Qt tools pull and build a broader dependency graph. For CI, use vcpkg binary caching so Qt is built once and restored afterward.
+The `qt-gui` vcpkg feature requests a minimal target Qt Widgets set, but the first Windows static vcpkg configure can still take a long time because host-side Qt tools pull and build a broader dependency graph.
 
 ## Firestorm texture-cache format
 
