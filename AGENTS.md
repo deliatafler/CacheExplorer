@@ -282,6 +282,8 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/PreviewImage.*` contains Qt-only conversion from decoded RGBA data to `QPixmap`.
 
+`cachegui_qt/PreviewPanel.*` contains Qt-only preview label/pixmap display state and scaling.
+
 `cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
 
 `cachegui_qt/QtTextureExport.*` contains Qt GUI export option defaults around `TextureExporter`; reusable export behavior must remain in `cachelib`.

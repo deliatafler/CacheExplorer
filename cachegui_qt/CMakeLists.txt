@@ -16,6 +16,8 @@ add_executable(cachegui_qt WIN32
     PreviewDecodeWorker.h
     PreviewImage.cpp
     PreviewImage.h
+    PreviewPanel.cpp
+    PreviewPanel.h
     QtHelpers.cpp
     QtHelpers.h
     QtTextureExport.cpp

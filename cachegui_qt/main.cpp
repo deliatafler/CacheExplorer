@@ -5,6 +5,7 @@
 #include "PreviewCache.h"
 #include "PreviewDecodeWorker.h"
 #include "PreviewImage.h"
+#include "PreviewPanel.h"
 #include "QtHelpers.h"
 #include "QtTextureExport.h"
 #include "TextureCacheDatabase.h"
@@ -142,6 +143,7 @@ namespace
             previewLabel_->setAlignment(Qt::AlignCenter);
             previewLabel_->setMinimumSize(320, 320);
             previewLabel_->setStyleSheet(QStringLiteral("QLabel { background: #202020; color: #d0d0d0; }"));
+            previewPanel_.SetLabel(previewLabel_);
 
             auto* contentLayout = new QHBoxLayout();
             contentLayout->addWidget(viewStack_, 3);
@@ -283,9 +285,9 @@ namespace
         {
             QMainWindow::resizeEvent(event);
 
-            if (!previewPixmap_.isNull())
+            if (previewPanel_.HasPixmap())
             {
-                ShowPreviewPixmap();
+                previewPanel_.Refresh();
             }
         }
 
@@ -319,7 +321,7 @@ namespace
                 previewCache_.Clear();
                 ClearGalleryPreviewQueue();
                 tableModel_.NotifyAllPreviewStatusesChanged();
-                ClearPreview();
+                previewPanel_.Clear();
                 UpdateActionState();
                 SetBusy(false);
                 UpdateGalleryActivity();
@@ -334,7 +336,7 @@ namespace
             previewCache_.Clear();
             ClearGalleryPreviewQueue();
             tableModel_.NotifyAllPreviewStatusesChanged();
-            ClearPreview();
+            previewPanel_.Clear();
             UpdateActionState();
             SetBusy(false);
             UpdateGalleryActivity();
@@ -510,7 +512,7 @@ namespace
 
                 if (requestKind == PreviewRequestKind::Manual)
                 {
-                    ClearPreview();
+                    previewPanel_.Clear();
                     statusLabel_->setText(
                         QStringLiteral("Preview unavailable: ")
                         + ToQString(result.message));
@@ -541,7 +543,7 @@ namespace
             {
                 if (requestKind == PreviewRequestKind::Manual)
                 {
-                    ClearPreview();
+                    previewPanel_.Clear();
                     statusLabel_->setText(imageError);
                 }
 
@@ -563,8 +565,7 @@ namespace
                 return;
             }
 
-            previewPixmap_ = pixmap;
-            ShowPreviewPixmap();
+            previewPanel_.SetPixmap(pixmap);
             SelectEntry(result.entry);
             tryNextPreview_.Stop();
             statusLabel_->setText(
@@ -659,8 +660,7 @@ namespace
             if (selectedEntry != nullptr &&
                 selectedEntry->cacheIndex == result.entry.cacheIndex)
             {
-                previewPixmap_ = pixmap;
-                ShowPreviewPixmap();
+                previewPanel_.SetPixmap(pixmap);
             }
 
             StartNextQueuedGalleryPreview();
@@ -706,8 +706,7 @@ namespace
                 return;
             }
 
-            previewPixmap_ = record->pixmap;
-            ShowPreviewPixmap();
+            previewPanel_.SetPixmap(record->pixmap);
             statusLabel_->setText(
                 QStringLiteral("Preview ready: %1 (%2 x %3)")
                     .arg(ToQString(entry->uuid.ToString()))
@@ -1037,22 +1036,6 @@ namespace
                 QStringLiteral("Exported PNG: %1").arg(outputFile));
         }
 
-        void ClearPreview()
-        {
-            previewPixmap_ = {};
-            previewLabel_->setText(QStringLiteral("No preview selected."));
-            previewLabel_->setPixmap({});
-        }
-
-        void ShowPreviewPixmap()
-        {
-            previewLabel_->setPixmap(
-                previewPixmap_.scaled(
-                    previewLabel_->size(),
-                    Qt::KeepAspectRatio,
-                    Qt::SmoothTransformation));
-        }
-
         QLabel* pathLabel_ = nullptr;
         QLineEdit* pathEdit_ = nullptr;
         QPushButton* browseButton_ = nullptr;
@@ -1067,12 +1050,12 @@ namespace
         QLabel* galleryActivityLabel_ = nullptr;
         QLabel* previewLabel_ = nullptr;
         QLabel* statusLabel_ = nullptr;
+        PreviewPanel previewPanel_;
         PreviewCache previewCache_;
         CacheEntryTableModel tableModel_;
         QSortFilterProxyModel* proxyModel_ = nullptr;
         QTimer* previewPollTimer_ = nullptr;
         QTimer* galleryPreviewPollTimer_ = nullptr;
-        QPixmap previewPixmap_;
         std::future<PreviewDecodeResult> previewFuture_;
         std::future<PreviewDecodeResult> galleryPreviewFuture_;
         GalleryPreviewQueue galleryPreviewQueue_;
