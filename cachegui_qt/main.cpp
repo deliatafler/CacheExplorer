@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -850,11 +851,12 @@ namespace
 
         void StartNextQueuedGalleryPreview()
         {
-            if (!galleryMode_ ||
-                !database_.IsOpen() ||
-                busy_ ||
-                galleryPreviewWorker_.IsActive() ||
-                tryNextPreview_.IsActive())
+            if (!galleryPreviewController_.CanStartQueuedPreview(
+                    galleryMode_,
+                    database_.IsOpen(),
+                    busy_,
+                    galleryPreviewWorker_.IsActive(),
+                    tryNextPreview_.IsActive()))
             {
                 return;
             }
@@ -865,22 +867,15 @@ namespace
                 return;
             }
 
-            while (galleryPreviewController_.HasQueuedEntries())
+            const std::optional<CacheEntry> entry =
+                galleryPreviewController_.TakeNextAttemptableEntry(previewCache_);
+
+            if (entry.has_value())
             {
-                const CacheEntry entry =
-                    galleryPreviewController_.TakeNextQueuedEntry();
-
-                if (!previewCache_.ShouldAttemptPreview(entry))
-                {
-                    galleryPreviewController_.MarkCompleted();
-                    continue;
-                }
-
-                StartGalleryPreviewRequest(entry);
+                StartGalleryPreviewRequest(*entry);
                 return;
             }
 
-            galleryPreviewController_.ReplaceQueue({});
             UpdateGalleryActivity();
         }
 

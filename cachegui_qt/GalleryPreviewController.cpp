@@ -1,5 +1,7 @@
 #include "GalleryPreviewController.h"
 
+#include "PreviewCache.h"
+
 #include <utility>
 
 bool GalleryPreviewController::CanScheduleSearch(
@@ -7,6 +9,20 @@ bool GalleryPreviewController::CanScheduleSearch(
     bool databaseOpen) const
 {
     return galleryMode && databaseOpen && !searchPending_;
+}
+
+bool GalleryPreviewController::CanStartQueuedPreview(
+    bool galleryMode,
+    bool databaseOpen,
+    bool busy,
+    bool workerActive,
+    bool tryNextActive) const
+{
+    return galleryMode &&
+        databaseOpen &&
+        !busy &&
+        !workerActive &&
+        !tryNextActive;
 }
 
 void GalleryPreviewController::BeginScheduledSearch()
@@ -40,14 +56,23 @@ void GalleryPreviewController::ReplaceQueue(std::deque<CacheEntry> entries)
     queue_.Replace(std::move(entries));
 }
 
-bool GalleryPreviewController::HasQueuedEntries() const
+std::optional<CacheEntry> GalleryPreviewController::TakeNextAttemptableEntry(
+    const PreviewCache& previewCache)
 {
-    return queue_.HasEntries();
-}
+    while (queue_.HasEntries())
+    {
+        const CacheEntry entry = queue_.TakeNext();
 
-CacheEntry GalleryPreviewController::TakeNextQueuedEntry()
-{
-    return queue_.TakeNext();
+        if (previewCache.ShouldAttemptPreview(entry))
+        {
+            return entry;
+        }
+
+        queue_.MarkCompleted();
+    }
+
+    queue_.Replace({});
+    return std::nullopt;
 }
 
 void GalleryPreviewController::MarkCompleted()

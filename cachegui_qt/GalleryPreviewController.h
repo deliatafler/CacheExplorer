@@ -4,11 +4,20 @@
 #include "GalleryPreviewQueue.h"
 
 #include <deque>
+#include <optional>
+
+class PreviewCache;
 
 class GalleryPreviewController
 {
 public:
     bool CanScheduleSearch(bool galleryMode, bool databaseOpen) const;
+    bool CanStartQueuedPreview(
+        bool galleryMode,
+        bool databaseOpen,
+        bool busy,
+        bool workerActive,
+        bool tryNextActive) const;
     void BeginScheduledSearch();
     void FinishScheduledSearch();
     void Clear();
@@ -17,8 +26,8 @@ public:
     bool ConsumeRefreshRequest();
 
     void ReplaceQueue(std::deque<CacheEntry> entries);
-    bool HasQueuedEntries() const;
-    CacheEntry TakeNextQueuedEntry();
+    std::optional<CacheEntry> TakeNextAttemptableEntry(
+        const PreviewCache& previewCache);
     void MarkCompleted();
 
     GalleryActivityState ActivityState(
