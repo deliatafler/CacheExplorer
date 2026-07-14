@@ -532,21 +532,7 @@ namespace
                         + ToQString(result.message));
                 }
 
-                if (requestKind == PreviewRequestKind::TryNext)
-                {
-                    QTimer::singleShot(
-                        0,
-                        this,
-                        [this]()
-                        {
-                            ContinueTryNextPreview();
-                        });
-                }
-                else
-                {
-                    UpdateActionState();
-                }
-
+                FinishFailedPreviewAttempt(requestKind);
                 return;
             }
 
@@ -561,21 +547,7 @@ namespace
                     statusLabel_->setText(imageError);
                 }
 
-                if (requestKind == PreviewRequestKind::TryNext)
-                {
-                    QTimer::singleShot(
-                        0,
-                        this,
-                        [this]()
-                        {
-                            ContinueTryNextPreview();
-                        });
-                }
-                else
-                {
-                    UpdateActionState();
-                }
-
+                FinishFailedPreviewAttempt(requestKind);
                 return;
             }
 
@@ -588,6 +560,28 @@ namespace
                     result.image.width,
                     result.image.height));
             UpdateActionState();
+        }
+
+        void FinishFailedPreviewAttempt(PreviewRequestKind requestKind)
+        {
+            if (requestKind == PreviewRequestKind::TryNext)
+            {
+                ScheduleTryNextPreviewContinuation();
+                return;
+            }
+
+            UpdateActionState();
+        }
+
+        void ScheduleTryNextPreviewContinuation()
+        {
+            QTimer::singleShot(
+                0,
+                this,
+                [this]()
+                {
+                    ContinueTryNextPreview();
+                });
         }
 
         void StartGalleryPreviewRequest(const CacheEntry& entry)
@@ -755,7 +749,7 @@ namespace
                 FirstTryNextProxyRow(SelectedProxyIndex()));
             UpdateActionState();
             statusLabel_->setText(TryNextSearchStartedStatus());
-            QTimer::singleShot(0, this, [this]() { ContinueTryNextPreview(); });
+            ScheduleTryNextPreviewContinuation();
         }
 
         void ContinueTryNextPreview()
@@ -782,7 +776,7 @@ namespace
 
             if (entry == nullptr)
             {
-                QTimer::singleShot(0, this, [this]() { ContinueTryNextPreview(); });
+                ScheduleTryNextPreviewContinuation();
                 return;
             }
 
