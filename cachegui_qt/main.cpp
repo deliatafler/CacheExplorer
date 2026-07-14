@@ -788,6 +788,9 @@ namespace
             tryNextButton_ = new QPushButton(QStringLiteral("Try Next Preview"), root);
             exportButton_ = new QPushButton(QStringLiteral("Export PNG"), root);
             viewToggleButton_ = new QPushButton(QStringLiteral("Gallery"), root);
+            galleryActivityLabel_ = new QLabel(root);
+            galleryActivityLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
+            galleryActivityLabel_->hide();
             previewButton_->setEnabled(false);
             tryNextButton_->setEnabled(false);
             exportButton_->setEnabled(false);
@@ -798,6 +801,7 @@ namespace
             actionLayout->addWidget(tryNextButton_);
             actionLayout->addWidget(exportButton_);
             actionLayout->addStretch(1);
+            actionLayout->addWidget(galleryActivityLabel_);
             actionLayout->addWidget(viewToggleButton_);
 
             proxyModel_ = new QSortFilterProxyModel(root);
@@ -1019,6 +1023,7 @@ namespace
                 ClearPreview();
                 UpdateActionState();
                 SetBusy(false);
+                UpdateGalleryActivity();
                 statusLabel_->setText(
                     QStringLiteral("Could not open cache: ")
                     + QString::fromUtf8(CacheErrorMessage(result)));
@@ -1032,6 +1037,7 @@ namespace
             ClearPreview();
             UpdateActionState();
             SetBusy(false);
+            UpdateGalleryActivity();
             ScheduleGalleryPreviewSearch();
         }
 
@@ -1086,6 +1092,7 @@ namespace
             table_->setEnabled(!busy);
             galleryView_->setEnabled(!busy);
             UpdateActionState();
+            UpdateGalleryActivity();
 
             if (!message.isEmpty())
             {
@@ -1317,6 +1324,7 @@ namespace
             activeGalleryPreviewRequestId_ = requestId;
             previewCache_.SetChecking(entry);
             tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
+            UpdateGalleryActivity();
 
             galleryPreviewFuture_ = std::async(
                 std::launch::async,
@@ -1348,6 +1356,7 @@ namespace
             PreviewDecodeResult result = galleryPreviewFuture_.get();
             galleryPreviewWorkerActive_ = false;
             galleryPreviewPollTimer_->stop();
+            UpdateGalleryActivity();
 
             if (result.requestId != activeGalleryPreviewRequestId_)
             {
@@ -1555,6 +1564,7 @@ namespace
             SyncActiveViewSelection(selectedIndex);
             UpdateActionState();
             ShowCachedPreviewForSelection();
+            UpdateGalleryActivity();
             ScheduleGalleryPreviewSearch();
         }
 
@@ -1584,12 +1594,14 @@ namespace
             }
 
             galleryPreviewSearchPending_ = true;
+            UpdateGalleryActivity();
             QTimer::singleShot(
                 75,
                 this,
                 [this]()
                 {
                     galleryPreviewSearchPending_ = false;
+                    UpdateGalleryActivity();
                     StartNextVisibleGalleryPreview();
                 });
         }
@@ -1613,6 +1625,32 @@ namespace
             }
 
             StartGalleryPreviewRequest(*entry);
+        }
+
+        void UpdateGalleryActivity()
+        {
+            if (galleryActivityLabel_ == nullptr)
+            {
+                return;
+            }
+
+            const bool showLabel =
+                galleryMode_ &&
+                database_.IsOpen() &&
+                (galleryPreviewWorkerActive_ || galleryPreviewSearchPending_);
+
+            galleryActivityLabel_->setVisible(showLabel);
+
+            if (!showLabel)
+            {
+                galleryActivityLabel_->clear();
+                return;
+            }
+
+            galleryActivityLabel_->setText(
+                galleryPreviewWorkerActive_
+                    ? QStringLiteral("Checking thumbnails...")
+                    : QStringLiteral("Scanning visible items..."));
         }
 
         const CacheEntry* FirstUnknownVisibleGalleryEntry() const
@@ -1755,6 +1793,7 @@ namespace
         QTableView* table_ = nullptr;
         QListView* galleryView_ = nullptr;
         QStackedWidget* viewStack_ = nullptr;
+        QLabel* galleryActivityLabel_ = nullptr;
         QLabel* previewLabel_ = nullptr;
         QLabel* statusLabel_ = nullptr;
         PreviewCache previewCache_;
