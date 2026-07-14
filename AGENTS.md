@@ -285,6 +285,8 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/QtActionState.*` contains Qt button enable/disable rules for the main window.
 
+`cachegui_qt/QtFileDialogs.*` contains Qt file/folder dialog helpers for browse/export commands.
+
 `cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
 
 `cachegui_qt/QtSelection.*` contains Qt table/gallery selection synchronization helpers.

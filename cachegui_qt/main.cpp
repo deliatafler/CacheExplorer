@@ -9,6 +9,7 @@
 #include "PreviewPanel.h"
 #include "PreviewStatus.h"
 #include "QtActionState.h"
+#include "QtFileDialogs.h"
 #include "QtHelpers.h"
 #include "QtSelection.h"
 #include "QtTextureExport.h"
@@ -25,7 +26,6 @@
 #include <string>
 
 #include <QApplication>
-#include <QFileDialog>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -301,10 +301,7 @@ namespace
         void BrowseForCache()
         {
             const QString selectedDirectory =
-                QFileDialog::getExistingDirectory(
-                    this,
-                    QStringLiteral("Choose Firestorm texture cache folder"),
-                    pathEdit_->text());
+                ChooseCacheDirectory(*this, pathEdit_->text());
 
             if (!selectedDirectory.isEmpty())
             {
@@ -923,11 +920,7 @@ namespace
             const QString defaultName =
                 ToQString(entry->uuid.ToString()) + QStringLiteral(".png");
             const QString outputFile =
-                QFileDialog::getSaveFileName(
-                    this,
-                    QStringLiteral("Export PNG"),
-                    defaultName,
-                    QStringLiteral("PNG images (*.png)"));
+                ChoosePngOutputFile(*this, defaultName);
 
             if (outputFile.isEmpty())
             {
