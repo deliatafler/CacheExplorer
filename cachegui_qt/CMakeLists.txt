@@ -8,6 +8,8 @@ add_executable(cachegui_qt WIN32
     main.cpp
     PreviewCache.cpp
     PreviewCache.h
+    PreviewDecodeWorker.cpp
+    PreviewDecodeWorker.h
 )
 
 target_compile_features(cachegui_qt

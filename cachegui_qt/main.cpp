@@ -1,10 +1,9 @@
 #include "CacheEntryTableModel.h"
 #include "GalleryListView.h"
-#include "J2CDecoder.h"
 #include "PreviewCache.h"
+#include "PreviewDecodeWorker.h"
 #include "TextureCacheDatabase.h"
 #include "TextureExporter.h"
-#include "TextureRebuilder.h"
 
 #include <algorithm>
 #include <chrono>
@@ -14,7 +13,6 @@
 #include <future>
 #include <sstream>
 #include <string>
-#include <vector>
 
 #include <QApplication>
 #include <QFileDialog>
@@ -122,50 +120,6 @@ namespace
         Manual,
         TryNext
     };
-
-    struct PreviewDecodeResult
-    {
-        std::uint64_t requestId = 0;
-        CacheEntry entry;
-        bool succeeded = false;
-        std::string message;
-        DecodedImage image;
-    };
-
-    PreviewDecodeResult DecodePreview(
-        std::uint64_t requestId,
-        const fs::path& cacheDirectory,
-        const CacheEntry& entry)
-    {
-        PreviewDecodeResult result;
-        result.requestId = requestId;
-        result.entry = entry;
-
-        TextureRebuilder rebuilder;
-        std::vector<std::uint8_t> encodedData;
-
-        const RebuildError rebuildResult =
-            rebuilder.Rebuild(cacheDirectory, entry, encodedData);
-
-        if (rebuildResult != RebuildError::None)
-        {
-            result.message = TextureRebuilder::ErrorMessage(rebuildResult);
-            return result;
-        }
-
-        J2CDecoder decoder;
-        const DecodeError decodeResult =
-            decoder.Decode(encodedData, result.image, false);
-
-        if (decodeResult != DecodeError::None)
-        {
-            result.message = J2CDecoder::ErrorMessage(decodeResult);
-            return result;
-        }
-
-        result.succeeded = true;
-        return result;
-    }
 
     class MainWindow final : public QMainWindow
     {
