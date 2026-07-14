@@ -1251,25 +1251,15 @@ namespace
                 return;
             }
 
-            const DecodedImage& decodedImage = result.image;
-            const QImage image(
-                decodedImage.rgba.data(),
-                static_cast<int>(decodedImage.width),
-                static_cast<int>(decodedImage.height),
-                static_cast<int>(decodedImage.width * 4),
-                QImage::Format_RGBA8888);
+            QPixmap pixmap;
+            QString imageError;
 
-            if (image.isNull())
+            if (!StoreDecodedPreview(result.entry, result.image, pixmap, imageError))
             {
-                previewCache_.SetLoadFailed(
-                    result.entry,
-                    QStringLiteral("Preview image could not be created."));
-                tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
-
                 if (requestKind == PreviewRequestKind::Manual)
                 {
                     ClearPreview();
-                    statusLabel_->setText(QStringLiteral("Preview image could not be created."));
+                    statusLabel_->setText(imageError);
                 }
 
                 if (requestKind == PreviewRequestKind::TryNext)
@@ -1290,14 +1280,6 @@ namespace
                 return;
             }
 
-            const QPixmap pixmap = QPixmap::fromImage(image.copy());
-            previewCache_.SetPreviewable(
-                result.entry,
-                pixmap,
-                decodedImage.width,
-                decodedImage.height);
-            tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
-
             previewPixmap_ = pixmap;
             ShowPreviewPixmap();
             SelectEntry(result.entry);
@@ -1305,8 +1287,8 @@ namespace
             statusLabel_->setText(
                 QStringLiteral("Preview ready: %1 (%2 x %3)")
                     .arg(ToQString(result.entry.uuid.ToString()))
-                    .arg(decodedImage.width)
-                    .arg(decodedImage.height));
+                    .arg(result.image.width)
+                    .arg(result.image.height));
             UpdateActionState();
         }
 
@@ -1379,31 +1361,14 @@ namespace
                 return;
             }
 
-            const DecodedImage& decodedImage = result.image;
-            const QImage image(
-                decodedImage.rgba.data(),
-                static_cast<int>(decodedImage.width),
-                static_cast<int>(decodedImage.height),
-                static_cast<int>(decodedImage.width * 4),
-                QImage::Format_RGBA8888);
+            QPixmap pixmap;
+            QString imageError;
 
-            if (image.isNull())
+            if (!StoreDecodedPreview(result.entry, result.image, pixmap, imageError))
             {
-                previewCache_.SetLoadFailed(
-                    result.entry,
-                    QStringLiteral("Preview image could not be created."));
-                tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
                 ScheduleGalleryPreviewSearch();
                 return;
             }
-
-            const QPixmap pixmap = QPixmap::fromImage(image.copy());
-            previewCache_.SetPreviewable(
-                result.entry,
-                pixmap,
-                decodedImage.width,
-                decodedImage.height);
-            tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
 
             const CacheEntry* selectedEntry = SelectedEntry();
 
@@ -1415,6 +1380,37 @@ namespace
             }
 
             ScheduleGalleryPreviewSearch();
+        }
+
+        bool StoreDecodedPreview(
+            const CacheEntry& entry,
+            const DecodedImage& decodedImage,
+            QPixmap& pixmap,
+            QString& errorMessage)
+        {
+            const QImage image(
+                decodedImage.rgba.data(),
+                static_cast<int>(decodedImage.width),
+                static_cast<int>(decodedImage.height),
+                static_cast<int>(decodedImage.width * 4),
+                QImage::Format_RGBA8888);
+
+            if (image.isNull())
+            {
+                errorMessage = QStringLiteral("Preview image could not be created.");
+                previewCache_.SetLoadFailed(entry, errorMessage);
+                tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
+                return false;
+            }
+
+            pixmap = QPixmap::fromImage(image.copy());
+            previewCache_.SetPreviewable(
+                entry,
+                pixmap,
+                decodedImage.width,
+                decodedImage.height);
+            tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
+            return true;
         }
 
         void ShowCachedPreviewForSelection()
