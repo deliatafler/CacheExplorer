@@ -24,11 +24,13 @@
 #include <QImage>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListView>
 #include <QMainWindow>
 #include <QPixmap>
 #include <QPushButton>
 #include <QSortFilterProxyModel>
 #include <QStandardPaths>
+#include <QStackedWidget>
 #include <QTableView>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -290,9 +292,9 @@ namespace
             if (rowCount() > 0)
             {
                 emit dataChanged(
-                    index(0, 5),
+                    index(0, 0),
                     index(rowCount() - 1, 5),
-                    {Qt::DisplayRole, Qt::UserRole});
+                    {Qt::DisplayRole, Qt::DecorationRole, Qt::UserRole});
             }
         }
 
@@ -302,11 +304,10 @@ namespace
 
             if (row >= 0)
             {
-                const QModelIndex statusIndex = index(row, 5);
                 emit dataChanged(
-                    statusIndex,
-                    statusIndex,
-                    {Qt::DisplayRole, Qt::UserRole});
+                    index(row, 0),
+                    index(row, 5),
+                    {Qt::DisplayRole, Qt::DecorationRole, Qt::UserRole});
             }
         }
 
@@ -393,6 +394,11 @@ namespace
                 }
             }
 
+            if (role == Qt::DecorationRole && index.column() == 0)
+            {
+                return PreviewIcon(*entry);
+            }
+
             return {};
         }
 
@@ -473,6 +479,29 @@ namespace
             }
 
             return previewCache_->StatusRank(entry);
+        }
+
+        QVariant PreviewIcon(const CacheEntry& entry) const
+        {
+            if (previewCache_ == nullptr)
+            {
+                return {};
+            }
+
+            const PreviewRecord* record = previewCache_->Find(entry);
+
+            if (record == nullptr ||
+                record->state != PreviewState::Previewable ||
+                record->pixmap.isNull())
+            {
+                return {};
+            }
+
+            return record->pixmap.scaled(
+                128,
+                128,
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation);
         }
 
         int RowForCacheIndex(std::uint32_t cacheIndex) const
@@ -569,15 +598,18 @@ namespace
             previewButton_ = new QPushButton(QStringLiteral("Preview"), root);
             tryNextButton_ = new QPushButton(QStringLiteral("Try Next Preview"), root);
             exportButton_ = new QPushButton(QStringLiteral("Export PNG"), root);
+            viewToggleButton_ = new QPushButton(QStringLiteral("Gallery"), root);
             previewButton_->setEnabled(false);
             tryNextButton_->setEnabled(false);
             exportButton_->setEnabled(false);
+            viewToggleButton_->setEnabled(false);
 
             auto* actionLayout = new QHBoxLayout();
             actionLayout->addWidget(previewButton_);
             actionLayout->addWidget(tryNextButton_);
             actionLayout->addWidget(exportButton_);
             actionLayout->addStretch(1);
+            actionLayout->addWidget(viewToggleButton_);
 
             proxyModel_ = new QSortFilterProxyModel(root);
             tableModel_.SetPreviewCache(&previewCache_);
@@ -590,6 +622,7 @@ namespace
             table_->setSelectionBehavior(QAbstractItemView::SelectRows);
             table_->setSelectionMode(QAbstractItemView::SingleSelection);
             table_->setSortingEnabled(true);
+            table_->setIconSize(QSize(16, 16));
             table_->verticalHeader()->hide();
             table_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
             table_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);
@@ -603,6 +636,22 @@ namespace
             table_->setColumnWidth(4, 150);
             table_->setColumnWidth(5, 95);
 
+            galleryView_ = new QListView(root);
+            galleryView_->setModel(proxyModel_);
+            galleryView_->setModelColumn(0);
+            galleryView_->setSelectionMode(QAbstractItemView::SingleSelection);
+            galleryView_->setViewMode(QListView::IconMode);
+            galleryView_->setResizeMode(QListView::Adjust);
+            galleryView_->setMovement(QListView::Static);
+            galleryView_->setIconSize(QSize(128, 128));
+            galleryView_->setGridSize(QSize(180, 170));
+            galleryView_->setUniformItemSizes(true);
+            galleryView_->setWordWrap(false);
+
+            viewStack_ = new QStackedWidget(root);
+            viewStack_->addWidget(table_);
+            viewStack_->addWidget(galleryView_);
+
             previewPollTimer_ = new QTimer(root);
             previewPollTimer_->setInterval(50);
 
@@ -612,7 +661,7 @@ namespace
             previewLabel_->setStyleSheet(QStringLiteral("QLabel { background: #202020; color: #d0d0d0; }"));
 
             auto* contentLayout = new QHBoxLayout();
-            contentLayout->addWidget(table_, 3);
+            contentLayout->addWidget(viewStack_, 3);
             contentLayout->addWidget(previewLabel_, 1);
 
             statusLabel_ = new QLabel(
@@ -663,6 +712,16 @@ namespace
                 });
 
             connect(
+                galleryView_->selectionModel(),
+                &QItemSelectionModel::selectionChanged,
+                this,
+                [this]()
+                {
+                    UpdateActionState();
+                    ShowCachedPreviewForSelection();
+                });
+
+            connect(
                 previewButton_,
                 &QPushButton::clicked,
                 this,
@@ -687,6 +746,15 @@ namespace
                 [this]()
                 {
                     ExportSelected();
+                });
+
+            connect(
+                viewToggleButton_,
+                &QPushButton::clicked,
+                this,
+                [this]()
+                {
+                    ToggleViewMode();
                 });
 
             connect(
@@ -763,16 +831,10 @@ namespace
 
         const CacheEntry* SelectedEntry() const
         {
-            const QModelIndexList selectedRows =
-                table_->selectionModel()->selectedRows();
-
-            if (selectedRows.empty())
-            {
-                return nullptr;
-            }
+            const QModelIndex selectedIndex = SelectedProxyIndex();
 
             const QModelIndex sourceIndex =
-                proxyModel_->mapToSource(selectedRows.front());
+                proxyModel_->mapToSource(selectedIndex);
 
             if (!sourceIndex.isValid())
             {
@@ -792,6 +854,7 @@ namespace
                 !busy_ && !tryNextActive_ && previewIdle && database_.IsOpen());
             exportButton_->setEnabled(
                 !busy_ && !tryNextActive_ && previewIdle && hasSelection);
+            viewToggleButton_->setEnabled(!busy_ && database_.IsOpen());
         }
 
         void SetBusy(bool busy, const QString& message = {})
@@ -800,6 +863,7 @@ namespace
             openButton_->setEnabled(!busy);
             browseButton_->setEnabled(!busy);
             table_->setEnabled(!busy);
+            galleryView_->setEnabled(!busy);
             UpdateActionState();
 
             if (!message.isEmpty())
@@ -837,6 +901,8 @@ namespace
 
             table_->selectRow(proxyIndex.row());
             table_->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
+            galleryView_->setCurrentIndex(proxyIndex);
+            galleryView_->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
         }
 
         TexturePngExportResult ExportEntryToFile(
@@ -1066,13 +1132,12 @@ namespace
                 return;
             }
 
-            const QModelIndexList selectedRows =
-                table_->selectionModel()->selectedRows();
+            const QModelIndex selectedIndex = SelectedProxyIndex();
             tryNextProxyRow_ = 0;
 
-            if (!selectedRows.empty())
+            if (selectedIndex.isValid())
             {
-                tryNextProxyRow_ = selectedRows.front().row() + 1;
+                tryNextProxyRow_ = selectedIndex.row() + 1;
             }
 
             tryNextAttempts_ = 0;
@@ -1123,6 +1188,69 @@ namespace
                     .arg(ToQString(entry->uuid.ToString())));
 
             StartPreviewRequest(*entry, false, true);
+        }
+
+        QModelIndex SelectedProxyIndex() const
+        {
+            if (galleryMode_)
+            {
+                const QModelIndex galleryIndex = galleryView_->currentIndex();
+
+                if (galleryIndex.isValid())
+                {
+                    return galleryIndex.sibling(galleryIndex.row(), 0);
+                }
+            }
+
+            const QModelIndexList selectedRows =
+                table_->selectionModel()->selectedRows();
+
+            if (!selectedRows.empty())
+            {
+                return selectedRows.front().sibling(selectedRows.front().row(), 0);
+            }
+
+            const QModelIndex galleryIndex = galleryView_->currentIndex();
+
+            if (galleryIndex.isValid())
+            {
+                return galleryIndex.sibling(galleryIndex.row(), 0);
+            }
+
+            return {};
+        }
+
+        void ToggleViewMode()
+        {
+            const QModelIndex selectedIndex = SelectedProxyIndex();
+            galleryMode_ = !galleryMode_;
+            viewStack_->setCurrentWidget(
+                galleryMode_
+                    ? static_cast<QWidget*>(galleryView_)
+                    : static_cast<QWidget*>(table_));
+            viewToggleButton_->setText(
+                galleryMode_ ? QStringLiteral("Table") : QStringLiteral("Gallery"));
+            SyncActiveViewSelection(selectedIndex);
+            UpdateActionState();
+            ShowCachedPreviewForSelection();
+        }
+
+        void SyncActiveViewSelection(const QModelIndex& selectedIndex)
+        {
+            if (!selectedIndex.isValid())
+            {
+                return;
+            }
+
+            if (galleryMode_)
+            {
+                galleryView_->setCurrentIndex(selectedIndex);
+                galleryView_->scrollTo(selectedIndex, QAbstractItemView::PositionAtCenter);
+                return;
+            }
+
+            table_->selectRow(selectedIndex.row());
+            table_->scrollTo(selectedIndex, QAbstractItemView::PositionAtCenter);
         }
 
         void ExportSelected()
@@ -1186,7 +1314,10 @@ namespace
         QPushButton* previewButton_ = nullptr;
         QPushButton* tryNextButton_ = nullptr;
         QPushButton* exportButton_ = nullptr;
+        QPushButton* viewToggleButton_ = nullptr;
         QTableView* table_ = nullptr;
+        QListView* galleryView_ = nullptr;
+        QStackedWidget* viewStack_ = nullptr;
         QLabel* previewLabel_ = nullptr;
         QLabel* statusLabel_ = nullptr;
         PreviewCache previewCache_;
@@ -1201,6 +1332,7 @@ namespace
         bool activePreviewShowFailure_ = false;
         bool activePreviewContinueTryNext_ = false;
         bool tryNextActive_ = false;
+        bool galleryMode_ = false;
         int tryNextProxyRow_ = 0;
         int tryNextAttempts_ = 0;
         std::uint64_t nextPreviewRequestId_ = 1;
