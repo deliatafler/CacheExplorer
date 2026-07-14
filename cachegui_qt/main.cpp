@@ -141,8 +141,7 @@ namespace
     enum class PreviewRequestKind
     {
         Manual,
-        TryNext,
-        Gallery
+        TryNext
     };
 
     struct PreviewRecord
@@ -669,6 +668,8 @@ namespace
 
             previewPollTimer_ = new QTimer(root);
             previewPollTimer_->setInterval(50);
+            galleryPreviewPollTimer_ = new QTimer(root);
+            galleryPreviewPollTimer_->setInterval(50);
 
             previewLabel_ = new QLabel(QStringLiteral("No preview selected."), root);
             previewLabel_->setAlignment(Qt::AlignCenter);
@@ -788,6 +789,15 @@ namespace
                 [this]()
                 {
                     PollPreviewWorker();
+                });
+
+            connect(
+                galleryPreviewPollTimer_,
+                &QTimer::timeout,
+                this,
+                [this]()
+                {
+                    PollGalleryPreviewWorker();
                 });
         }
 
@@ -978,12 +988,9 @@ namespace
                 previewPollTimer_->start();
             }
 
-            if (requestKind != PreviewRequestKind::Gallery)
-            {
-                statusLabel_->setText(
-                    QStringLiteral("Checking preview %1...")
-                        .arg(ToQString(entry.uuid.ToString())));
-            }
+            statusLabel_->setText(
+                QStringLiteral("Checking preview %1...")
+                    .arg(ToQString(entry.uuid.ToString())));
         }
 
         void PollPreviewWorker()
@@ -1046,11 +1053,6 @@ namespace
                 else
                 {
                     UpdateActionState();
-
-                    if (requestKind == PreviewRequestKind::Gallery)
-                    {
-                        ScheduleGalleryPreviewSearch();
-                    }
                 }
 
                 return;
@@ -1090,11 +1092,6 @@ namespace
                 else
                 {
                     UpdateActionState();
-
-                    if (requestKind == PreviewRequestKind::Gallery)
-                    {
-                        ScheduleGalleryPreviewSearch();
-                    }
                 }
 
                 return;
@@ -1108,22 +1105,6 @@ namespace
                 decodedImage.height);
             tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
 
-            if (requestKind == PreviewRequestKind::Gallery)
-            {
-                const CacheEntry* selectedEntry = SelectedEntry();
-
-                if (selectedEntry != nullptr &&
-                    selectedEntry->cacheIndex == result.entry.cacheIndex)
-                {
-                    previewPixmap_ = pixmap;
-                    ShowPreviewPixmap();
-                }
-
-                UpdateActionState();
-                ScheduleGalleryPreviewSearch();
-                return;
-            }
-
             previewPixmap_ = pixmap;
             ShowPreviewPixmap();
             SelectEntry(result.entry);
@@ -1134,6 +1115,111 @@ namespace
                     .arg(decodedImage.width)
                     .arg(decodedImage.height));
             UpdateActionState();
+        }
+
+        void StartGalleryPreviewRequest(const CacheEntry& entry)
+        {
+            if (galleryPreviewWorkerActive_ || !database_.IsOpen())
+            {
+                return;
+            }
+
+            const std::uint64_t requestId = nextPreviewRequestId_++;
+            const fs::path cacheDirectory = database_.CacheDirectory();
+
+            galleryPreviewWorkerActive_ = true;
+            activeGalleryPreviewRequestId_ = requestId;
+            previewCache_.SetChecking(entry);
+            tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
+
+            galleryPreviewFuture_ = std::async(
+                std::launch::async,
+                [requestId, cacheDirectory, entry]()
+                {
+                    return DecodePreview(requestId, cacheDirectory, entry);
+                });
+
+            if (!galleryPreviewPollTimer_->isActive())
+            {
+                galleryPreviewPollTimer_->start();
+            }
+        }
+
+        void PollGalleryPreviewWorker()
+        {
+            if (!galleryPreviewWorkerActive_)
+            {
+                galleryPreviewPollTimer_->stop();
+                return;
+            }
+
+            if (galleryPreviewFuture_.wait_for(std::chrono::seconds(0)) !=
+                std::future_status::ready)
+            {
+                return;
+            }
+
+            PreviewDecodeResult result = galleryPreviewFuture_.get();
+            galleryPreviewWorkerActive_ = false;
+            galleryPreviewPollTimer_->stop();
+
+            if (result.requestId != activeGalleryPreviewRequestId_)
+            {
+                ScheduleGalleryPreviewSearch();
+                return;
+            }
+
+            ApplyGalleryPreviewResult(result);
+        }
+
+        void ApplyGalleryPreviewResult(const PreviewDecodeResult& result)
+        {
+            if (!result.succeeded)
+            {
+                previewCache_.SetUnavailable(
+                    result.entry,
+                    ToQString(result.message));
+                tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
+                ScheduleGalleryPreviewSearch();
+                return;
+            }
+
+            const DecodedImage& decodedImage = result.image;
+            const QImage image(
+                decodedImage.rgba.data(),
+                static_cast<int>(decodedImage.width),
+                static_cast<int>(decodedImage.height),
+                static_cast<int>(decodedImage.width * 4),
+                QImage::Format_RGBA8888);
+
+            if (image.isNull())
+            {
+                previewCache_.SetLoadFailed(
+                    result.entry,
+                    QStringLiteral("Preview image could not be created."));
+                tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
+                ScheduleGalleryPreviewSearch();
+                return;
+            }
+
+            const QPixmap pixmap = QPixmap::fromImage(image.copy());
+            previewCache_.SetPreviewable(
+                result.entry,
+                pixmap,
+                decodedImage.width,
+                decodedImage.height);
+            tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
+
+            const CacheEntry* selectedEntry = SelectedEntry();
+
+            if (selectedEntry != nullptr &&
+                selectedEntry->cacheIndex == result.entry.cacheIndex)
+            {
+                previewPixmap_ = pixmap;
+                ShowPreviewPixmap();
+            }
+
+            ScheduleGalleryPreviewSearch();
         }
 
         void ShowCachedPreviewForSelection()
@@ -1327,7 +1413,7 @@ namespace
             if (!galleryMode_ ||
                 !database_.IsOpen() ||
                 busy_ ||
-                previewWorkerActive_ ||
+                galleryPreviewWorkerActive_ ||
                 tryNextActive_)
             {
                 return;
@@ -1340,7 +1426,7 @@ namespace
                 return;
             }
 
-            StartPreviewRequest(*entry, PreviewRequestKind::Gallery);
+            StartGalleryPreviewRequest(*entry);
         }
 
         const CacheEntry* FirstUnknownVisibleGalleryEntry() const
@@ -1489,11 +1575,14 @@ namespace
         CacheEntryTableModel tableModel_;
         QSortFilterProxyModel* proxyModel_ = nullptr;
         QTimer* previewPollTimer_ = nullptr;
+        QTimer* galleryPreviewPollTimer_ = nullptr;
         QPixmap previewPixmap_;
         std::future<PreviewDecodeResult> previewFuture_;
+        std::future<PreviewDecodeResult> galleryPreviewFuture_;
         TextureCacheDatabase database_;
         bool busy_ = false;
         bool previewWorkerActive_ = false;
+        bool galleryPreviewWorkerActive_ = false;
         PreviewRequestKind activePreviewRequestKind_ = PreviewRequestKind::Manual;
         bool tryNextActive_ = false;
         bool galleryMode_ = false;
@@ -1502,6 +1591,7 @@ namespace
         int tryNextAttempts_ = 0;
         std::uint64_t nextPreviewRequestId_ = 1;
         std::uint64_t activePreviewRequestId_ = 0;
+        std::uint64_t activeGalleryPreviewRequestId_ = 0;
     };
 }
 
