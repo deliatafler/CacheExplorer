@@ -261,6 +261,8 @@ Gallery lazy loading uses a separate async thumbnail worker from manual Preview/
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
 
+Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries.
+
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 
 Qt previews should be rendered from decoded RGBA in memory, not by writing PNG and asking Qt to reload it. The static/minimal Qt build may not have the PNG image loader available even when `TextureExporter` successfully writes a valid PNG.
@@ -275,7 +277,7 @@ Good next low-risk slices:
 
 * Prefer prebuilt shared Qt for fast local development.
 * Keep the vcpkg static Qt path available for reproducible/distribution builds, ideally with binary caching in CI.
-* Improve Qt gallery thumbnail scheduling and UX: consider a broader thumbnail queue, better placeholders, and clearer visible loading progress.
+* Improve Qt gallery thumbnail scheduling and UX: consider a broader thumbnail queue and clearer visible loading progress.
 * If Qt remains the path, improve `cachegui_qt` preview scaling, incomplete-texture feedback, and the bounded "Try Next Preview" workflow.
 * If Win32 remains active, move GUI control IDs and custom window-message IDs into a small header.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.

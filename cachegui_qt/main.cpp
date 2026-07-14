@@ -22,12 +22,14 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QIcon>
 #include <QImage>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListView>
 #include <QMainWindow>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QPixmap>
 #include <QPushButton>
 #include <QScrollBar>
@@ -500,23 +502,91 @@ namespace
         {
             if (previewCache_ == nullptr)
             {
-                return {};
+                return QIcon(PlaceholderPixmap(
+                    QColor(44, 47, 51),
+                    QColor(112, 119, 128),
+                    QStringLiteral("...")));
             }
 
             const PreviewRecord* record = previewCache_->Find(entry);
 
-            if (record == nullptr ||
-                record->state != PreviewState::Previewable ||
-                record->pixmap.isNull())
+            if (record == nullptr)
             {
-                return {};
+                return QIcon(PlaceholderPixmap(
+                    QColor(44, 47, 51),
+                    QColor(112, 119, 128),
+                    QStringLiteral("...")));
             }
 
-            return record->pixmap.scaled(
+            if (record->state == PreviewState::Previewable && !record->pixmap.isNull())
+            {
+                return QIcon(record->pixmap.scaled(
+                    128,
+                    128,
+                    Qt::KeepAspectRatio,
+                    Qt::SmoothTransformation));
+            }
+
+            switch (record->state)
+            {
+                case PreviewState::Unknown:
+                    return QIcon(PlaceholderPixmap(
+                        QColor(44, 47, 51),
+                        QColor(112, 119, 128),
+                        QStringLiteral("...")));
+
+                case PreviewState::Checking:
+                    return QIcon(PlaceholderPixmap(
+                        QColor(30, 60, 95),
+                        QColor(108, 166, 222),
+                        QStringLiteral("...")));
+
+                case PreviewState::Unavailable:
+                    return QIcon(PlaceholderPixmap(
+                        QColor(54, 45, 45),
+                        QColor(154, 130, 130),
+                        QStringLiteral("N/A")));
+
+                case PreviewState::LoadFailed:
+                    return QIcon(PlaceholderPixmap(
+                        QColor(64, 42, 42),
+                        QColor(207, 116, 116),
+                        QStringLiteral("ERR")));
+
+                case PreviewState::Previewable:
+                    return QIcon(PlaceholderPixmap(
+                        QColor(44, 47, 51),
+                        QColor(112, 119, 128),
+                        QStringLiteral("...")));
+            }
+
+            return {};
+        }
+
+        QPixmap PlaceholderPixmap(
+            const QColor& background,
+            const QColor& foreground,
+            const QString& label) const
+        {
+            QPixmap pixmap(
                 128,
-                128,
-                Qt::KeepAspectRatio,
-                Qt::SmoothTransformation);
+                128);
+            pixmap.fill(background);
+
+            QPainter painter(&pixmap);
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.setPen(QPen(foreground, 2));
+            painter.drawRect(QRect(10, 10, 108, 108));
+            painter.setPen(foreground);
+            QFont labelFont = painter.font();
+            labelFont.setPointSize(18);
+            labelFont.setBold(true);
+            painter.setFont(labelFont);
+            painter.drawText(
+                pixmap.rect(),
+                Qt::AlignCenter,
+                label);
+            return pixmap;
         }
 
         int RowForCacheIndex(std::uint32_t cacheIndex) const
