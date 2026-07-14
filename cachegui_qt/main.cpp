@@ -2,6 +2,7 @@
 #include "GalleryListView.h"
 #include "PreviewCache.h"
 #include "PreviewDecodeWorker.h"
+#include "PreviewImage.h"
 #include "TextureCacheDatabase.h"
 #include "TextureExporter.h"
 
@@ -19,7 +20,6 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
-#include <QImage>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListView>
@@ -762,22 +762,13 @@ namespace
             QPixmap& pixmap,
             QString& errorMessage)
         {
-            const QImage image(
-                decodedImage.rgba.data(),
-                static_cast<int>(decodedImage.width),
-                static_cast<int>(decodedImage.height),
-                static_cast<int>(decodedImage.width * 4),
-                QImage::Format_RGBA8888);
-
-            if (image.isNull())
+            if (!CreatePreviewPixmap(decodedImage, pixmap, errorMessage))
             {
-                errorMessage = QStringLiteral("Preview image could not be created.");
                 previewCache_.SetLoadFailed(entry, errorMessage);
                 tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
                 return false;
             }
 
-            pixmap = QPixmap::fromImage(image.copy());
             previewCache_.SetPreviewable(
                 entry,
                 pixmap,
