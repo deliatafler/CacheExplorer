@@ -126,6 +126,143 @@ namespace
             .toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
     }
 
+    enum class PreviewState
+    {
+        Unknown,
+        Checking,
+        Previewable,
+        Unavailable,
+        LoadFailed
+    };
+
+    struct PreviewRecord
+    {
+        PreviewState state = PreviewState::Unknown;
+        QString message;
+        QPixmap pixmap;
+        std::uint32_t width = 0;
+        std::uint32_t height = 0;
+    };
+
+    class PreviewCache
+    {
+    public:
+        void Clear()
+        {
+            records_.clear();
+        }
+
+        void SetChecking(const CacheEntry& entry)
+        {
+            PreviewRecord record;
+            record.state = PreviewState::Checking;
+            records_[entry.cacheIndex] = record;
+        }
+
+        void SetUnavailable(const CacheEntry& entry, const QString& message)
+        {
+            PreviewRecord record;
+            record.state = PreviewState::Unavailable;
+            record.message = message;
+            records_[entry.cacheIndex] = record;
+        }
+
+        void SetLoadFailed(const CacheEntry& entry, const QString& message)
+        {
+            PreviewRecord record;
+            record.state = PreviewState::LoadFailed;
+            record.message = message;
+            records_[entry.cacheIndex] = record;
+        }
+
+        void SetPreviewable(
+            const CacheEntry& entry,
+            const QPixmap& pixmap,
+            std::uint32_t width,
+            std::uint32_t height)
+        {
+            PreviewRecord record;
+            record.state = PreviewState::Previewable;
+            record.pixmap = pixmap;
+            record.width = width;
+            record.height = height;
+            records_[entry.cacheIndex] = record;
+        }
+
+        const PreviewRecord* Find(const CacheEntry& entry) const
+        {
+            const auto record = records_.find(entry.cacheIndex);
+
+            if (record == records_.end())
+            {
+                return nullptr;
+            }
+
+            return &record->second;
+        }
+
+        QString StatusText(const CacheEntry& entry) const
+        {
+            const PreviewRecord* record = Find(entry);
+
+            if (record == nullptr)
+            {
+                return {};
+            }
+
+            switch (record->state)
+            {
+                case PreviewState::Unknown:
+                    return {};
+
+                case PreviewState::Checking:
+                    return QStringLiteral("Checking");
+
+                case PreviewState::Previewable:
+                    return QStringLiteral("Preview");
+
+                case PreviewState::Unavailable:
+                    return QStringLiteral("No preview");
+
+                case PreviewState::LoadFailed:
+                    return QStringLiteral("Load failed");
+            }
+
+            return {};
+        }
+
+        int StatusRank(const CacheEntry& entry) const
+        {
+            const PreviewRecord* record = Find(entry);
+
+            if (record == nullptr)
+            {
+                return 0;
+            }
+
+            switch (record->state)
+            {
+                case PreviewState::Unknown:
+                    return 0;
+
+                case PreviewState::Checking:
+                    return 1;
+
+                case PreviewState::Unavailable:
+                case PreviewState::LoadFailed:
+                    return 2;
+
+                case PreviewState::Previewable:
+                    return 3;
+            }
+
+            return 0;
+        }
+
+    private:
+        std::unordered_map<std::uint32_t, PreviewRecord> records_;
+    };
+
     class CacheEntryTableModel final : public QAbstractTableModel
     {
     public:
@@ -141,10 +278,15 @@ namespace
             endResetModel();
         }
 
-        void ClearPreviewStatuses()
+        void SetPreviewCache(const PreviewCache* previewCache)
         {
-            previewStatuses_.clear();
+            beginResetModel();
+            previewCache_ = previewCache;
+            endResetModel();
+        }
 
+        void NotifyAllPreviewStatusesChanged()
+        {
             if (rowCount() > 0)
             {
                 emit dataChanged(
@@ -154,13 +296,8 @@ namespace
             }
         }
 
-        void SetPreviewStatus(
-            std::uint32_t cacheIndex,
-            const QString& status,
-            int sortRank)
+        void NotifyPreviewStatusChanged(std::uint32_t cacheIndex)
         {
-            previewStatuses_[cacheIndex] = PreviewStatus{status, sortRank};
-
             const int row = RowForCacheIndex(cacheIndex);
 
             if (row >= 0)
@@ -222,7 +359,7 @@ namespace
                         return FormatTime(entry->timestamp);
 
                     case 5:
-                        return PreviewStatusText(entry->cacheIndex);
+                        return PreviewStatusText(*entry);
 
                     default:
                         return {};
@@ -249,7 +386,7 @@ namespace
                         return static_cast<qlonglong>(entry->timestamp);
 
                     case 5:
-                        return PreviewStatusRank(entry->cacheIndex);
+                        return PreviewStatusRank(*entry);
 
                     default:
                         return {};
@@ -318,34 +455,24 @@ namespace
         }
 
     private:
-        struct PreviewStatus
+        QString PreviewStatusText(const CacheEntry& entry) const
         {
-            QString text;
-            int sortRank = 0;
-        };
-
-        QString PreviewStatusText(std::uint32_t cacheIndex) const
-        {
-            const auto status = previewStatuses_.find(cacheIndex);
-
-            if (status == previewStatuses_.end())
+            if (previewCache_ == nullptr)
             {
                 return {};
             }
 
-            return status->second.text;
+            return previewCache_->StatusText(entry);
         }
 
-        int PreviewStatusRank(std::uint32_t cacheIndex) const
+        int PreviewStatusRank(const CacheEntry& entry) const
         {
-            const auto status = previewStatuses_.find(cacheIndex);
-
-            if (status == previewStatuses_.end())
+            if (previewCache_ == nullptr)
             {
                 return 0;
             }
 
-            return status->second.sortRank;
+            return previewCache_->StatusRank(entry);
         }
 
         int RowForCacheIndex(std::uint32_t cacheIndex) const
@@ -369,7 +496,7 @@ namespace
         }
 
         const TextureCacheDatabase* database_ = nullptr;
-        std::unordered_map<std::uint32_t, PreviewStatus> previewStatuses_;
+        const PreviewCache* previewCache_ = nullptr;
     };
 
     struct PreviewDecodeResult
@@ -453,6 +580,7 @@ namespace
             actionLayout->addStretch(1);
 
             proxyModel_ = new QSortFilterProxyModel(root);
+            tableModel_.SetPreviewCache(&previewCache_);
             proxyModel_->setSourceModel(&tableModel_);
             proxyModel_->setSortRole(Qt::UserRole);
             proxyModel_->setDynamicSortFilter(false);
@@ -531,6 +659,7 @@ namespace
                 [this]()
                 {
                     UpdateActionState();
+                    ShowCachedPreviewForSelection();
                 });
 
             connect(
@@ -597,7 +726,8 @@ namespace
             if (result != CacheError::None)
             {
                 tableModel_.SetDatabase(nullptr);
-                tableModel_.ClearPreviewStatuses();
+                previewCache_.Clear();
+                tableModel_.NotifyAllPreviewStatusesChanged();
                 ClearPreview();
                 UpdateActionState();
                 SetBusy(false);
@@ -609,7 +739,8 @@ namespace
 
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
             PopulateTable();
-            tableModel_.ClearPreviewStatuses();
+            previewCache_.Clear();
+            tableModel_.NotifyAllPreviewStatusesChanged();
             ClearPreview();
             UpdateActionState();
             SetBusy(false);
@@ -742,10 +873,8 @@ namespace
             activePreviewRequestId_ = requestId;
             activePreviewShowFailure_ = showFailure;
             activePreviewContinueTryNext_ = continueTryNext;
-            tableModel_.SetPreviewStatus(
-                entry.cacheIndex,
-                QStringLiteral("Checking"),
-                0);
+            previewCache_.SetChecking(entry);
+            tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
             UpdateActionState();
 
             previewFuture_ = std::async(
@@ -801,10 +930,10 @@ namespace
 
             if (!result.succeeded)
             {
-                tableModel_.SetPreviewStatus(
-                    result.entry.cacheIndex,
-                    QStringLiteral("No preview"),
-                    1);
+                previewCache_.SetUnavailable(
+                    result.entry,
+                    ToQString(result.message));
+                tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
 
                 if (showFailure)
                 {
@@ -842,10 +971,10 @@ namespace
 
             if (image.isNull())
             {
-                tableModel_.SetPreviewStatus(
-                    result.entry.cacheIndex,
-                    QStringLiteral("Load failed"),
-                    1);
+                previewCache_.SetLoadFailed(
+                    result.entry,
+                    QStringLiteral("Preview image could not be created."));
+                tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
 
                 if (showFailure)
                 {
@@ -871,11 +1000,14 @@ namespace
                 return;
             }
 
-            tableModel_.SetPreviewStatus(
-                result.entry.cacheIndex,
-                QStringLiteral("Preview"),
-                2);
-            previewPixmap_ = QPixmap::fromImage(image.copy());
+            const QPixmap pixmap = QPixmap::fromImage(image.copy());
+            previewCache_.SetPreviewable(
+                result.entry,
+                pixmap,
+                decodedImage.width,
+                decodedImage.height);
+            tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
+            previewPixmap_ = pixmap;
             ShowPreviewPixmap();
             SelectEntry(result.entry);
 
@@ -886,6 +1018,33 @@ namespace
                     .arg(decodedImage.width)
                     .arg(decodedImage.height));
             UpdateActionState();
+        }
+
+        void ShowCachedPreviewForSelection()
+        {
+            const CacheEntry* entry = SelectedEntry();
+
+            if (entry == nullptr)
+            {
+                return;
+            }
+
+            const PreviewRecord* record = previewCache_.Find(*entry);
+
+            if (record == nullptr ||
+                record->state != PreviewState::Previewable ||
+                record->pixmap.isNull())
+            {
+                return;
+            }
+
+            previewPixmap_ = record->pixmap;
+            ShowPreviewPixmap();
+            statusLabel_->setText(
+                QStringLiteral("Preview ready: %1 (%2 x %3)")
+                    .arg(ToQString(entry->uuid.ToString()))
+                    .arg(record->width)
+                    .arg(record->height));
         }
 
         void PreviewSelected()
@@ -1030,6 +1189,7 @@ namespace
         QTableView* table_ = nullptr;
         QLabel* previewLabel_ = nullptr;
         QLabel* statusLabel_ = nullptr;
+        PreviewCache previewCache_;
         CacheEntryTableModel tableModel_;
         QSortFilterProxyModel* proxyModel_ = nullptr;
         QTimer* previewPollTimer_ = nullptr;

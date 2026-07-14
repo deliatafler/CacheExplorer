@@ -263,6 +263,8 @@ Qt preview decode now runs off the UI thread via `std::async`, with a Qt timer p
 
 `Try Next Preview` should scan forward in the current visible/sorted Qt table order, not raw cache-entry order.
 
+Qt preview state is centralized in `PreviewCache`, which tracks unknown/checking/previewable/unavailable/load-failed state plus cached preview pixmaps. The table model reads status from this cache, and reselecting a previewable entry should show the cached pixmap without decoding again.
+
 Good next low-risk slices:
 
 * Prefer prebuilt shared Qt for fast local development.
