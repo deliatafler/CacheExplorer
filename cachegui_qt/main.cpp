@@ -905,10 +905,10 @@ namespace
                 return;
             }
 
-            const QString defaultName =
-                ToQString(entry->uuid.ToString()) + QStringLiteral(".png");
             const QString outputFile =
-                ChoosePngOutputFile(*this, defaultName);
+                ChoosePngOutputFile(
+                    *this,
+                    DefaultPngExportFileName(*entry));
 
             if (outputFile.isEmpty())
             {
@@ -922,16 +922,7 @@ namespace
                     PathFromQString(outputFile),
                     true);
 
-            if (!result.Succeeded())
-            {
-                statusLabel_->setText(
-                    QStringLiteral("Export failed: ")
-                    + ToQString(result.message));
-                return;
-            }
-
-            statusLabel_->setText(
-                QStringLiteral("Exported PNG: %1").arg(outputFile));
+            statusLabel_->setText(PngExportStatusText(result, outputFile));
         }
 
         QLabel* pathLabel_ = nullptr;

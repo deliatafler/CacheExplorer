@@ -297,7 +297,7 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 
 `cachegui_qt/QtSelection.*` contains Qt table/gallery selection synchronization helpers.
 
-`cachegui_qt/QtTextureExport.*` contains Qt GUI export option defaults around `TextureExporter`; reusable export behavior must remain in `cachelib`.
+`cachegui_qt/QtTextureExport.*` contains Qt GUI export filenames, status text, and option defaults around `TextureExporter`; reusable export behavior must remain in `cachelib`.
 
 `cachegui_qt/QtTryNextPreview.*` contains Qt proxy-model navigation and status text for the "Try Next Preview" action.
 
