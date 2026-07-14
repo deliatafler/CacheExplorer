@@ -7,6 +7,8 @@ add_executable(cachegui_qt WIN32
     GalleryListView.h
     GalleryPreviewQueue.cpp
     GalleryPreviewQueue.h
+    GalleryPreviewScanner.cpp
+    GalleryPreviewScanner.h
     main.cpp
     PreviewCache.cpp
     PreviewCache.h

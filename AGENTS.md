@@ -274,6 +274,8 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/GalleryPreviewQueue.*` contains gallery thumbnail queue bookkeeping and progress counters. It should stay UI-adjacent and must not start worker threads or inspect widgets directly.
 
+`cachegui_qt/GalleryPreviewScanner.*` contains Qt gallery visible-row scanning and queue candidate selection. It may inspect Qt view/model geometry, but should not own async worker state.
+
 `cachegui_qt/PreviewCache.*` contains Qt GUI preview state and cached pixmaps. It is intentionally GUI-owned because it stores `QPixmap`; reusable decode/export logic must remain in `cachelib`.
 
 `cachegui_qt/PreviewDecodeWorker.*` contains the Qt GUI async preview decode wrapper around `TextureRebuilder` and `J2CDecoder`. Keep reusable reconstruction and decoding behavior in `cachelib`; this wrapper should only package copied request data/results for the GUI worker flow.

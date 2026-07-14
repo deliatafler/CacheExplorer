@@ -1,6 +1,7 @@
 #include "CacheEntryTableModel.h"
 #include "GalleryListView.h"
 #include "GalleryPreviewQueue.h"
+#include "GalleryPreviewScanner.h"
 #include "PreviewCache.h"
 #include "PreviewDecodeWorker.h"
 #include "PreviewImage.h"
@@ -11,12 +12,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
-#include <deque>
 #include <filesystem>
 #include <future>
 #include <sstream>
 #include <string>
-#include <utility>
 
 #include <QApplication>
 #include <QFileDialog>
@@ -975,48 +974,12 @@ namespace
 
         void RebuildGalleryPreviewQueue()
         {
-            std::deque<CacheEntry> entries;
-
-            const int rowCount = proxyModel_->rowCount();
-
-            if (rowCount <= 0)
-            {
-                galleryPreviewQueue_.Replace(std::move(entries));
-                return;
-            }
-
-            const int firstRow = FirstVisibleGalleryProxyRow(rowCount);
-
-            constexpr int MaximumRowsToScan = 240;
-            constexpr std::size_t MaximumQueueSize = 48;
-            const int finalRow = std::min(rowCount, firstRow + MaximumRowsToScan);
-            const QRect visibleArea = galleryView_->viewport()->rect().adjusted(0, -170, 0, 170);
-
-            for (int proxyRow = firstRow; proxyRow < finalRow; ++proxyRow)
-            {
-                const QModelIndex proxyIndex = proxyModel_->index(proxyRow, 0);
-
-                if (!proxyIndex.isValid() ||
-                    !galleryView_->visualRect(proxyIndex).intersects(visibleArea))
-                {
-                    continue;
-                }
-
-                const QModelIndex sourceIndex = proxyModel_->mapToSource(proxyIndex);
-                const CacheEntry* entry = tableModel_.EntryAt(sourceIndex.row());
-
-                if (entry != nullptr && previewCache_.ShouldAttemptPreview(*entry))
-                {
-                    entries.push_back(*entry);
-
-                    if (entries.size() >= MaximumQueueSize)
-                    {
-                        break;
-                    }
-                }
-            }
-
-            galleryPreviewQueue_.Replace(std::move(entries));
+            galleryPreviewQueue_.Replace(
+                BuildVisibleGalleryPreviewQueue(
+                    *galleryView_,
+                    *proxyModel_,
+                    tableModel_,
+                    previewCache_));
             UpdateGalleryActivity();
         }
 
@@ -1075,44 +1038,6 @@ namespace
             }
 
             galleryActivityLabel_->setText(QStringLiteral("Checking thumbnails..."));
-        }
-
-        int FirstVisibleGalleryProxyRow(int rowCount) const
-        {
-            const int width = galleryView_->viewport()->width();
-            const int height = galleryView_->viewport()->height();
-
-            if (width > 0 && height > 0)
-            {
-                const int xPoints[] = {0, width / 4, width / 2, (width * 3) / 4, width - 1};
-                const int yPoints[] = {0, height / 4, height / 2, (height * 3) / 4, height - 1};
-                int bestRow = rowCount;
-
-                for (const int y : yPoints)
-                {
-                    for (const int x : xPoints)
-                    {
-                        const QModelIndex index = galleryView_->indexAt(QPoint(x, y));
-
-                        if (index.isValid())
-                        {
-                            bestRow = std::min(bestRow, index.row());
-                        }
-                    }
-                }
-
-                if (bestRow != rowCount)
-                {
-                    return bestRow;
-                }
-            }
-
-            if (galleryView_->currentIndex().isValid())
-            {
-                return galleryView_->currentIndex().row();
-            }
-
-            return 0;
         }
 
         void ExportSelected()
