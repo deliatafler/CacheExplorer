@@ -12,14 +12,14 @@ The project has four current targets:
 
 * `cachelib`: reusable cache-reading, reconstruction, decoding, and export library
 * `cachecli`: thin command-line frontend
-* `cachegui`: native Win32 GUI frontend
-* `cachegui_qt`: experimental Qt 6 cross-platform GUI spike
+* `cachegui_qt`: primary Qt 6 cross-platform GUI frontend
+* `cachegui`: legacy native Win32 GUI frontend
 
 GUI targets depend directly on `cachelib`. A GUI must not wrap or invoke the CLI.
 
 Business logic belongs in `cachelib`. CLI-specific argument parsing and console presentation belong in `cachecli`.
 
-The cross-platform GUI direction is being evaluated with Qt 6 in `cachegui_qt`. Keep the Win32 GUI working while the Qt spike proves build, packaging, and UX tradeoffs.
+The project direction is Qt 6 for future GUI development and cross-platform support. Keep the Win32 GUI buildable for now as legacy/maintenance-only code, but do not add new features there unless needed to preserve behavior or expose a shared `cachelib` issue.
 
 ## Platform and build
 
@@ -57,7 +57,7 @@ Executable:
 build/cachecli/Release/cachecli.exe
 ```
 
-Experimental Qt GUI build with a prebuilt shared Qt installation. This is the preferred developer path because it avoids rebuilding Qt locally:
+Primary Qt GUI build with a prebuilt shared Qt installation. This is the preferred developer path because it avoids rebuilding Qt locally:
 
 ```bash
 cmake -S . -B build-qt -A x64 \
@@ -78,7 +78,7 @@ Validated prebuilt-Qt developer build:
 * Link warnings are expected for this developer path right now: official shared Qt uses the dynamic MSVC runtime, while the project/vcpkg static triplet uses the static runtime (`LNK4098` and related runtime import warnings). This is acceptable for developer validation, but packaging should either use the static Qt/vcpkg path or a consistent dynamic-runtime configuration.
 * `windeployqt --dry-run --release build-qt-prebuilt/cachegui_qt/Release/cachegui_qt.exe` identifies the expected Qt DLL/plugin deployment set. Run it from a proper Visual Studio developer environment for packaging so `VCINSTALLDIR` is set.
 
-Experimental Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow:
+Primary Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow:
 
 ```bash
 cmake -S . -B build-qt -A x64 \
@@ -260,9 +260,9 @@ Complete these tasks in order:
 
 ## Current GUI work
 
-The first GUI cleanup step extracted standalone Win32 utility helpers into `cachegui/GuiUtils.*` without changing behavior.
+The first GUI cleanup step extracted standalone Win32 utility helpers into `cachegui/GuiUtils.*` without changing behavior. Win32 is now legacy/maintenance-only; do not spend new feature work there unless it protects existing behavior.
 
-The Qt 6 spike adds `cachegui_qt`, an optional target that opens a cache through `cachelib`, shows entries in a sortable model-backed table, can preview/export a selected entry as PNG through `TextureExporter`, and tracks preview status in the table.
+The Qt 6 GUI in `cachegui_qt` is the primary GUI path. It opens a cache through `cachelib`, shows entries in a sortable model-backed table, can preview/export a selected entry as PNG through `TextureExporter`, and tracks preview status in the table.
 
 The Qt GUI also has an early Gallery/Table toggle. Gallery reuses the same sorted proxy model and preview cache as the table. Cached previews appear as icons after they have been decoded by Preview, Try Next Preview, or the gallery's lazy visible-item loader.
 
@@ -301,8 +301,8 @@ Good next low-risk slices:
 * Prefer prebuilt shared Qt for fast local development.
 * Keep the vcpkg static Qt path available for reproducible/distribution builds, ideally with binary caching in CI.
 * Improve Qt gallery thumbnail scheduling and UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
-* If Qt remains the path, improve `cachegui_qt` preview scaling, incomplete-texture feedback, and the bounded "Try Next Preview" workflow.
-* If Win32 remains active, move GUI control IDs and custom window-message IDs into a small header.
+* Improve `cachegui_qt` preview scaling, incomplete-texture feedback, and the bounded "Try Next Preview" workflow.
+* Defer Win32 cleanup unless needed to keep the legacy target building.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.
 
 ## Coding guidelines

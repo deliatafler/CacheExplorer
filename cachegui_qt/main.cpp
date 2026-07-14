@@ -74,7 +74,7 @@ namespace
     public:
         MainWindow()
         {
-            setWindowTitle(QStringLiteral("Cache Explorer Qt Spike"));
+            setWindowTitle(QStringLiteral("Cache Explorer"));
             resize(1050, 680);
 
             auto* root = new QWidget(this);
