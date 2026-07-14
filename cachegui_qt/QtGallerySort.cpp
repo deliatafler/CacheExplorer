@@ -27,6 +27,32 @@ namespace
 
         return GallerySortMode::NewestFirst;
     }
+
+    QString GallerySortName(GallerySortMode sortMode)
+    {
+        switch (sortMode)
+        {
+            case GallerySortMode::NewestFirst:
+                return QStringLiteral("newest");
+
+            case GallerySortMode::OldestFirst:
+                return QStringLiteral("oldest");
+
+            case GallerySortMode::LargestBody:
+                return QStringLiteral("largest body");
+
+            case GallerySortMode::LargestImage:
+                return QStringLiteral("largest image");
+
+            case GallerySortMode::CacheIndex:
+                return QStringLiteral("cache index");
+
+            case GallerySortMode::Uuid:
+                return QStringLiteral("UUID");
+        }
+
+        return QStringLiteral("selected order");
+    }
 }
 
 void ConfigureGallerySortControl(QComboBox& comboBox)
@@ -54,6 +80,18 @@ void ConfigureGallerySortControl(QComboBox& comboBox)
 GallerySortMode CurrentGallerySortMode(const QComboBox& comboBox)
 {
     return FromComboValue(comboBox.currentData().toInt());
+}
+
+QString GallerySortInProgressStatus(GallerySortMode sortMode)
+{
+    return QStringLiteral("Sorting gallery by %1...")
+        .arg(GallerySortName(sortMode));
+}
+
+QString GallerySortCompleteStatus(GallerySortMode sortMode)
+{
+    return QStringLiteral("Gallery sorted by %1.")
+        .arg(GallerySortName(sortMode));
 }
 
 void ApplyGallerySort(

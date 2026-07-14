@@ -282,9 +282,15 @@ namespace
                 this,
                 [this]()
                 {
+                    const GallerySortMode sortMode =
+                        CurrentGallerySortMode(*gallerySortCombo_);
+                    statusLabel_->setText(GallerySortInProgressStatus(sortMode));
+                    QApplication::processEvents();
+
                     ApplyGallerySort(
                         *proxyModel_,
-                        CurrentGallerySortMode(*gallerySortCombo_));
+                        sortMode);
+                    statusLabel_->setText(GallerySortCompleteStatus(sortMode));
                     ClearGalleryPreviewQueue();
                     UpdateGalleryActivity();
                     ScheduleGalleryPreviewSearch();
