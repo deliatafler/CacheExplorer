@@ -257,13 +257,13 @@ The Qt 6 spike adds `cachegui_qt`, an optional target that opens a cache through
 
 The Qt GUI also has an early Gallery/Table toggle. Gallery reuses the same sorted proxy model and preview cache as the table. Cached previews appear as icons after they have been decoded by Preview, Try Next Preview, or the gallery's lazy visible-item loader.
 
-Gallery lazy loading uses a separate async thumbnail worker from manual Preview/Try Next. It scans the visible gallery neighborhood, attempts unknown entries one at a time, caches successful thumbnails, and marks incomplete/undecodable entries without selecting them.
+Gallery lazy loading uses a separate async thumbnail worker from manual Preview/Try Next. It builds a bounded queue from the visible gallery neighborhood, attempts unknown entries one at a time, caches successful thumbnails, and marks incomplete/undecodable entries without selecting them.
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
 
 Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries.
 
-Gallery mode shows a lightweight activity label while it is scanning visible items or checking thumbnails. The main bottom status label remains reserved for explicit user actions such as Preview, Try Next Preview, Export, and cache open results.
+Gallery mode shows a lightweight activity label while it is scanning visible items, refreshing the visible thumbnail queue, or checking thumbnails with queued progress. The main bottom status label remains reserved for explicit user actions such as Preview, Try Next Preview, Export, and cache open results.
 
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 
@@ -279,7 +279,7 @@ Good next low-risk slices:
 
 * Prefer prebuilt shared Qt for fast local development.
 * Keep the vcpkg static Qt path available for reproducible/distribution builds, ideally with binary caching in CI.
-* Improve Qt gallery thumbnail scheduling and UX: consider a broader thumbnail queue and richer visible loading progress.
+* Improve Qt gallery thumbnail scheduling and UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
 * If Qt remains the path, improve `cachegui_qt` preview scaling, incomplete-texture feedback, and the bounded "Try Next Preview" workflow.
 * If Win32 remains active, move GUI control IDs and custom window-message IDs into a small header.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.

@@ -7,6 +7,7 @@
 #include <chrono>
 #include <ctime>
 #include <cstdint>
+#include <deque>
 #include <filesystem>
 #include <future>
 #include <limits>
@@ -1031,6 +1032,7 @@ namespace
             {
                 tableModel_.SetDatabase(nullptr);
                 previewCache_.Clear();
+                ClearGalleryPreviewQueue();
                 tableModel_.NotifyAllPreviewStatusesChanged();
                 ClearPreview();
                 UpdateActionState();
@@ -1045,6 +1047,7 @@ namespace
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
             PopulateTable();
             previewCache_.Clear();
+            ClearGalleryPreviewQueue();
             tableModel_.NotifyAllPreviewStatusesChanged();
             ClearPreview();
             UpdateActionState();
@@ -1358,6 +1361,7 @@ namespace
                 return;
             }
 
+            ++galleryPreviewQueueCompleted_;
             ApplyGalleryPreviewResult(result);
         }
 
@@ -1369,7 +1373,7 @@ namespace
                     result.entry,
                     ToQString(result.message));
                 tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
-                ScheduleGalleryPreviewSearch();
+                StartNextQueuedGalleryPreview();
                 return;
             }
 
@@ -1378,7 +1382,7 @@ namespace
 
             if (!StoreDecodedPreview(result.entry, result.image, pixmap, imageError))
             {
-                ScheduleGalleryPreviewSearch();
+                StartNextQueuedGalleryPreview();
                 return;
             }
 
@@ -1391,7 +1395,7 @@ namespace
                 ShowPreviewPixmap();
             }
 
-            ScheduleGalleryPreviewSearch();
+            StartNextQueuedGalleryPreview();
         }
 
         bool StoreDecodedPreview(
@@ -1563,6 +1567,10 @@ namespace
         {
             const QModelIndex selectedIndex = SelectedProxyIndex();
             galleryMode_ = !galleryMode_;
+            if (!galleryMode_)
+            {
+                ClearGalleryPreviewQueue();
+            }
             viewStack_->setCurrentWidget(
                 galleryMode_
                     ? static_cast<QWidget*>(galleryView_)
@@ -1608,13 +1616,30 @@ namespace
                 this,
                 [this]()
                 {
+                    if (!galleryMode_ || !database_.IsOpen())
+                    {
+                        galleryPreviewSearchPending_ = false;
+                        ClearGalleryPreviewQueue();
+                        UpdateGalleryActivity();
+                        return;
+                    }
+
                     galleryPreviewSearchPending_ = false;
+
+                    if (galleryPreviewWorkerActive_)
+                    {
+                        galleryPreviewQueueRefreshPending_ = true;
+                        UpdateGalleryActivity();
+                        return;
+                    }
+
                     UpdateGalleryActivity();
-                    StartNextVisibleGalleryPreview();
+                    RebuildGalleryPreviewQueue();
+                    StartNextQueuedGalleryPreview();
                 });
         }
 
-        void StartNextVisibleGalleryPreview()
+        void StartNextQueuedGalleryPreview()
         {
             if (!galleryMode_ ||
                 !database_.IsOpen() ||
@@ -1625,54 +1650,50 @@ namespace
                 return;
             }
 
-            const CacheEntry* entry = FirstUnknownVisibleGalleryEntry();
-
-            if (entry == nullptr)
+            if (galleryPreviewQueueRefreshPending_)
             {
+                galleryPreviewQueueRefreshPending_ = false;
+                ScheduleGalleryPreviewSearch();
                 return;
             }
 
-            StartGalleryPreviewRequest(*entry);
+            while (!galleryPreviewQueue_.empty())
+            {
+                const CacheEntry entry = galleryPreviewQueue_.front();
+                galleryPreviewQueue_.pop_front();
+
+                if (!previewCache_.ShouldAttemptPreview(entry))
+                {
+                    ++galleryPreviewQueueCompleted_;
+                    continue;
+                }
+
+                StartGalleryPreviewRequest(entry);
+                return;
+            }
+
+            galleryPreviewQueueTotal_ = 0;
+            galleryPreviewQueueCompleted_ = 0;
+            UpdateGalleryActivity();
         }
 
-        void UpdateGalleryActivity()
+        void RebuildGalleryPreviewQueue()
         {
-            if (galleryActivityLabel_ == nullptr)
-            {
-                return;
-            }
+            galleryPreviewQueue_.clear();
+            galleryPreviewQueueTotal_ = 0;
+            galleryPreviewQueueCompleted_ = 0;
 
-            const bool showLabel =
-                galleryMode_ &&
-                database_.IsOpen() &&
-                (galleryPreviewWorkerActive_ || galleryPreviewSearchPending_);
-
-            galleryActivityLabel_->setVisible(showLabel);
-
-            if (!showLabel)
-            {
-                galleryActivityLabel_->clear();
-                return;
-            }
-
-            galleryActivityLabel_->setText(
-                galleryPreviewWorkerActive_
-                    ? QStringLiteral("Checking thumbnails...")
-                    : QStringLiteral("Scanning visible items..."));
-        }
-
-        const CacheEntry* FirstUnknownVisibleGalleryEntry() const
-        {
             const int rowCount = proxyModel_->rowCount();
 
             if (rowCount <= 0)
             {
-                return nullptr;
+                return;
             }
 
             const int firstRow = FirstVisibleGalleryProxyRow(rowCount);
 
             constexpr int MaximumRowsToScan = 240;
+            constexpr std::size_t MaximumQueueSize = 48;
             const int finalRow = std::min(rowCount, firstRow + MaximumRowsToScan);
             const QRect visibleArea = galleryView_->viewport()->rect().adjusted(0, -170, 0, 170);
 
@@ -1691,11 +1712,77 @@ namespace
 
                 if (entry != nullptr && previewCache_.ShouldAttemptPreview(*entry))
                 {
-                    return entry;
+                    galleryPreviewQueue_.push_back(*entry);
+
+                    if (galleryPreviewQueue_.size() >= MaximumQueueSize)
+                    {
+                        break;
+                    }
                 }
             }
 
-            return nullptr;
+            galleryPreviewQueueTotal_ = galleryPreviewQueue_.size();
+            UpdateGalleryActivity();
+        }
+
+        void ClearGalleryPreviewQueue()
+        {
+            galleryPreviewQueue_.clear();
+            galleryPreviewQueueTotal_ = 0;
+            galleryPreviewQueueCompleted_ = 0;
+            galleryPreviewQueueRefreshPending_ = false;
+        }
+
+        void UpdateGalleryActivity()
+        {
+            if (galleryActivityLabel_ == nullptr)
+            {
+                return;
+            }
+
+            const bool showLabel =
+                galleryMode_ &&
+                database_.IsOpen() &&
+                (galleryPreviewWorkerActive_ ||
+                    galleryPreviewSearchPending_ ||
+                    galleryPreviewQueueRefreshPending_ ||
+                    !galleryPreviewQueue_.empty());
+
+            galleryActivityLabel_->setVisible(showLabel);
+
+            if (!showLabel)
+            {
+                galleryActivityLabel_->clear();
+                return;
+            }
+
+            if (galleryPreviewSearchPending_)
+            {
+                galleryActivityLabel_->setText(QStringLiteral("Scanning visible items..."));
+                return;
+            }
+
+            if (galleryPreviewQueueRefreshPending_)
+            {
+                galleryActivityLabel_->setText(QStringLiteral("Refreshing thumbnails..."));
+                return;
+            }
+
+            if (galleryPreviewQueueTotal_ > 0)
+            {
+                const std::size_t current =
+                    std::min(
+                        galleryPreviewQueueTotal_,
+                        galleryPreviewQueueCompleted_ +
+                            (galleryPreviewWorkerActive_ ? 1u : 0u));
+                galleryActivityLabel_->setText(
+                    QStringLiteral("Checking thumbnails %1 / %2")
+                        .arg(static_cast<qulonglong>(current))
+                        .arg(static_cast<qulonglong>(galleryPreviewQueueTotal_)));
+                return;
+            }
+
+            galleryActivityLabel_->setText(QStringLiteral("Checking thumbnails..."));
         }
 
         int FirstVisibleGalleryProxyRow(int rowCount) const
@@ -1812,6 +1899,7 @@ namespace
         QPixmap previewPixmap_;
         std::future<PreviewDecodeResult> previewFuture_;
         std::future<PreviewDecodeResult> galleryPreviewFuture_;
+        std::deque<CacheEntry> galleryPreviewQueue_;
         TextureCacheDatabase database_;
         bool busy_ = false;
         bool previewWorkerActive_ = false;
@@ -1820,6 +1908,9 @@ namespace
         bool tryNextActive_ = false;
         bool galleryMode_ = false;
         bool galleryPreviewSearchPending_ = false;
+        bool galleryPreviewQueueRefreshPending_ = false;
+        std::size_t galleryPreviewQueueTotal_ = 0;
+        std::size_t galleryPreviewQueueCompleted_ = 0;
         int tryNextProxyRow_ = 0;
         int tryNextAttempts_ = 0;
         std::uint64_t nextPreviewRequestId_ = 1;
