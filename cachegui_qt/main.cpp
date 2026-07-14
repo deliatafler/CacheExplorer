@@ -5,7 +5,6 @@
 #include "GalleryPreviewScanner.h"
 #include "PreviewCache.h"
 #include "PreviewDecodeWorker.h"
-#include "PreviewImage.h"
 #include "PreviewPanel.h"
 #include "PreviewStatus.h"
 #include "PreviewWorkerState.h"
@@ -541,7 +540,13 @@ namespace
             QPixmap pixmap;
             QString imageError;
 
-            if (!StoreDecodedPreview(result.entry, result.image, pixmap, imageError))
+            if (!StoreDecodedPreview(
+                    previewCache_,
+                    tableModel_,
+                    result.entry,
+                    result.image,
+                    pixmap,
+                    imageError))
             {
                 if (requestKind == PreviewRequestKind::Manual)
                 {
@@ -659,7 +664,13 @@ namespace
             QPixmap pixmap;
             QString imageError;
 
-            if (!StoreDecodedPreview(result.entry, result.image, pixmap, imageError))
+            if (!StoreDecodedPreview(
+                    previewCache_,
+                    tableModel_,
+                    result.entry,
+                    result.image,
+                    pixmap,
+                    imageError))
             {
                 StartNextQueuedGalleryPreview();
                 return;
@@ -674,32 +685,6 @@ namespace
             }
 
             StartNextQueuedGalleryPreview();
-        }
-
-        bool StoreDecodedPreview(
-            const CacheEntry& entry,
-            const DecodedImage& decodedImage,
-            QPixmap& pixmap,
-            QString& errorMessage)
-        {
-            if (!CreatePreviewPixmap(decodedImage, pixmap, errorMessage))
-            {
-                SetPreviewLoadFailed(
-                    previewCache_,
-                    tableModel_,
-                    entry,
-                    errorMessage);
-                return false;
-            }
-
-            SetPreviewable(
-                previewCache_,
-                tableModel_,
-                entry,
-                pixmap,
-                decodedImage.width,
-                decodedImage.height);
-            return true;
         }
 
         void ShowCachedPreviewForSelection()

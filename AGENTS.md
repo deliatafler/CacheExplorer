@@ -285,7 +285,7 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 
 `cachegui_qt/PreviewPanel.*` contains Qt-only preview label/pixmap/message display state and scaling.
 
-`cachegui_qt/PreviewStatus.*` contains Qt preview cache/model notification helpers.
+`cachegui_qt/PreviewStatus.*` contains Qt preview cache/model notification helpers, including decoded-image-to-cached-pixmap storage.
 
 `cachegui_qt/PreviewWorkerState.*` contains async preview request state shared by manual and gallery preview workers.
 

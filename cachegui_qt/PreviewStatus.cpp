@@ -1,6 +1,7 @@
 #include "PreviewStatus.h"
 
 #include "CacheEntryTableModel.h"
+#include "PreviewImage.h"
 #include "PreviewCache.h"
 #include "TextureCacheDatabase.h"
 
@@ -55,4 +56,32 @@ void SetPreviewable(
         width,
         height);
     tableModel.NotifyPreviewStatusChanged(entry.cacheIndex);
+}
+
+bool StoreDecodedPreview(
+    PreviewCache& previewCache,
+    CacheEntryTableModel& tableModel,
+    const CacheEntry& entry,
+    const DecodedImage& decodedImage,
+    QPixmap& pixmap,
+    QString& errorMessage)
+{
+    if (!CreatePreviewPixmap(decodedImage, pixmap, errorMessage))
+    {
+        SetPreviewLoadFailed(
+            previewCache,
+            tableModel,
+            entry,
+            errorMessage);
+        return false;
+    }
+
+    SetPreviewable(
+        previewCache,
+        tableModel,
+        entry,
+        pixmap,
+        decodedImage.width,
+        decodedImage.height);
+    return true;
 }
