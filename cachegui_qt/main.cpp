@@ -6,8 +6,8 @@
 #include "PreviewDecodeWorker.h"
 #include "PreviewImage.h"
 #include "QtHelpers.h"
+#include "QtTextureExport.h"
 #include "TextureCacheDatabase.h"
-#include "TextureExporter.h"
 
 #include <algorithm>
 #include <chrono>
@@ -453,23 +453,6 @@ namespace
             table_->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
             galleryView_->setCurrentIndex(proxyIndex);
             galleryView_->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
-        }
-
-        TexturePngExportResult ExportEntryToFile(
-            const CacheEntry& entry,
-            const fs::path& outputFile,
-            bool overwriteExisting)
-        {
-            TextureExportOptions options;
-            options.overwriteExisting = overwriteExisting;
-            options.verboseDecoderErrors = false;
-
-            TextureExporter exporter;
-            return exporter.ExportPngEntry(
-                database_,
-                entry,
-                outputFile,
-                options);
         }
 
         void StartPreviewRequest(
@@ -1064,7 +1047,11 @@ namespace
             }
 
             const TexturePngExportResult result =
-                ExportEntryToFile(*entry, PathFromQString(outputFile), true);
+                ExportTexturePng(
+                    database_,
+                    *entry,
+                    PathFromQString(outputFile),
+                    true);
 
             if (!result.Succeeded())
             {
