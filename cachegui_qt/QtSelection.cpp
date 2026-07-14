@@ -121,8 +121,39 @@ CachedSelectionPreview CachedPreviewForSelection(
     const PreviewRecord* record = previewCache.Find(entry);
 
     if (record == nullptr ||
-        record->state != PreviewState::Previewable ||
-        record->pixmap.isNull())
+        record->state == PreviewState::Unknown)
+    {
+        return {};
+    }
+
+    if (record->state == PreviewState::Checking)
+    {
+        CachedSelectionPreview preview;
+        preview.statusText =
+            QStringLiteral("Checking preview: ")
+            + ToQString(entry.uuid.ToString());
+        return preview;
+    }
+
+    if (record->state == PreviewState::Unavailable)
+    {
+        CachedSelectionPreview preview;
+        preview.statusText =
+            QStringLiteral("No preview available: ")
+            + ToQString(entry.uuid.ToString());
+        return preview;
+    }
+
+    if (record->state == PreviewState::LoadFailed)
+    {
+        CachedSelectionPreview preview;
+        preview.statusText =
+            QStringLiteral("Preview file could not be loaded: ")
+            + ToQString(entry.uuid.ToString());
+        return preview;
+    }
+
+    if (record->pixmap.isNull())
     {
         return {};
     }

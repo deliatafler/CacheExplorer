@@ -20,10 +20,16 @@ workers, gallery loading, export, or cache-open behavior.
 8. Toggle `Gallery`, scroll several pages, and confirm placeholders/previews load
    without blocking the UI. The activity label may briefly report visible
    thumbnail loading or refreshing.
-9. Toggle back to `Table` and confirm columns render normally.
-10. Select an already-previewed item in both `Table` and `Gallery`; confirm the
+9. Confirm `Preview` and `Try Next Preview` are hidden in `Gallery`, while
+   `Export PNG`, the Gallery sort control, and the `Table` toggle remain visible.
+10. Change the Gallery sort control and confirm the gallery reorders and resumes
+    lazy thumbnail loading without blocking the UI.
+11. Click a Gallery item marked `No preview` or `Load failed` and confirm the
+    bottom status bar reports that state.
+12. Toggle back to `Table` and confirm columns render normally.
+13. Select an already-previewed item in both `Table` and `Gallery`; confirm the
     cached preview appears in the large preview panel without decoding again.
-11. If a preview is visible, resize the window and confirm the preview rescales.
+14. If a preview is visible, resize the window and confirm the preview rescales.
 
 ## Export smoke test
 

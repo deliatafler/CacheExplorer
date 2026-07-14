@@ -15,9 +15,12 @@ void ApplyMainActionState(
 {
     const bool previewIdle = !state.previewWorkerActive;
     const bool actionIdle = !state.busy && !state.tryNextActive && previewIdle;
+    const bool manualPreviewActionsAvailable = !state.galleryMode;
 
-    previewButton.setEnabled(actionIdle && state.hasSelection);
-    tryNextButton.setEnabled(actionIdle && state.databaseOpen);
+    previewButton.setEnabled(
+        actionIdle && state.hasSelection && manualPreviewActionsAvailable);
+    tryNextButton.setEnabled(
+        actionIdle && state.databaseOpen && manualPreviewActionsAvailable);
     exportButton.setEnabled(actionIdle && state.hasSelection);
     viewToggleButton.setEnabled(!state.busy && state.databaseOpen);
 }

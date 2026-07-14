@@ -12,6 +12,7 @@ struct MainActionState
     bool previewWorkerActive = false;
     bool tryNextActive = false;
     bool databaseOpen = false;
+    bool galleryMode = false;
 };
 
 void ApplyMainActionState(

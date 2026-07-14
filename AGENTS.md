@@ -261,6 +261,8 @@ Use `docs/qt-gui-validation.md` for the manual Qt GUI smoke/regression checklist
 
 The Qt GUI also has an early Gallery/Table toggle. Gallery reuses the same sorted proxy model and preview cache as the table. Cached previews appear as icons after they have been decoded by Preview, Try Next Preview, or the gallery's lazy visible-item loader.
 
+Gallery mode hides the manual `Preview` and `Try Next Preview` actions because thumbnails load lazily in the gallery itself. It shows a Gallery-only sort combo for common orders such as newest, largest body, largest image, cache index, and UUID.
+
 Gallery lazy loading uses a separate async thumbnail worker from manual Preview/Try Next. It builds a bounded queue from the visible gallery neighborhood, attempts unknown entries one at a time, caches successful thumbnails, and marks incomplete/undecodable entries without selecting them.
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
@@ -292,6 +294,8 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 `cachegui_qt/QtActionState.*` contains Qt button enable/disable rules for the main window.
 
 `cachegui_qt/QtFileDialogs.*` contains Qt file/folder dialog helpers for browse/export commands.
+
+`cachegui_qt/QtGallerySort.*` contains the Gallery-only sort control options and proxy-model sort application.
 
 `cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
 
