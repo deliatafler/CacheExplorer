@@ -96,7 +96,7 @@ namespace
         std::vector<const CacheEntry*> visibleEntries;
         bool likelyCompleteOnly = false;
         bool previewableOnly = false;
-        bool galleryMode = false;
+        bool galleryMode = true;
         int galleryScrollY = 0;
         std::wstring uuidFilter;
         int sortColumn = 3;
@@ -282,7 +282,7 @@ namespace
         {
             SetStatus(
                 app,
-                L"No found previews yet. Click Find Previews, then enable Show found.");
+                L"No found previews yet. Click Build Gallery, then enable Show found.");
             return;
         }
 
@@ -292,7 +292,7 @@ namespace
             << app.visibleEntries.size()
             << L" of "
             << app.database.Entries().size()
-            << L" texture entries. Narrow results, then Find Previews for visual browsing.";
+            << L" texture entries. Narrow results, then Build Gallery for visual browsing.";
         SetStatus(app, status.str());
     }
 
@@ -828,7 +828,7 @@ namespace
             SetBkMode(dc, TRANSPARENT);
             DrawTextW(
                 dc,
-                L"No found previews in the current results. Narrow results, then Find Previews.",
+                L"No found previews in the current results. Narrow results, then Build Gallery.",
                 -1,
                 &client,
                 DT_CENTER | DT_VCENTER | DT_WORDBREAK);
@@ -1813,10 +1813,10 @@ namespace
             if (MessageBoxW(
                     app.window,
                     message.str().c_str(),
-                    L"Find Previews",
+                    L"Build Gallery",
                     MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) != IDYES)
             {
-                SetStatus(app, L"Find Previews canceled. Narrow filters first for a shorter scan.");
+                SetStatus(app, L"Build Gallery canceled. Narrow filters first for a shorter scan.");
                 return;
             }
         }
@@ -1826,7 +1826,7 @@ namespace
         SetWindowTextW(app.scanVisibleButton, L"Cancel Scan");
         ShowWindow(app.progressBar, SW_SHOW);
         SetExportControlsEnabled(app, false);
-        SetStatus(app, L"Finding previewable textures. This can take a while for large visible sets...");
+        SetStatus(app, L"Building gallery previews. This can take a while for large visible sets...");
         UpdateWindow(app.statusText);
         SetScanProgress(app, 0, entryCopies.size(), 0, 0, skippedKnownCount);
 
@@ -2015,7 +2015,7 @@ namespace
     {
         app.scanInProgress = false;
         app.scanCancelRequested.reset();
-        SetWindowTextW(app.scanVisibleButton, L"Find Previews");
+        SetWindowTextW(app.scanVisibleButton, L"Build Gallery");
         SetExportControlsEnabled(app, true);
         ShowWindow(app.progressBar, SW_HIDE);
 
@@ -2054,79 +2054,84 @@ namespace
         constexpr int margin = 12;
         constexpr int rowHeight = 28;
         constexpr int buttonWidth = 90;
-        constexpr int exportButtonWidth = 112;
-        constexpr int scanButtonWidth = 112;
-        constexpr int checkWidth = 88;
+        constexpr int exportButtonWidth = 118;
+        constexpr int scanButtonWidth = 118;
+        constexpr int checkWidth = 96;
         constexpr int previewableWidth = 98;
-        constexpr int galleryWidth = 98;
-        constexpr int smallCheckWidth = 88;
-        constexpr int retryCheckWidth = 98;
-        constexpr int uuidFilterWidth = 210;
+        constexpr int viewWidth = 98;
+        constexpr int smallCheckWidth = 108;
+        constexpr int retryCheckWidth = 122;
+        constexpr int uuidFilterWidth = 230;
         constexpr int clearFilterWidth = 52;
         constexpr int statusHeight = 24;
-        constexpr int progressWidth = 220;
+        constexpr int progressWidth = 240;
         constexpr int gap = 8;
-        constexpr int detailsWidth = 320;
-        constexpr int detailsHeight = 270;
+        constexpr int inspectorWidth = 340;
+        constexpr int inspectorPreviewMaxHeight = 360;
 
-        const int contentWidth = width - (margin * 2);
-        const int pathWidth = contentWidth - (buttonWidth * 2) - (gap * 2);
-        const int listTop = margin + (rowHeight * 2) + (gap * 2);
-        const int listHeight = height - listTop - statusHeight - (margin * 2);
-        const int listWidth = contentWidth - detailsWidth - gap;
-        const int detailsLeft = margin + listWidth + gap;
+        const int contentWidth = std::max(1, width - (margin * 2));
+        const int pathWidth = std::max(120, contentWidth - (buttonWidth * 2) - (gap * 2));
+        const int toolbarTop = margin + rowHeight + gap;
+        const int browserTop = toolbarTop + rowHeight + gap;
+        const int browserHeight = std::max(1, height - browserTop - statusHeight - (margin * 2));
+        const int browserWidth = std::max(1, contentWidth - inspectorWidth - gap);
+        const int inspectorLeft = margin + browserWidth + gap;
+        const int inspectorPreviewHeight = std::min(
+            inspectorPreviewMaxHeight,
+            std::max(120, (browserHeight * 3) / 5));
+        const int detailsTop = browserTop + inspectorPreviewHeight + gap;
+        const int detailsHeight = std::max(1, browserHeight - inspectorPreviewHeight - gap);
 
         MoveWindow(app.pathEdit, margin, margin, pathWidth, rowHeight, TRUE);
-        MoveWindow(
-            app.browseButton,
-            margin + pathWidth + gap,
-            margin,
-            buttonWidth,
-            rowHeight,
-            TRUE);
-        MoveWindow(
-            app.openButton,
-            margin + pathWidth + gap + buttonWidth + gap,
-            margin,
-            buttonWidth,
-            rowHeight,
-            TRUE);
-        int toolbarLeft = margin;
-        const int toolbarTop = margin + rowHeight + gap;
+        MoveWindow(app.browseButton, margin + pathWidth + gap, margin, buttonWidth, rowHeight, TRUE);
+        MoveWindow(app.openButton, margin + pathWidth + gap + buttonWidth + gap, margin, buttonWidth, rowHeight, TRUE);
 
+        int toolbarLeft = margin;
+        MoveWindow(app.scanVisibleButton, toolbarLeft, toolbarTop, scanButtonWidth, rowHeight, TRUE);
+        toolbarLeft += scanButtonWidth + gap;
         MoveWindow(app.exportButton, toolbarLeft, toolbarTop, exportButtonWidth, rowHeight, TRUE);
         toolbarLeft += exportButtonWidth + gap;
         MoveWindow(app.exportVisibleButton, toolbarLeft, toolbarTop, exportButtonWidth, rowHeight, TRUE);
         toolbarLeft += exportButtonWidth + gap;
-        MoveWindow(app.scanVisibleButton, toolbarLeft, toolbarTop, scanButtonWidth, rowHeight, TRUE);
-        toolbarLeft += scanButtonWidth + gap;
         MoveWindow(app.likelyCompleteCheck, toolbarLeft, toolbarTop, checkWidth, rowHeight, TRUE);
         toolbarLeft += checkWidth + gap;
-        MoveWindow(app.previewableCheck, toolbarLeft, toolbarTop, previewableWidth, rowHeight, TRUE);
-        toolbarLeft += previewableWidth + gap;
-        MoveWindow(app.galleryCheck, toolbarLeft, toolbarTop, galleryWidth, rowHeight, TRUE);
-        toolbarLeft += galleryWidth + gap;
+
+        ShowWindow(app.previewableCheck, app.galleryMode ? SW_HIDE : SW_SHOW);
+        if (!app.galleryMode)
+        {
+            MoveWindow(app.previewableCheck, toolbarLeft, toolbarTop, previewableWidth, rowHeight, TRUE);
+            toolbarLeft += previewableWidth + gap;
+        }
+
+        MoveWindow(app.galleryCheck, toolbarLeft, toolbarTop, viewWidth, rowHeight, TRUE);
+        toolbarLeft += viewWidth + gap;
         MoveWindow(app.overwriteCheck, toolbarLeft, toolbarTop, smallCheckWidth, rowHeight, TRUE);
         toolbarLeft += smallCheckWidth + gap;
         MoveWindow(app.retryIncompleteCheck, toolbarLeft, toolbarTop, retryCheckWidth, rowHeight, TRUE);
         toolbarLeft += retryCheckWidth + gap;
-        MoveWindow(app.uuidFilterEdit, toolbarLeft, toolbarTop, uuidFilterWidth, rowHeight, TRUE);
-        toolbarLeft += uuidFilterWidth + gap;
+
+        const int remainingToolbar = margin + contentWidth - toolbarLeft;
+        const int searchWidth = std::clamp(remainingToolbar - clearFilterWidth - gap, 120, uuidFilterWidth);
+        MoveWindow(app.uuidFilterEdit, toolbarLeft, toolbarTop, searchWidth, rowHeight, TRUE);
+        toolbarLeft += searchWidth + gap;
         MoveWindow(app.clearUuidFilterButton, toolbarLeft, toolbarTop, clearFilterWidth, rowHeight, TRUE);
-        MoveWindow(app.textureList, margin, listTop, listWidth, listHeight, TRUE);
-        MoveWindow(app.galleryControl, margin, listTop, listWidth, listHeight, TRUE);
-        ShowWindow(app.textureList, app.galleryMode ? SW_HIDE : SW_SHOW);
+
+        MoveWindow(app.galleryControl, margin, browserTop, browserWidth, browserHeight, TRUE);
+        MoveWindow(app.textureList, margin, browserTop, browserWidth, browserHeight, TRUE);
         ShowWindow(app.galleryControl, app.galleryMode ? SW_SHOW : SW_HIDE);
+        ShowWindow(app.textureList, app.galleryMode ? SW_HIDE : SW_SHOW);
+        SendMessageW(app.galleryCheck, BM_SETCHECK, app.galleryMode ? BST_UNCHECKED : BST_CHECKED, 0);
         UpdateGalleryScroll(app);
-        MoveWindow(app.detailsText, detailsLeft, listTop, detailsWidth, detailsHeight, TRUE);
+
+        MoveWindow(app.previewControl, inspectorLeft, browserTop, inspectorWidth, inspectorPreviewHeight, TRUE);
+        MoveWindow(app.detailsText, inspectorLeft, detailsTop, inspectorWidth, detailsHeight, TRUE);
         MoveWindow(
-            app.previewControl,
-            detailsLeft,
-            listTop + detailsHeight + gap,
-            detailsWidth,
-            listHeight - detailsHeight - gap,
+            app.statusText,
+            margin,
+            height - margin - statusHeight,
+            contentWidth - progressWidth - gap,
+            statusHeight,
             TRUE);
-        MoveWindow(app.statusText, margin, height - margin - statusHeight, contentWidth - progressWidth - gap, statusHeight, TRUE);
         MoveWindow(
             app.progressBar,
             margin + contentWidth - progressWidth,
@@ -2135,7 +2140,6 @@ namespace
             statusHeight - 4,
             TRUE);
     }
-
     LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
     {
         AppState* app = reinterpret_cast<AppState*>(
@@ -2189,7 +2193,7 @@ namespace
                     nullptr);
                 app->exportButton = CreateWindowW(
                     L"BUTTON",
-                    L"Export Selected",
+                    L"Export Image",
                     WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                     0,
                     0,
@@ -2201,7 +2205,7 @@ namespace
                     nullptr);
                 app->exportVisibleButton = CreateWindowW(
                     L"BUTTON",
-                    L"Export Results",
+                    L"Export Gallery",
                     WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                     0,
                     0,
@@ -2213,7 +2217,7 @@ namespace
                     nullptr);
                 app->scanVisibleButton = CreateWindowW(
                     L"BUTTON",
-                    L"Find Previews",
+                    L"Build Gallery",
                     WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                     0,
                     0,
@@ -2225,7 +2229,7 @@ namespace
                     nullptr);
                 app->likelyCompleteCheck = CreateWindowW(
                     L"BUTTON",
-                    L"Has data",
+                    L"Cached only",
                     WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                     0,
                     0,
@@ -2249,7 +2253,7 @@ namespace
                     nullptr);
                 app->galleryCheck = CreateWindowW(
                     L"BUTTON",
-                    L"Gallery view",
+                    L"Details list",
                     WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                     0,
                     0,
@@ -2261,7 +2265,7 @@ namespace
                     nullptr);
                 app->overwriteCheck = CreateWindowW(
                     L"BUTTON",
-                    L"Overwrite",
+                    L"Replace files",
                     WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                     0,
                     0,
@@ -2273,7 +2277,7 @@ namespace
                     nullptr);
                 app->retryIncompleteCheck = CreateWindowW(
                     L"BUTTON",
-                    L"Retry failed",
+                    L"Retry incomplete",
                     WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                     0,
                     0,
@@ -2300,7 +2304,7 @@ namespace
                     app->uuidFilterEdit,
                     EM_SETCUEBANNER,
                     TRUE,
-                    reinterpret_cast<LPARAM>(L"UUID contains"));
+                    reinterpret_cast<LPARAM>(L"Search UUID"));
                 app->clearUuidFilterButton = CreateWindowW(
                     L"BUTTON",
                     L"Clear",
@@ -2580,7 +2584,7 @@ namespace
                     case GalleryCheckId:
                     {
                         app->galleryMode =
-                            SendMessageW(app->galleryCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
+                            SendMessageW(app->galleryCheck, BM_GETCHECK, 0, 0) != BST_CHECKED;
                         RECT client{};
                         GetClientRect(window, &client);
                         ResizeControls(
