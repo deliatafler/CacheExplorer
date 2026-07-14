@@ -281,6 +281,8 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
 
+`cachegui_qt/QtSelection.*` contains Qt table/gallery selection synchronization helpers.
+
 `cachegui_qt/QtTextureExport.*` contains Qt GUI export option defaults around `TextureExporter`; reusable export behavior must remain in `cachelib`.
 
 `cachegui_qt/TryNextPreviewState.*` contains the Qt GUI "Try Next Preview" row/attempt bookkeeping. It should not inspect Qt models or start preview workers directly.

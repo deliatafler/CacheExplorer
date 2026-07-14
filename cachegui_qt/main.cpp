@@ -7,6 +7,7 @@
 #include "PreviewImage.h"
 #include "PreviewPanel.h"
 #include "QtHelpers.h"
+#include "QtSelection.h"
 #include "QtTextureExport.h"
 #include "TextureCacheDatabase.h"
 #include "TryNextPreviewState.h"
@@ -360,17 +361,12 @@ namespace
 
         const CacheEntry* SelectedEntry() const
         {
-            const QModelIndex selectedIndex = SelectedProxyIndex();
-
-            const QModelIndex sourceIndex =
-                proxyModel_->mapToSource(selectedIndex);
-
-            if (!sourceIndex.isValid())
-            {
-                return nullptr;
-            }
-
-            return tableModel_.EntryAt(sourceIndex.row());
+            return ::SelectedEntry(
+                galleryMode_,
+                *table_,
+                *galleryView_,
+                *proxyModel_,
+                tableModel_);
         }
 
         void UpdateActionState()
@@ -414,25 +410,12 @@ namespace
 
         void SelectEntry(const CacheEntry& entry)
         {
-            const int sourceRow = tableModel_.RowForEntry(entry);
-
-            if (sourceRow < 0)
-            {
-                return;
-            }
-
-            const QModelIndex sourceIndex = tableModel_.index(sourceRow, 0);
-            const QModelIndex proxyIndex = proxyModel_->mapFromSource(sourceIndex);
-
-            if (!proxyIndex.isValid())
-            {
-                return;
-            }
-
-            table_->selectRow(proxyIndex.row());
-            table_->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
-            galleryView_->setCurrentIndex(proxyIndex);
-            galleryView_->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
+            ::SelectEntry(
+                entry,
+                tableModel_,
+                *proxyModel_,
+                *table_,
+                *galleryView_);
         }
 
         void StartPreviewRequest(
@@ -787,32 +770,10 @@ namespace
 
         QModelIndex SelectedProxyIndex() const
         {
-            if (galleryMode_)
-            {
-                const QModelIndex galleryIndex = galleryView_->currentIndex();
-
-                if (galleryIndex.isValid())
-                {
-                    return galleryIndex.sibling(galleryIndex.row(), 0);
-                }
-            }
-
-            const QModelIndexList selectedRows =
-                table_->selectionModel()->selectedRows();
-
-            if (!selectedRows.empty())
-            {
-                return selectedRows.front().sibling(selectedRows.front().row(), 0);
-            }
-
-            const QModelIndex galleryIndex = galleryView_->currentIndex();
-
-            if (galleryIndex.isValid())
-            {
-                return galleryIndex.sibling(galleryIndex.row(), 0);
-            }
-
-            return {};
+            return ::SelectedProxyIndex(
+                galleryMode_,
+                *table_,
+                *galleryView_);
         }
 
         void ToggleViewMode()
@@ -838,20 +799,11 @@ namespace
 
         void SyncActiveViewSelection(const QModelIndex& selectedIndex)
         {
-            if (!selectedIndex.isValid())
-            {
-                return;
-            }
-
-            if (galleryMode_)
-            {
-                galleryView_->setCurrentIndex(selectedIndex);
-                galleryView_->scrollTo(selectedIndex, QAbstractItemView::PositionAtCenter);
-                return;
-            }
-
-            table_->selectRow(selectedIndex.row());
-            table_->scrollTo(selectedIndex, QAbstractItemView::PositionAtCenter);
+            ::SyncActiveViewSelection(
+                galleryMode_,
+                selectedIndex,
+                *table_,
+                *galleryView_);
         }
 
         void ScheduleGalleryPreviewSearch()
