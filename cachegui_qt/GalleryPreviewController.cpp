@@ -30,9 +30,26 @@ void GalleryPreviewController::BeginScheduledSearch()
     searchPending_ = true;
 }
 
-void GalleryPreviewController::FinishScheduledSearch()
+GallerySearchAction GalleryPreviewController::FinishScheduledSearch(
+    bool galleryMode,
+    bool databaseOpen,
+    bool workerActive)
 {
     searchPending_ = false;
+
+    if (!galleryMode || !databaseOpen)
+    {
+        Clear();
+        return GallerySearchAction::Clear;
+    }
+
+    if (workerActive)
+    {
+        RequestRefresh();
+        return GallerySearchAction::Refresh;
+    }
+
+    return GallerySearchAction::Rebuild;
 }
 
 void GalleryPreviewController::Clear()

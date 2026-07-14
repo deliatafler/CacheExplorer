@@ -814,25 +814,30 @@ namespace
                 this,
                 [this]()
                 {
-                    if (!galleryMode_ || !database_.IsOpen())
+                    const GallerySearchAction action =
+                        galleryPreviewController_.FinishScheduledSearch(
+                            galleryMode_,
+                            database_.IsOpen(),
+                            galleryPreviewWorker_.IsActive());
+
+                    if (action == GallerySearchAction::Clear)
                     {
-                        ClearGalleryPreviewQueue();
                         UpdateGalleryActivity();
                         return;
                     }
 
-                    galleryPreviewController_.FinishScheduledSearch();
-
-                    if (galleryPreviewWorker_.IsActive())
+                    if (action == GallerySearchAction::Refresh)
                     {
-                        galleryPreviewController_.RequestRefresh();
                         UpdateGalleryActivity();
                         return;
                     }
 
-                    UpdateGalleryActivity();
-                    RebuildGalleryPreviewQueue();
-                    StartNextQueuedGalleryPreview();
+                    if (action == GallerySearchAction::Rebuild)
+                    {
+                        UpdateGalleryActivity();
+                        RebuildGalleryPreviewQueue();
+                        StartNextQueuedGalleryPreview();
+                    }
                 });
         }
 

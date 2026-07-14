@@ -8,6 +8,14 @@
 
 class PreviewCache;
 
+enum class GallerySearchAction
+{
+    None,
+    Clear,
+    Refresh,
+    Rebuild
+};
+
 class GalleryPreviewController
 {
 public:
@@ -19,7 +27,10 @@ public:
         bool workerActive,
         bool tryNextActive) const;
     void BeginScheduledSearch();
-    void FinishScheduledSearch();
+    GallerySearchAction FinishScheduledSearch(
+        bool galleryMode,
+        bool databaseOpen,
+        bool workerActive);
     void Clear();
 
     void RequestRefresh();
