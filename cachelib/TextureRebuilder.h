@@ -40,9 +40,23 @@ public:
         const CacheEntry& entry,
         std::vector<std::uint8_t>& outputData) const;
 
+    /// Reconstructs the cached JPEG2000 byte stream from a cache directory.
+    ///
+    /// This overload is useful for worker threads that should not touch a
+    /// live TextureCacheDatabase owned by a UI thread.
+    RebuildError Rebuild(
+        const std::filesystem::path& cacheDirectory,
+        const CacheEntry& entry,
+        std::vector<std::uint8_t>& outputData) const;
+
     /// Returns the expected body-file path for an entry.
     static std::filesystem::path BodyFilePath(
         const TextureCacheDatabase& database,
+        const CacheEntry& entry);
+
+    /// Returns the expected body-file path for an entry beneath a directory.
+    static std::filesystem::path BodyFilePath(
+        const std::filesystem::path& cacheDirectory,
         const CacheEntry& entry);
 
     /// Returns a human-readable description of a rebuild error.

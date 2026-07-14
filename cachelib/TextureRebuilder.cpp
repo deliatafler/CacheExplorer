@@ -38,12 +38,21 @@ RebuildError TextureRebuilder::Rebuild(
     const CacheEntry& entry,
     std::vector<std::uint8_t>& outputData) const
 {
-    outputData.clear();
-
     if (!database.IsOpen())
     {
+        outputData.clear();
         return RebuildError::DatabaseNotOpen;
     }
+
+    return Rebuild(database.CacheDirectory(), entry, outputData);
+}
+
+RebuildError TextureRebuilder::Rebuild(
+    const std::filesystem::path& cacheDirectory,
+    const CacheEntry& entry,
+    std::vector<std::uint8_t>& outputData) const
+{
+    outputData.clear();
 
     if (entry.imageSize <= 0 || entry.bodySize < 0)
     {
@@ -90,7 +99,7 @@ RebuildError TextureRebuilder::Rebuild(
     outputData.resize(static_cast<std::size_t>(availableSize));
 
     const auto headerFile =
-        database.CacheDirectory() / "texture.cache";
+        cacheDirectory / "texture.cache";
 
     std::ifstream headerStream(headerFile, std::ios::binary);
 
@@ -136,7 +145,7 @@ RebuildError TextureRebuilder::Rebuild(
         return RebuildError::None;
     }
 
-    const auto bodyFile = BodyFilePath(database, entry);
+    const auto bodyFile = BodyFilePath(cacheDirectory, entry);
 
     std::ifstream bodyStream(bodyFile, std::ios::binary);
 
@@ -222,6 +231,13 @@ std::filesystem::path TextureRebuilder::BodyFilePath(
     const TextureCacheDatabase& database,
     const CacheEntry& entry)
 {
+    return BodyFilePath(database.CacheDirectory(), entry);
+}
+
+std::filesystem::path TextureRebuilder::BodyFilePath(
+    const std::filesystem::path& cacheDirectory,
+    const CacheEntry& entry)
+{
     const std::string uuid = entry.uuid.ToString();
 
     if (uuid.empty())
@@ -235,7 +251,7 @@ std::filesystem::path TextureRebuilder::BodyFilePath(
      *
      * texturecache/2/2b8f....texture
      */
-    return database.CacheDirectory()
+    return cacheDirectory
         / std::string(1, uuid.front())
         / (uuid + ".texture");
 }

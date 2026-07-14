@@ -253,13 +253,22 @@ Complete these tasks in order:
 
 The first GUI cleanup step extracted standalone Win32 utility helpers into `cachegui/GuiUtils.*` without changing behavior.
 
-The Qt 6 spike adds `cachegui_qt`, an optional target that opens a cache through `cachelib` and shows entries in a sortable table.
+The Qt 6 spike adds `cachegui_qt`, an optional target that opens a cache through `cachelib`, shows entries in a sortable model-backed table, can preview/export a selected entry as PNG through `TextureExporter`, and tracks preview status in the table.
+
+The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
+
+Qt previews should be rendered from decoded RGBA in memory, not by writing PNG and asking Qt to reload it. The static/minimal Qt build may not have the PNG image loader available even when `TextureExporter` successfully writes a valid PNG.
+
+Qt preview decode now runs off the UI thread via `std::async`, with a Qt timer polling for completion. Worker code uses `TextureRebuilder::Rebuild(cacheDirectory, entry, ...)` so it operates on copied entry data and a cache path instead of touching the live GUI-owned `TextureCacheDatabase`.
+
+`Try Next Preview` should scan forward in the current visible/sorted Qt table order, not raw cache-entry order.
 
 Good next low-risk slices:
 
 * Prefer prebuilt shared Qt for fast local development.
 * Keep the vcpkg static Qt path available for reproducible/distribution builds, ideally with binary caching in CI.
-* If Qt remains the path, add single-entry PNG preview/export to `cachegui_qt`.
+* Add a Qt gallery mode inspired by SLCacheViewer: lazily decode/load thumbnails for visible entries as the user scrolls, cache successful previews, and mark incomplete/undecodable entries without blocking the UI.
+* If Qt remains the path, improve `cachegui_qt` preview scaling, incomplete-texture feedback, and the bounded "Try Next Preview" workflow.
 * If Win32 remains active, move GUI control IDs and custom window-message IDs into a small header.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.
 
