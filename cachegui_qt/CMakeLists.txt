@@ -4,6 +4,8 @@ add_executable(cachegui_qt WIN32
     GalleryListView.cpp
     GalleryListView.h
     main.cpp
+    PreviewCache.cpp
+    PreviewCache.h
 )
 
 target_compile_features(cachegui_qt
