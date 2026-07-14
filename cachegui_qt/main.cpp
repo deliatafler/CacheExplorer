@@ -8,6 +8,7 @@
 #include "QtHelpers.h"
 #include "QtTextureExport.h"
 #include "TextureCacheDatabase.h"
+#include "TryNextPreviewState.h"
 
 #include <algorithm>
 #include <chrono>
@@ -375,11 +376,11 @@ namespace
             const bool hasSelection = SelectedEntry() != nullptr;
             const bool previewIdle = !previewWorkerActive_;
             previewButton_->setEnabled(
-                !busy_ && !tryNextActive_ && previewIdle && hasSelection);
+                !busy_ && !tryNextPreview_.IsActive() && previewIdle && hasSelection);
             tryNextButton_->setEnabled(
-                !busy_ && !tryNextActive_ && previewIdle && database_.IsOpen());
+                !busy_ && !tryNextPreview_.IsActive() && previewIdle && database_.IsOpen());
             exportButton_->setEnabled(
-                !busy_ && !tryNextActive_ && previewIdle && hasSelection);
+                !busy_ && !tryNextPreview_.IsActive() && previewIdle && hasSelection);
             viewToggleButton_->setEnabled(!busy_ && database_.IsOpen());
         }
 
@@ -565,7 +566,7 @@ namespace
             previewPixmap_ = pixmap;
             ShowPreviewPixmap();
             SelectEntry(result.entry);
-            tryNextActive_ = false;
+            tryNextPreview_.Stop();
             statusLabel_->setText(
                 QStringLiteral("Preview ready: %1 (%2 x %3)")
                     .arg(ToQString(result.entry.uuid.ToString()))
@@ -728,21 +729,20 @@ namespace
 
         void StartTryNextPreview()
         {
-            if (!database_.IsOpen() || tryNextActive_)
+            if (!database_.IsOpen() || tryNextPreview_.IsActive())
             {
                 return;
             }
 
             const QModelIndex selectedIndex = SelectedProxyIndex();
-            tryNextProxyRow_ = 0;
+            int firstProxyRow = 0;
 
             if (selectedIndex.isValid())
             {
-                tryNextProxyRow_ = selectedIndex.row() + 1;
+                firstProxyRow = selectedIndex.row() + 1;
             }
 
-            tryNextAttempts_ = 0;
-            tryNextActive_ = true;
+            tryNextPreview_.Start(firstProxyRow);
             UpdateActionState();
             statusLabel_->setText(QStringLiteral("Looking for the next previewable texture..."));
             QTimer::singleShot(0, this, [this]() { ContinueTryNextPreview(); });
@@ -750,30 +750,25 @@ namespace
 
         void ContinueTryNextPreview()
         {
-            if (!tryNextActive_)
+            if (!tryNextPreview_.IsActive())
             {
                 return;
             }
 
-            constexpr int MaximumAttemptsPerClick = 200;
-
-            if (tryNextProxyRow_ >= proxyModel_->rowCount() ||
-                tryNextAttempts_ >= MaximumAttemptsPerClick)
+            if (tryNextPreview_.IsExhausted(proxyModel_->rowCount()))
             {
-                tryNextActive_ = false;
+                tryNextPreview_.Stop();
                 UpdateActionState();
                 statusLabel_->setText(
                     QStringLiteral("No previewable texture found in the next %1 entries.")
-                        .arg(tryNextAttempts_));
+                        .arg(tryNextPreview_.Attempts()));
                 return;
             }
 
             const QModelIndex proxyIndex =
-                proxyModel_->index(tryNextProxyRow_, 0);
+                proxyModel_->index(tryNextPreview_.TakeNextProxyRow(), 0);
             const QModelIndex sourceIndex =
                 proxyModel_->mapToSource(proxyIndex);
-            ++tryNextProxyRow_;
-            ++tryNextAttempts_;
 
             const CacheEntry* entry =
                 tableModel_.EntryAt(sourceIndex.row());
@@ -903,7 +898,7 @@ namespace
                 !database_.IsOpen() ||
                 busy_ ||
                 galleryPreviewWorkerActive_ ||
-                tryNextActive_)
+                tryNextPreview_.IsActive())
             {
                 return;
             }
@@ -1086,11 +1081,9 @@ namespace
         bool previewWorkerActive_ = false;
         bool galleryPreviewWorkerActive_ = false;
         PreviewRequestKind activePreviewRequestKind_ = PreviewRequestKind::Manual;
-        bool tryNextActive_ = false;
+        TryNextPreviewState tryNextPreview_;
         bool galleryMode_ = false;
         bool galleryPreviewSearchPending_ = false;
-        int tryNextProxyRow_ = 0;
-        int tryNextAttempts_ = 0;
         std::uint64_t nextPreviewRequestId_ = 1;
         std::uint64_t activePreviewRequestId_ = 0;
         std::uint64_t activeGalleryPreviewRequestId_ = 0;

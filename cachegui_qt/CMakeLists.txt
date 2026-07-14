@@ -20,6 +20,8 @@ add_executable(cachegui_qt WIN32
     QtHelpers.h
     QtTextureExport.cpp
     QtTextureExport.h
+    TryNextPreviewState.cpp
+    TryNextPreviewState.h
 )
 
 target_compile_features(cachegui_qt
