@@ -255,7 +255,9 @@ The first GUI cleanup step extracted standalone Win32 utility helpers into `cach
 
 The Qt 6 spike adds `cachegui_qt`, an optional target that opens a cache through `cachelib`, shows entries in a sortable model-backed table, can preview/export a selected entry as PNG through `TextureExporter`, and tracks preview status in the table.
 
-The Qt GUI also has an early Gallery/Table toggle. Gallery currently reuses the same sorted proxy model and preview cache as the table; cached previews appear as icons after they have been decoded by Preview or Try Next Preview. Lazy thumbnail decoding for newly visible gallery items is still future work.
+The Qt GUI also has an early Gallery/Table toggle. Gallery reuses the same sorted proxy model and preview cache as the table. Cached previews appear as icons after they have been decoded by Preview, Try Next Preview, or the gallery's lazy visible-item loader.
+
+Gallery lazy loading currently uses the existing single async preview worker. It scans the visible gallery neighborhood, attempts unknown entries one at a time, caches successful thumbnails, and marks incomplete/undecodable entries without selecting them. This is intentionally conservative; a later thumbnail-specific queue can improve throughput and keep manual Preview/Try Next controls independent.
 
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 
@@ -271,7 +273,7 @@ Good next low-risk slices:
 
 * Prefer prebuilt shared Qt for fast local development.
 * Keep the vcpkg static Qt path available for reproducible/distribution builds, ideally with binary caching in CI.
-* Extend the Qt gallery mode with SLCacheViewer-style lazy thumbnail decoding for visible entries as the user scrolls, cache successful previews, and mark incomplete/undecodable entries without blocking the UI.
+* Improve Qt gallery thumbnail scheduling and UX: consider a thumbnail-specific worker/queue, better placeholders, and keeping manual Preview/Try Next fully independent from lazy background work.
 * If Qt remains the path, improve `cachegui_qt` preview scaling, incomplete-texture feedback, and the bounded "Try Next Preview" workflow.
 * If Win32 remains active, move GUI control IDs and custom window-message IDs into a small header.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.

@@ -28,6 +28,7 @@
 #include <QMainWindow>
 #include <QPixmap>
 #include <QPushButton>
+#include <QScrollBar>
 #include <QSortFilterProxyModel>
 #include <QStandardPaths>
 #include <QStackedWidget>
@@ -137,6 +138,13 @@ namespace
         LoadFailed
     };
 
+    enum class PreviewRequestKind
+    {
+        Manual,
+        TryNext,
+        Gallery
+    };
+
     struct PreviewRecord
     {
         PreviewState state = PreviewState::Unknown;
@@ -201,6 +209,12 @@ namespace
             }
 
             return &record->second;
+        }
+
+        bool ShouldAttemptPreview(const CacheEntry& entry) const
+        {
+            const PreviewRecord* record = Find(entry);
+            return record == nullptr || record->state == PreviewState::Unknown;
         }
 
         QString StatusText(const CacheEntry& entry) const
@@ -647,6 +661,7 @@ namespace
             galleryView_->setGridSize(QSize(180, 170));
             galleryView_->setUniformItemSizes(true);
             galleryView_->setWordWrap(false);
+            galleryView_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
 
             viewStack_ = new QStackedWidget(root);
             viewStack_->addWidget(table_);
@@ -719,6 +734,15 @@ namespace
                 {
                     UpdateActionState();
                     ShowCachedPreviewForSelection();
+                });
+
+            connect(
+                galleryView_->verticalScrollBar(),
+                &QScrollBar::valueChanged,
+                this,
+                [this]()
+                {
+                    ScheduleGalleryPreviewSearch();
                 });
 
             connect(
@@ -812,6 +836,7 @@ namespace
             ClearPreview();
             UpdateActionState();
             SetBusy(false);
+            ScheduleGalleryPreviewSearch();
         }
 
         void PopulateTable()
@@ -924,8 +949,7 @@ namespace
 
         void StartPreviewRequest(
             const CacheEntry& entry,
-            bool showFailure,
-            bool continueTryNext)
+            PreviewRequestKind requestKind)
         {
             if (previewWorkerActive_ || !database_.IsOpen())
             {
@@ -937,8 +961,7 @@ namespace
 
             previewWorkerActive_ = true;
             activePreviewRequestId_ = requestId;
-            activePreviewShowFailure_ = showFailure;
-            activePreviewContinueTryNext_ = continueTryNext;
+            activePreviewRequestKind_ = requestKind;
             previewCache_.SetChecking(entry);
             tableModel_.NotifyPreviewStatusChanged(entry.cacheIndex);
             UpdateActionState();
@@ -955,9 +978,12 @@ namespace
                 previewPollTimer_->start();
             }
 
-            statusLabel_->setText(
-                QStringLiteral("Checking preview %1...")
-                    .arg(ToQString(entry.uuid.ToString())));
+            if (requestKind != PreviewRequestKind::Gallery)
+            {
+                statusLabel_->setText(
+                    QStringLiteral("Checking preview %1...")
+                        .arg(ToQString(entry.uuid.ToString())));
+            }
         }
 
         void PollPreviewWorker()
@@ -989,10 +1015,8 @@ namespace
 
         void ApplyPreviewResult(const PreviewDecodeResult& result)
         {
-            const bool showFailure = activePreviewShowFailure_;
-            const bool continueTryNext = activePreviewContinueTryNext_;
-            activePreviewContinueTryNext_ = false;
-            activePreviewShowFailure_ = false;
+            const PreviewRequestKind requestKind = activePreviewRequestKind_;
+            activePreviewRequestKind_ = PreviewRequestKind::Manual;
 
             if (!result.succeeded)
             {
@@ -1001,7 +1025,7 @@ namespace
                     ToQString(result.message));
                 tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
 
-                if (showFailure)
+                if (requestKind == PreviewRequestKind::Manual)
                 {
                     ClearPreview();
                     statusLabel_->setText(
@@ -1009,7 +1033,7 @@ namespace
                         + ToQString(result.message));
                 }
 
-                if (continueTryNext)
+                if (requestKind == PreviewRequestKind::TryNext)
                 {
                     QTimer::singleShot(
                         0,
@@ -1022,6 +1046,11 @@ namespace
                 else
                 {
                     UpdateActionState();
+
+                    if (requestKind == PreviewRequestKind::Gallery)
+                    {
+                        ScheduleGalleryPreviewSearch();
+                    }
                 }
 
                 return;
@@ -1042,13 +1071,13 @@ namespace
                     QStringLiteral("Preview image could not be created."));
                 tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
 
-                if (showFailure)
+                if (requestKind == PreviewRequestKind::Manual)
                 {
                     ClearPreview();
                     statusLabel_->setText(QStringLiteral("Preview image could not be created."));
                 }
 
-                if (continueTryNext)
+                if (requestKind == PreviewRequestKind::TryNext)
                 {
                     QTimer::singleShot(
                         0,
@@ -1061,6 +1090,11 @@ namespace
                 else
                 {
                     UpdateActionState();
+
+                    if (requestKind == PreviewRequestKind::Gallery)
+                    {
+                        ScheduleGalleryPreviewSearch();
+                    }
                 }
 
                 return;
@@ -1073,10 +1107,26 @@ namespace
                 decodedImage.width,
                 decodedImage.height);
             tableModel_.NotifyPreviewStatusChanged(result.entry.cacheIndex);
+
+            if (requestKind == PreviewRequestKind::Gallery)
+            {
+                const CacheEntry* selectedEntry = SelectedEntry();
+
+                if (selectedEntry != nullptr &&
+                    selectedEntry->cacheIndex == result.entry.cacheIndex)
+                {
+                    previewPixmap_ = pixmap;
+                    ShowPreviewPixmap();
+                }
+
+                UpdateActionState();
+                ScheduleGalleryPreviewSearch();
+                return;
+            }
+
             previewPixmap_ = pixmap;
             ShowPreviewPixmap();
             SelectEntry(result.entry);
-
             tryNextActive_ = false;
             statusLabel_->setText(
                 QStringLiteral("Preview ready: %1 (%2 x %3)")
@@ -1122,7 +1172,7 @@ namespace
                 return;
             }
 
-            StartPreviewRequest(*entry, true, false);
+            StartPreviewRequest(*entry, PreviewRequestKind::Manual);
         }
 
         void StartTryNextPreview()
@@ -1187,7 +1237,7 @@ namespace
                 QStringLiteral("Trying preview %1...")
                     .arg(ToQString(entry->uuid.ToString())));
 
-            StartPreviewRequest(*entry, false, true);
+            StartPreviewRequest(*entry, PreviewRequestKind::TryNext);
         }
 
         QModelIndex SelectedProxyIndex() const
@@ -1233,6 +1283,7 @@ namespace
             SyncActiveViewSelection(selectedIndex);
             UpdateActionState();
             ShowCachedPreviewForSelection();
+            ScheduleGalleryPreviewSearch();
         }
 
         void SyncActiveViewSelection(const QModelIndex& selectedIndex)
@@ -1251,6 +1302,120 @@ namespace
 
             table_->selectRow(selectedIndex.row());
             table_->scrollTo(selectedIndex, QAbstractItemView::PositionAtCenter);
+        }
+
+        void ScheduleGalleryPreviewSearch()
+        {
+            if (!galleryMode_ || !database_.IsOpen() || galleryPreviewSearchPending_)
+            {
+                return;
+            }
+
+            galleryPreviewSearchPending_ = true;
+            QTimer::singleShot(
+                75,
+                this,
+                [this]()
+                {
+                    galleryPreviewSearchPending_ = false;
+                    StartNextVisibleGalleryPreview();
+                });
+        }
+
+        void StartNextVisibleGalleryPreview()
+        {
+            if (!galleryMode_ ||
+                !database_.IsOpen() ||
+                busy_ ||
+                previewWorkerActive_ ||
+                tryNextActive_)
+            {
+                return;
+            }
+
+            const CacheEntry* entry = FirstUnknownVisibleGalleryEntry();
+
+            if (entry == nullptr)
+            {
+                return;
+            }
+
+            StartPreviewRequest(*entry, PreviewRequestKind::Gallery);
+        }
+
+        const CacheEntry* FirstUnknownVisibleGalleryEntry() const
+        {
+            const int rowCount = proxyModel_->rowCount();
+
+            if (rowCount <= 0)
+            {
+                return nullptr;
+            }
+
+            const int firstRow = FirstVisibleGalleryProxyRow(rowCount);
+
+            constexpr int MaximumRowsToScan = 240;
+            const int finalRow = std::min(rowCount, firstRow + MaximumRowsToScan);
+            const QRect visibleArea = galleryView_->viewport()->rect().adjusted(0, -170, 0, 170);
+
+            for (int proxyRow = firstRow; proxyRow < finalRow; ++proxyRow)
+            {
+                const QModelIndex proxyIndex = proxyModel_->index(proxyRow, 0);
+
+                if (!proxyIndex.isValid() ||
+                    !galleryView_->visualRect(proxyIndex).intersects(visibleArea))
+                {
+                    continue;
+                }
+
+                const QModelIndex sourceIndex = proxyModel_->mapToSource(proxyIndex);
+                const CacheEntry* entry = tableModel_.EntryAt(sourceIndex.row());
+
+                if (entry != nullptr && previewCache_.ShouldAttemptPreview(*entry))
+                {
+                    return entry;
+                }
+            }
+
+            return nullptr;
+        }
+
+        int FirstVisibleGalleryProxyRow(int rowCount) const
+        {
+            const int width = galleryView_->viewport()->width();
+            const int height = galleryView_->viewport()->height();
+
+            if (width > 0 && height > 0)
+            {
+                const int xPoints[] = {0, width / 4, width / 2, (width * 3) / 4, width - 1};
+                const int yPoints[] = {0, height / 4, height / 2, (height * 3) / 4, height - 1};
+                int bestRow = rowCount;
+
+                for (const int y : yPoints)
+                {
+                    for (const int x : xPoints)
+                    {
+                        const QModelIndex index = galleryView_->indexAt(QPoint(x, y));
+
+                        if (index.isValid())
+                        {
+                            bestRow = std::min(bestRow, index.row());
+                        }
+                    }
+                }
+
+                if (bestRow != rowCount)
+                {
+                    return bestRow;
+                }
+            }
+
+            if (galleryView_->currentIndex().isValid())
+            {
+                return galleryView_->currentIndex().row();
+            }
+
+            return 0;
         }
 
         void ExportSelected()
@@ -1329,10 +1494,10 @@ namespace
         TextureCacheDatabase database_;
         bool busy_ = false;
         bool previewWorkerActive_ = false;
-        bool activePreviewShowFailure_ = false;
-        bool activePreviewContinueTryNext_ = false;
+        PreviewRequestKind activePreviewRequestKind_ = PreviewRequestKind::Manual;
         bool tryNextActive_ = false;
         bool galleryMode_ = false;
+        bool galleryPreviewSearchPending_ = false;
         int tryNextProxyRow_ = 0;
         int tryNextAttempts_ = 0;
         std::uint64_t nextPreviewRequestId_ = 1;
