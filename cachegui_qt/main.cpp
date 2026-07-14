@@ -1,5 +1,6 @@
 #include "CacheEntryTableModel.h"
 #include "GalleryListView.h"
+#include "GalleryPreviewQueue.h"
 #include "PreviewCache.h"
 #include "PreviewDecodeWorker.h"
 #include "PreviewImage.h"
@@ -15,6 +16,7 @@
 #include <future>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include <QApplication>
 #include <QFileDialog>
@@ -667,7 +669,7 @@ namespace
                 return;
             }
 
-            ++galleryPreviewQueueCompleted_;
+            galleryPreviewQueue_.MarkCompleted();
             ApplyGalleryPreviewResult(result);
         }
 
@@ -925,7 +927,7 @@ namespace
 
                     if (galleryPreviewWorkerActive_)
                     {
-                        galleryPreviewQueueRefreshPending_ = true;
+                        galleryPreviewQueue_.RequestRefresh();
                         UpdateGalleryActivity();
                         return;
                     }
@@ -947,21 +949,19 @@ namespace
                 return;
             }
 
-            if (galleryPreviewQueueRefreshPending_)
+            if (galleryPreviewQueue_.ConsumeRefreshRequest())
             {
-                galleryPreviewQueueRefreshPending_ = false;
                 ScheduleGalleryPreviewSearch();
                 return;
             }
 
-            while (!galleryPreviewQueue_.empty())
+            while (galleryPreviewQueue_.HasEntries())
             {
-                const CacheEntry entry = galleryPreviewQueue_.front();
-                galleryPreviewQueue_.pop_front();
+                const CacheEntry entry = galleryPreviewQueue_.TakeNext();
 
                 if (!previewCache_.ShouldAttemptPreview(entry))
                 {
-                    ++galleryPreviewQueueCompleted_;
+                    galleryPreviewQueue_.MarkCompleted();
                     continue;
                 }
 
@@ -969,21 +969,19 @@ namespace
                 return;
             }
 
-            galleryPreviewQueueTotal_ = 0;
-            galleryPreviewQueueCompleted_ = 0;
+            galleryPreviewQueue_.Replace({});
             UpdateGalleryActivity();
         }
 
         void RebuildGalleryPreviewQueue()
         {
-            galleryPreviewQueue_.clear();
-            galleryPreviewQueueTotal_ = 0;
-            galleryPreviewQueueCompleted_ = 0;
+            std::deque<CacheEntry> entries;
 
             const int rowCount = proxyModel_->rowCount();
 
             if (rowCount <= 0)
             {
+                galleryPreviewQueue_.Replace(std::move(entries));
                 return;
             }
 
@@ -1009,25 +1007,22 @@ namespace
 
                 if (entry != nullptr && previewCache_.ShouldAttemptPreview(*entry))
                 {
-                    galleryPreviewQueue_.push_back(*entry);
+                    entries.push_back(*entry);
 
-                    if (galleryPreviewQueue_.size() >= MaximumQueueSize)
+                    if (entries.size() >= MaximumQueueSize)
                     {
                         break;
                     }
                 }
             }
 
-            galleryPreviewQueueTotal_ = galleryPreviewQueue_.size();
+            galleryPreviewQueue_.Replace(std::move(entries));
             UpdateGalleryActivity();
         }
 
         void ClearGalleryPreviewQueue()
         {
-            galleryPreviewQueue_.clear();
-            galleryPreviewQueueTotal_ = 0;
-            galleryPreviewQueueCompleted_ = 0;
-            galleryPreviewQueueRefreshPending_ = false;
+            galleryPreviewQueue_.Clear();
         }
 
         void UpdateGalleryActivity()
@@ -1042,8 +1037,8 @@ namespace
                 database_.IsOpen() &&
                 (galleryPreviewWorkerActive_ ||
                     galleryPreviewSearchPending_ ||
-                    galleryPreviewQueueRefreshPending_ ||
-                    !galleryPreviewQueue_.empty());
+                    galleryPreviewQueue_.RefreshPending() ||
+                    galleryPreviewQueue_.HasEntries());
 
             galleryActivityLabel_->setVisible(showLabel);
 
@@ -1059,23 +1054,23 @@ namespace
                 return;
             }
 
-            if (galleryPreviewQueueRefreshPending_)
+            if (galleryPreviewQueue_.RefreshPending())
             {
                 galleryActivityLabel_->setText(QStringLiteral("Refreshing thumbnails..."));
                 return;
             }
 
-            if (galleryPreviewQueueTotal_ > 0)
+            if (galleryPreviewQueue_.Total() > 0)
             {
                 const std::size_t current =
                     std::min(
-                        galleryPreviewQueueTotal_,
-                        galleryPreviewQueueCompleted_ +
+                        galleryPreviewQueue_.Total(),
+                        galleryPreviewQueue_.Completed() +
                             (galleryPreviewWorkerActive_ ? 1u : 0u));
                 galleryActivityLabel_->setText(
                     QStringLiteral("Checking thumbnails %1 / %2")
                         .arg(static_cast<qulonglong>(current))
-                        .arg(static_cast<qulonglong>(galleryPreviewQueueTotal_)));
+                        .arg(static_cast<qulonglong>(galleryPreviewQueue_.Total())));
                 return;
             }
 
@@ -1196,7 +1191,7 @@ namespace
         QPixmap previewPixmap_;
         std::future<PreviewDecodeResult> previewFuture_;
         std::future<PreviewDecodeResult> galleryPreviewFuture_;
-        std::deque<CacheEntry> galleryPreviewQueue_;
+        GalleryPreviewQueue galleryPreviewQueue_;
         TextureCacheDatabase database_;
         bool busy_ = false;
         bool previewWorkerActive_ = false;
@@ -1205,9 +1200,6 @@ namespace
         bool tryNextActive_ = false;
         bool galleryMode_ = false;
         bool galleryPreviewSearchPending_ = false;
-        bool galleryPreviewQueueRefreshPending_ = false;
-        std::size_t galleryPreviewQueueTotal_ = 0;
-        std::size_t galleryPreviewQueueCompleted_ = 0;
         int tryNextProxyRow_ = 0;
         int tryNextAttempts_ = 0;
         std::uint64_t nextPreviewRequestId_ = 1;
