@@ -6,6 +6,7 @@
 #include "PreviewDecodeWorker.h"
 #include "PreviewImage.h"
 #include "PreviewPanel.h"
+#include "QtActionState.h"
 #include "QtHelpers.h"
 #include "QtSelection.h"
 #include "QtTextureExport.h"
@@ -371,15 +372,17 @@ namespace
 
         void UpdateActionState()
         {
-            const bool hasSelection = SelectedEntry() != nullptr;
-            const bool previewIdle = !previewWorkerActive_;
-            previewButton_->setEnabled(
-                !busy_ && !tryNextPreview_.IsActive() && previewIdle && hasSelection);
-            tryNextButton_->setEnabled(
-                !busy_ && !tryNextPreview_.IsActive() && previewIdle && database_.IsOpen());
-            exportButton_->setEnabled(
-                !busy_ && !tryNextPreview_.IsActive() && previewIdle && hasSelection);
-            viewToggleButton_->setEnabled(!busy_ && database_.IsOpen());
+            ApplyMainActionState(
+                MainActionState{
+                    busy_,
+                    SelectedEntry() != nullptr,
+                    previewWorkerActive_,
+                    tryNextPreview_.IsActive(),
+                    database_.IsOpen()},
+                *previewButton_,
+                *tryNextButton_,
+                *exportButton_,
+                *viewToggleButton_);
         }
 
         void SetBusy(bool busy, const QString& message = {})
