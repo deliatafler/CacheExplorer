@@ -269,6 +269,8 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/GalleryListView.*` contains the gallery hit-testing view subclass. Keep this kind of Qt-only UI behavior out of `cachelib`.
 
+`cachegui_qt/GalleryPreviewController.*` contains gallery thumbnail queue/search bookkeeping and activity-state packaging. It should not decode images or inspect widgets directly.
+
 `cachegui_qt/GalleryPreviewQueue.*` contains gallery thumbnail queue bookkeeping and progress counters. It should stay UI-adjacent and must not start worker threads or inspect widgets directly.
 
 `cachegui_qt/GalleryPreviewScanner.*` contains Qt gallery visible-row scanning and queue candidate selection. It may inspect Qt view/model geometry, but should not own async worker state.
@@ -279,7 +281,7 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/PreviewImage.*` contains Qt-only conversion from decoded RGBA data to `QPixmap`.
 
-`cachegui_qt/PreviewPanel.*` contains Qt-only preview label/pixmap display state and scaling.
+`cachegui_qt/PreviewPanel.*` contains Qt-only preview label/pixmap/message display state and scaling.
 
 `cachegui_qt/PreviewStatus.*` contains Qt preview cache/model notification helpers.
 

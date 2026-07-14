@@ -1,7 +1,7 @@
 #include "CacheEntryTableModel.h"
 #include "GalleryActivityIndicator.h"
 #include "GalleryListView.h"
-#include "GalleryPreviewQueue.h"
+#include "GalleryPreviewController.h"
 #include "GalleryPreviewScanner.h"
 #include "PreviewCache.h"
 #include "PreviewDecodeWorker.h"
@@ -62,19 +62,34 @@ namespace
             resize(1050, 680);
 
             auto* root = new QWidget(this);
-            auto* layout = new QVBoxLayout(root);
+            CreateControls(root);
+            ConfigureModels();
+            ConfigureTable();
+            ConfigureGallery();
+            CreateLayout(root);
+            ConnectSignals();
 
-            auto* pathLayout = new QGridLayout();
+            setCentralWidget(root);
+        }
+
+    protected:
+        void resizeEvent(QResizeEvent* event) override
+        {
+            QMainWindow::resizeEvent(event);
+
+            if (previewPanel_.HasPixmap())
+            {
+                previewPanel_.Refresh();
+            }
+        }
+
+    private:
+        void CreateControls(QWidget* root)
+        {
             pathLabel_ = new QLabel(QStringLiteral("Texture cache folder"), root);
             pathEdit_ = new QLineEdit(DefaultCachePath(), root);
             browseButton_ = new QPushButton(QStringLiteral("Browse"), root);
             openButton_ = new QPushButton(QStringLiteral("Open"), root);
-
-            pathLayout->addWidget(pathLabel_, 0, 0);
-            pathLayout->addWidget(pathEdit_, 0, 1);
-            pathLayout->addWidget(browseButton_, 0, 2);
-            pathLayout->addWidget(openButton_, 0, 3);
-            pathLayout->setColumnStretch(1, 1);
 
             previewButton_ = new QPushButton(QStringLiteral("Preview"), root);
             tryNextButton_ = new QPushButton(QStringLiteral("Try Next Preview"), root);
@@ -89,21 +104,37 @@ namespace
             exportButton_->setEnabled(false);
             viewToggleButton_->setEnabled(false);
 
-            auto* actionLayout = new QHBoxLayout();
-            actionLayout->addWidget(previewButton_);
-            actionLayout->addWidget(tryNextButton_);
-            actionLayout->addWidget(exportButton_);
-            actionLayout->addStretch(1);
-            actionLayout->addWidget(galleryActivityLabel_);
-            actionLayout->addWidget(viewToggleButton_);
+            table_ = new QTableView(root);
+            galleryView_ = new GalleryListView(root);
+            viewStack_ = new QStackedWidget(root);
 
-            proxyModel_ = new QSortFilterProxyModel(root);
+            previewPollTimer_ = new QTimer(root);
+            previewPollTimer_->setInterval(50);
+            galleryPreviewPollTimer_ = new QTimer(root);
+            galleryPreviewPollTimer_->setInterval(50);
+
+            previewLabel_ = new QLabel(QStringLiteral("No preview selected."), root);
+            previewLabel_->setAlignment(Qt::AlignCenter);
+            previewLabel_->setMinimumSize(320, 320);
+            previewLabel_->setStyleSheet(QStringLiteral("QLabel { background: #202020; color: #d0d0d0; }"));
+            previewPanel_.SetLabel(previewLabel_);
+
+            statusLabel_ = new QLabel(
+                QStringLiteral("Choose a Firestorm texture cache folder."),
+                root);
+        }
+
+        void ConfigureModels()
+        {
+            proxyModel_ = new QSortFilterProxyModel(this);
             tableModel_.SetPreviewCache(&previewCache_);
             proxyModel_->setSourceModel(&tableModel_);
             proxyModel_->setSortRole(Qt::UserRole);
             proxyModel_->setDynamicSortFilter(false);
+        }
 
-            table_ = new QTableView(root);
+        void ConfigureTable()
+        {
             table_->setModel(proxyModel_);
             table_->setSelectionBehavior(QAbstractItemView::SelectRows);
             table_->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -121,8 +152,10 @@ namespace
             table_->horizontalHeader()->setSectionResizeMode(5, QHeaderView::Interactive);
             table_->setColumnWidth(4, 150);
             table_->setColumnWidth(5, 95);
+        }
 
-            galleryView_ = new GalleryListView(root);
+        void ConfigureGallery()
+        {
             galleryView_->setModel(proxyModel_);
             galleryView_->setModelColumn(0);
             galleryView_->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -134,36 +167,42 @@ namespace
             galleryView_->setUniformItemSizes(true);
             galleryView_->setWordWrap(false);
             galleryView_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+        }
 
-            viewStack_ = new QStackedWidget(root);
+        void CreateLayout(QWidget* root)
+        {
+            auto* layout = new QVBoxLayout(root);
+
+            auto* pathLayout = new QGridLayout();
+            pathLayout->addWidget(pathLabel_, 0, 0);
+            pathLayout->addWidget(pathEdit_, 0, 1);
+            pathLayout->addWidget(browseButton_, 0, 2);
+            pathLayout->addWidget(openButton_, 0, 3);
+            pathLayout->setColumnStretch(1, 1);
+
+            auto* actionLayout = new QHBoxLayout();
+            actionLayout->addWidget(previewButton_);
+            actionLayout->addWidget(tryNextButton_);
+            actionLayout->addWidget(exportButton_);
+            actionLayout->addStretch(1);
+            actionLayout->addWidget(galleryActivityLabel_);
+            actionLayout->addWidget(viewToggleButton_);
+
             viewStack_->addWidget(table_);
             viewStack_->addWidget(galleryView_);
-
-            previewPollTimer_ = new QTimer(root);
-            previewPollTimer_->setInterval(50);
-            galleryPreviewPollTimer_ = new QTimer(root);
-            galleryPreviewPollTimer_->setInterval(50);
-
-            previewLabel_ = new QLabel(QStringLiteral("No preview selected."), root);
-            previewLabel_->setAlignment(Qt::AlignCenter);
-            previewLabel_->setMinimumSize(320, 320);
-            previewLabel_->setStyleSheet(QStringLiteral("QLabel { background: #202020; color: #d0d0d0; }"));
-            previewPanel_.SetLabel(previewLabel_);
 
             auto* contentLayout = new QHBoxLayout();
             contentLayout->addWidget(viewStack_, 3);
             contentLayout->addWidget(previewLabel_, 1);
 
-            statusLabel_ = new QLabel(
-                QStringLiteral("Choose a Firestorm texture cache folder."),
-                root);
-
             layout->addLayout(pathLayout);
             layout->addLayout(actionLayout);
             layout->addLayout(contentLayout, 1);
             layout->addWidget(statusLabel_);
-            setCentralWidget(root);
+        }
 
+        void ConnectSignals()
+        {
             connect(
                 browseButton_,
                 &QPushButton::clicked,
@@ -284,19 +323,6 @@ namespace
                     PollGalleryPreviewWorker();
                 });
         }
-
-    protected:
-        void resizeEvent(QResizeEvent* event) override
-        {
-            QMainWindow::resizeEvent(event);
-
-            if (previewPanel_.HasPixmap())
-            {
-                previewPanel_.Refresh();
-            }
-        }
-
-    private:
         void BrowseForCache()
         {
             const QString selectedDirectory =
@@ -319,15 +345,25 @@ namespace
 
             if (result != CacheError::None)
             {
-                tableModel_.SetDatabase(nullptr);
-                ClearPreviewUiState();
-                SetBusy(false);
-                statusLabel_->setText(
-                    QStringLiteral("Could not open cache: ")
-                    + QString::fromUtf8(CacheErrorMessage(result)));
+                HandleOpenCacheFailure(result);
                 return;
             }
 
+            HandleOpenCacheSuccess();
+        }
+
+        void HandleOpenCacheFailure(CacheError result)
+        {
+            tableModel_.SetDatabase(nullptr);
+            ClearPreviewUiState();
+            SetBusy(false);
+            statusLabel_->setText(
+                QStringLiteral("Could not open cache: ")
+                + QString::fromUtf8(CacheErrorMessage(result)));
+        }
+
+        void HandleOpenCacheSuccess()
+        {
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
             PopulateTable();
             ClearPreviewUiState();
@@ -489,7 +525,7 @@ namespace
 
                 if (requestKind == PreviewRequestKind::Manual)
                 {
-                    previewPanel_.Clear();
+                    previewPanel_.SetMessage(QStringLiteral("Preview unavailable."));
                     statusLabel_->setText(
                         QStringLiteral("Preview unavailable: ")
                         + ToQString(result.message));
@@ -520,7 +556,7 @@ namespace
             {
                 if (requestKind == PreviewRequestKind::Manual)
                 {
-                    previewPanel_.Clear();
+                    previewPanel_.SetMessage(imageError);
                     statusLabel_->setText(imageError);
                 }
 
@@ -606,7 +642,7 @@ namespace
                 return;
             }
 
-            galleryPreviewQueue_.MarkCompleted();
+            galleryPreviewController_.MarkCompleted();
             ApplyGalleryPreviewResult(result);
         }
 
@@ -806,12 +842,14 @@ namespace
 
         void ScheduleGalleryPreviewSearch()
         {
-            if (!galleryMode_ || !database_.IsOpen() || galleryPreviewSearchPending_)
+            if (!galleryPreviewController_.CanScheduleSearch(
+                    galleryMode_,
+                    database_.IsOpen()))
             {
                 return;
             }
 
-            galleryPreviewSearchPending_ = true;
+            galleryPreviewController_.BeginScheduledSearch();
             UpdateGalleryActivity();
             QTimer::singleShot(
                 75,
@@ -820,17 +858,16 @@ namespace
                 {
                     if (!galleryMode_ || !database_.IsOpen())
                     {
-                        galleryPreviewSearchPending_ = false;
                         ClearGalleryPreviewQueue();
                         UpdateGalleryActivity();
                         return;
                     }
 
-                    galleryPreviewSearchPending_ = false;
+                    galleryPreviewController_.FinishScheduledSearch();
 
                     if (galleryPreviewWorker_.IsActive())
                     {
-                        galleryPreviewQueue_.RequestRefresh();
+                        galleryPreviewController_.RequestRefresh();
                         UpdateGalleryActivity();
                         return;
                     }
@@ -852,19 +889,20 @@ namespace
                 return;
             }
 
-            if (galleryPreviewQueue_.ConsumeRefreshRequest())
+            if (galleryPreviewController_.ConsumeRefreshRequest())
             {
                 ScheduleGalleryPreviewSearch();
                 return;
             }
 
-            while (galleryPreviewQueue_.HasEntries())
+            while (galleryPreviewController_.HasQueuedEntries())
             {
-                const CacheEntry entry = galleryPreviewQueue_.TakeNext();
+                const CacheEntry entry =
+                    galleryPreviewController_.TakeNextQueuedEntry();
 
                 if (!previewCache_.ShouldAttemptPreview(entry))
                 {
-                    galleryPreviewQueue_.MarkCompleted();
+                    galleryPreviewController_.MarkCompleted();
                     continue;
                 }
 
@@ -872,13 +910,13 @@ namespace
                 return;
             }
 
-            galleryPreviewQueue_.Replace({});
+            galleryPreviewController_.ReplaceQueue({});
             UpdateGalleryActivity();
         }
 
         void RebuildGalleryPreviewQueue()
         {
-            galleryPreviewQueue_.Replace(
+            galleryPreviewController_.ReplaceQueue(
                 BuildVisibleGalleryPreviewQueue(
                     *galleryView_,
                     *proxyModel_,
@@ -889,21 +927,16 @@ namespace
 
         void ClearGalleryPreviewQueue()
         {
-            galleryPreviewQueue_.Clear();
+            galleryPreviewController_.Clear();
         }
 
         void UpdateGalleryActivity()
         {
             galleryActivityIndicator_.Update(
-                GalleryActivityState{
+                galleryPreviewController_.ActivityState(
                     galleryMode_,
                     database_.IsOpen(),
-                    galleryPreviewWorker_.IsActive(),
-                    galleryPreviewSearchPending_,
-                    galleryPreviewQueue_.RefreshPending(),
-                    galleryPreviewQueue_.HasEntries(),
-                    galleryPreviewQueue_.Total(),
-                    galleryPreviewQueue_.Completed()});
+                    galleryPreviewWorker_.IsActive()));
         }
 
         void ExportSelected()
@@ -965,7 +998,7 @@ namespace
         QSortFilterProxyModel* proxyModel_ = nullptr;
         QTimer* previewPollTimer_ = nullptr;
         QTimer* galleryPreviewPollTimer_ = nullptr;
-        GalleryPreviewQueue galleryPreviewQueue_;
+        GalleryPreviewController galleryPreviewController_;
         TextureCacheDatabase database_;
         bool busy_ = false;
         PreviewWorkerState previewWorker_;
@@ -973,7 +1006,6 @@ namespace
         PreviewRequestKind activePreviewRequestKind_ = PreviewRequestKind::Manual;
         TryNextPreviewState tryNextPreview_;
         bool galleryMode_ = false;
-        bool galleryPreviewSearchPending_ = false;
         std::uint64_t nextPreviewRequestId_ = 1;
     };
 }

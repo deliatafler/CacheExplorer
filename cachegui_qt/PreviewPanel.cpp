@@ -10,6 +10,11 @@ void PreviewPanel::SetLabel(QLabel* label)
 
 void PreviewPanel::Clear()
 {
+    SetMessage(QStringLiteral("No preview selected."));
+}
+
+void PreviewPanel::SetMessage(const QString& message)
+{
     pixmap_ = {};
 
     if (label_ == nullptr)
@@ -17,7 +22,7 @@ void PreviewPanel::Clear()
         return;
     }
 
-    label_->setText(QStringLiteral("No preview selected."));
+    label_->setText(message);
     label_->setPixmap({});
 }
 
