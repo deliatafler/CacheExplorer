@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.22)
 
 project(CacheExplorer VERSION 0.1.0 LANGUAGES CXX)
 
+option(CACHEEXPLORER_BUILD_QT_GUI
+    "Build the experimental Qt 6 cross-platform GUI"
+    OFF)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -16,3 +20,10 @@ endif()
 add_subdirectory(cachelib)
 add_subdirectory(cachecli)
 add_subdirectory(cachegui)
+
+if(CACHEEXPLORER_BUILD_QT_GUI)
+    message(STATUS
+        "Qt GUI enabled. Use CMAKE_PREFIX_PATH or Qt6_DIR for a prebuilt Qt developer build; "
+        "use the vcpkg qt-gui feature for a static/reproducible Qt build.")
+    add_subdirectory(cachegui_qt)
+endif()

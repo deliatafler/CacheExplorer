@@ -8,17 +8,18 @@ The project must not link against or depend on Firestorm itself. Firestorm sourc
 
 ## Architecture
 
-The project has three current targets:
+The project has four current targets:
 
 * `cachelib`: reusable cache-reading, reconstruction, decoding, and export library
 * `cachecli`: thin command-line frontend
 * `cachegui`: native Win32 GUI frontend
+* `cachegui_qt`: experimental Qt 6 cross-platform GUI spike
 
-The GUI depends directly on `cachelib`. The GUI must not wrap or invoke the CLI.
+GUI targets depend directly on `cachelib`. A GUI must not wrap or invoke the CLI.
 
 Business logic belongs in `cachelib`. CLI-specific argument parsing and console presentation belong in `cachecli`.
 
-Future GUI work should consider whether moving to a cross-platform framework would make sense so contributors can build and run the GUI on macOS and Linux as well as Windows. Treat this as a future evaluation item, not a reason to rewrite the current Win32 GUI prematurely.
+The cross-platform GUI direction is being evaluated with Qt 6 in `cachegui_qt`. Keep the Win32 GUI working while the Qt spike proves build, packaging, and UX tradeoffs.
 
 ## Platform and build
 
@@ -55,6 +56,32 @@ Executable:
 ```text
 build/cachecli/Release/cachecli.exe
 ```
+
+Experimental Qt GUI build with a prebuilt shared Qt installation. This is the preferred developer path because it avoids rebuilding Qt locally:
+
+```bash
+cmake -S . -B build-qt -A x64 \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static \
+  -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/msvc2022_64" \
+  -DCACHEEXPLORER_BUILD_QT_GUI=ON
+
+cmake --build build-qt --config Release --target cachegui_qt
+```
+
+Experimental Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow:
+
+```bash
+cmake -S . -B build-qt -A x64 \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static \
+  -DVCPKG_MANIFEST_FEATURES=qt-gui \
+  -DCACHEEXPLORER_BUILD_QT_GUI=ON
+
+cmake --build build-qt --config Release --target cachegui_qt
+```
+
+The `qt-gui` vcpkg feature requests a minimal target Qt Widgets set, but the first Windows static vcpkg configure can still take a long time because host-side Qt tools pull and build a broader dependency graph. For CI, use vcpkg binary caching so Qt is built once and restored afterward.
 
 ## Firestorm texture-cache format
 
@@ -226,12 +253,15 @@ Complete these tasks in order:
 
 The first GUI cleanup step extracted standalone Win32 utility helpers into `cachegui/GuiUtils.*` without changing behavior.
 
+The Qt 6 spike adds `cachegui_qt`, an optional target that opens a cache through `cachelib` and shows entries in a sortable table.
+
 Good next low-risk slices:
 
-* Move GUI control IDs and custom window-message IDs into a small header.
-* Move `AppState` and message payload structs into a GUI state header.
-* Split preview/gathered-preview-index behavior from `main.cpp` while keeping UI drawing in the GUI target.
-* After the native GUI is easier to reason about, evaluate a cross-platform GUI framework as a separate design decision.
+* Prefer prebuilt shared Qt for fast local development.
+* Keep the vcpkg static Qt path available for reproducible/distribution builds, ideally with binary caching in CI.
+* If Qt remains the path, add single-entry PNG preview/export to `cachegui_qt`.
+* If Win32 remains active, move GUI control IDs and custom window-message IDs into a small header.
+* Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.
 
 ## Coding guidelines
 
