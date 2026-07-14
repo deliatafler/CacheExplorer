@@ -283,7 +283,7 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 
 `cachegui_qt/PreviewImage.*` contains Qt-only conversion from decoded RGBA data to `QPixmap`.
 
-`cachegui_qt/PreviewPanel.*` contains Qt-only preview label/pixmap/message display state and scaling.
+`cachegui_qt/PreviewPanel.*` contains Qt-only preview label/pixmap/message display state, styling, and scaling.
 
 `cachegui_qt/PreviewStatus.*` contains Qt preview cache/model notification helpers, including decoded-image-to-cached-pixmap storage.
 

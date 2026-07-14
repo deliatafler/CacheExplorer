@@ -10,7 +10,16 @@ void PreviewPanel::SetLabel(QLabel* label)
 
 void PreviewPanel::Clear()
 {
-    SetMessage(QStringLiteral("No preview selected."));
+    pixmap_ = {};
+
+    if (label_ == nullptr)
+    {
+        return;
+    }
+
+    ApplyState(PreviewPanelState::Empty);
+    label_->setText(QStringLiteral("No preview selected."));
+    label_->setPixmap({});
 }
 
 void PreviewPanel::SetMessage(const QString& message)
@@ -22,6 +31,7 @@ void PreviewPanel::SetMessage(const QString& message)
         return;
     }
 
+    ApplyState(PreviewPanelState::Message);
     label_->setText(message);
     label_->setPixmap({});
 }
@@ -29,6 +39,7 @@ void PreviewPanel::SetMessage(const QString& message)
 void PreviewPanel::SetPixmap(const QPixmap& pixmap)
 {
     pixmap_ = pixmap;
+    ApplyState(PreviewPanelState::Image);
     Refresh();
 }
 
@@ -49,4 +60,32 @@ void PreviewPanel::Refresh()
 bool PreviewPanel::HasPixmap() const
 {
     return !pixmap_.isNull();
+}
+
+void PreviewPanel::ApplyState(PreviewPanelState state)
+{
+    state_ = state;
+
+    if (label_ == nullptr)
+    {
+        return;
+    }
+
+    switch (state_)
+    {
+        case PreviewPanelState::Empty:
+            label_->setStyleSheet(
+                QStringLiteral("QLabel { background: #202020; color: #a8a8a8; }"));
+            break;
+
+        case PreviewPanelState::Message:
+            label_->setStyleSheet(
+                QStringLiteral("QLabel { background: #241f1f; color: #f0c7c7; }"));
+            break;
+
+        case PreviewPanelState::Image:
+            label_->setStyleSheet(
+                QStringLiteral("QLabel { background: #202020; color: #d0d0d0; }"));
+            break;
+    }
 }

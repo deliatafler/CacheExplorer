@@ -5,6 +5,13 @@
 
 class QLabel;
 
+enum class PreviewPanelState
+{
+    Empty,
+    Message,
+    Image
+};
+
 class PreviewPanel
 {
 public:
@@ -16,6 +23,9 @@ public:
     bool HasPixmap() const;
 
 private:
+    void ApplyState(PreviewPanelState state);
+
     QLabel* label_ = nullptr;
     QPixmap pixmap_;
+    PreviewPanelState state_ = PreviewPanelState::Empty;
 };

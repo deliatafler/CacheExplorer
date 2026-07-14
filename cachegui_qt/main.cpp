@@ -117,8 +117,8 @@ namespace
             previewLabel_ = new QLabel(QStringLiteral("No preview selected."), root);
             previewLabel_->setAlignment(Qt::AlignCenter);
             previewLabel_->setMinimumSize(320, 320);
-            previewLabel_->setStyleSheet(QStringLiteral("QLabel { background: #202020; color: #d0d0d0; }"));
             previewPanel_.SetLabel(previewLabel_);
+            previewPanel_.Clear();
 
             statusLabel_ = new QLabel(
                 QStringLiteral("Choose a Firestorm texture cache folder."),
