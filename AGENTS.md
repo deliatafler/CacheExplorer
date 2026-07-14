@@ -270,6 +270,8 @@ Gallery lazy loading uses a separate async thumbnail worker from manual Preview/
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
 
+`cachegui_qt/GalleryListView.*` contains the gallery hit-testing view subclass. Keep this kind of Qt-only UI behavior out of `cachelib`.
+
 Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries.
 
 Gallery mode shows a lightweight activity label while it is scanning visible items, refreshing the visible thumbnail queue, or checking thumbnails with queued progress. The main bottom status label remains reserved for explicit user actions such as Preview, Try Next Preview, Export, and cache open results.

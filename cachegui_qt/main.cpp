@@ -1,3 +1,4 @@
+#include "GalleryListView.h"
 #include "J2CDecoder.h"
 #include "TextureCacheDatabase.h"
 #include "TextureExporter.h"
@@ -10,7 +11,6 @@
 #include <deque>
 #include <filesystem>
 #include <future>
-#include <limits>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -29,7 +29,6 @@
 #include <QLineEdit>
 #include <QListView>
 #include <QMainWindow>
-#include <QMouseEvent>
 #include <QPainter>
 #include <QPixmap>
 #include <QPushButton>
@@ -622,110 +621,6 @@ namespace
         bool succeeded = false;
         std::string message;
         DecodedImage image;
-    };
-
-    class GalleryListView final : public QListView
-    {
-    public:
-        explicit GalleryListView(QWidget* parent = nullptr)
-            : QListView(parent)
-        {
-        }
-
-    protected:
-        void mousePressEvent(QMouseEvent* event) override
-        {
-            const QModelIndex directIndex = indexAt(event->pos());
-
-            if (directIndex.isValid())
-            {
-                QListView::mousePressEvent(event);
-                return;
-            }
-
-            const QModelIndex expandedIndex =
-                IndexAtExpandedGalleryCell(event->pos());
-
-            if (!expandedIndex.isValid())
-            {
-                QListView::mousePressEvent(event);
-                return;
-            }
-
-            setCurrentIndex(expandedIndex);
-
-            if (selectionModel() != nullptr)
-            {
-                selectionModel()->setCurrentIndex(
-                    expandedIndex,
-                    QItemSelectionModel::ClearAndSelect |
-                        QItemSelectionModel::Current |
-                        QItemSelectionModel::Rows);
-            }
-
-            event->accept();
-        }
-
-    private:
-        QModelIndex IndexAtExpandedGalleryCell(const QPoint& position) const
-        {
-            const QAbstractItemModel* itemModel = model();
-
-            if (itemModel == nullptr)
-            {
-                return {};
-            }
-
-            const int rowCount = itemModel->rowCount(rootIndex());
-            const QRect viewportArea = viewport()->rect();
-            QModelIndex bestIndex;
-            int bestDistance = std::numeric_limits<int>::max();
-
-            for (int row = 0; row < rowCount; ++row)
-            {
-                const QModelIndex index =
-                    itemModel->index(row, modelColumn(), rootIndex());
-
-                if (!index.isValid())
-                {
-                    continue;
-                }
-
-                const QRect visualArea = visualRect(index);
-
-                if (!visualArea.isValid() ||
-                    !visualArea.intersects(viewportArea))
-                {
-                    continue;
-                }
-
-                const QSize cellSize = gridSize().isValid()
-                    ? gridSize()
-                    : QSize(
-                        std::max(iconSize().width(), visualArea.width()),
-                        iconSize().height() + visualArea.height());
-                const QRect expandedArea = visualArea.adjusted(
-                    -cellSize.width() / 2,
-                    -cellSize.height(),
-                    cellSize.width() / 2,
-                    cellSize.height());
-
-                if (expandedArea.contains(position))
-                {
-                    const QPoint delta = position - visualArea.center();
-                    const int distance =
-                        delta.x() * delta.x() + delta.y() * delta.y();
-
-                    if (distance < bestDistance)
-                    {
-                        bestDistance = distance;
-                        bestIndex = index;
-                    }
-                }
-            }
-
-            return bestIndex;
-        }
     };
 
     PreviewDecodeResult DecodePreview(
