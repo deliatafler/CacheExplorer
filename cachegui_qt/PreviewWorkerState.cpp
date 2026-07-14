@@ -1,6 +1,7 @@
 #include "PreviewWorkerState.h"
 
 #include <chrono>
+#include <utility>
 
 bool PreviewWorkerState::IsActive() const
 {
@@ -19,6 +20,21 @@ void PreviewWorkerState::Start(
     active_ = true;
     activeRequestId_ = requestId;
     future_ = std::move(future);
+}
+
+void PreviewWorkerState::StartDecode(
+    std::uint64_t requestId,
+    const std::filesystem::path& cacheDirectory,
+    const CacheEntry& entry)
+{
+    Start(
+        requestId,
+        std::async(
+            std::launch::async,
+            [requestId, cacheDirectory, entry]()
+            {
+                return DecodePreview(requestId, cacheDirectory, entry);
+            }));
 }
 
 bool PreviewWorkerState::IsReady() const

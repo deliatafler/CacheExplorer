@@ -3,6 +3,7 @@
 #include "PreviewDecodeWorker.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <future>
 
 class PreviewWorkerState
@@ -14,6 +15,10 @@ public:
     void Start(
         std::uint64_t requestId,
         std::future<PreviewDecodeResult>&& future);
+    void StartDecode(
+        std::uint64_t requestId,
+        const std::filesystem::path& cacheDirectory,
+        const CacheEntry& entry);
 
     bool IsReady() const;
     PreviewDecodeResult TakeResult();

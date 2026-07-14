@@ -465,14 +465,10 @@ namespace
             SetPreviewChecking(previewCache_, tableModel_, entry);
             UpdateActionState();
 
-            previewWorker_.Start(
+            previewWorker_.StartDecode(
                 requestId,
-                std::async(
-                    std::launch::async,
-                    [requestId, cacheDirectory, entry]()
-                    {
-                        return DecodePreview(requestId, cacheDirectory, entry);
-                    }));
+                cacheDirectory,
+                entry);
 
             if (!previewPollTimer_->isActive())
             {
@@ -605,14 +601,10 @@ namespace
             SetPreviewChecking(previewCache_, tableModel_, entry);
             UpdateGalleryActivity();
 
-            galleryPreviewWorker_.Start(
+            galleryPreviewWorker_.StartDecode(
                 requestId,
-                std::async(
-                    std::launch::async,
-                    [requestId, cacheDirectory, entry]()
-                    {
-                        return DecodePreview(requestId, cacheDirectory, entry);
-                    }));
+                cacheDirectory,
+                entry);
 
             if (!galleryPreviewPollTimer_->isActive())
             {
