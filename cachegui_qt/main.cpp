@@ -14,6 +14,7 @@
 #include "QtHelpers.h"
 #include "QtSelection.h"
 #include "QtTextureExport.h"
+#include "QtTryNextPreview.h"
 #include "QtViewMode.h"
 #include "TextureCacheDatabase.h"
 #include "TryNextPreviewState.h"
@@ -750,17 +751,10 @@ namespace
                 return;
             }
 
-            const QModelIndex selectedIndex = SelectedProxyIndex();
-            int firstProxyRow = 0;
-
-            if (selectedIndex.isValid())
-            {
-                firstProxyRow = selectedIndex.row() + 1;
-            }
-
-            tryNextPreview_.Start(firstProxyRow);
+            tryNextPreview_.Start(
+                FirstTryNextProxyRow(SelectedProxyIndex()));
             UpdateActionState();
-            statusLabel_->setText(QStringLiteral("Looking for the next previewable texture..."));
+            statusLabel_->setText(TryNextSearchStartedStatus());
             QTimer::singleShot(0, this, [this]() { ContinueTryNextPreview(); });
         }
 
@@ -776,18 +770,15 @@ namespace
                 tryNextPreview_.Stop();
                 UpdateActionState();
                 statusLabel_->setText(
-                    QStringLiteral("No previewable texture found in the next %1 entries.")
-                        .arg(tryNextPreview_.Attempts()));
+                    TryNextSearchExhaustedStatus(tryNextPreview_.Attempts()));
                 return;
             }
 
-            const QModelIndex proxyIndex =
-                proxyModel_->index(tryNextPreview_.TakeNextProxyRow(), 0);
-            const QModelIndex sourceIndex =
-                proxyModel_->mapToSource(proxyIndex);
-
             const CacheEntry* entry =
-                tableModel_.EntryAt(sourceIndex.row());
+                TakeNextTryNextEntry(
+                    tryNextPreview_,
+                    *proxyModel_,
+                    tableModel_);
 
             if (entry == nullptr)
             {
@@ -795,9 +786,7 @@ namespace
                 return;
             }
 
-            statusLabel_->setText(
-                QStringLiteral("Trying preview %1...")
-                    .arg(ToQString(entry->uuid.ToString())));
+            statusLabel_->setText(TryingPreviewStatus(*entry));
 
             StartPreviewRequest(*entry, PreviewRequestKind::TryNext);
         }
