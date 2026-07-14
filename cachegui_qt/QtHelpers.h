@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TextureCacheDatabase.h"
+
 #include <filesystem>
 #include <string>
 
@@ -15,3 +17,5 @@ std::filesystem::path ResolveTextureCacheDirectory(
     const std::filesystem::path& suppliedPath);
 
 QString DefaultCachePath();
+
+const char* CacheErrorMessage(CacheError error);

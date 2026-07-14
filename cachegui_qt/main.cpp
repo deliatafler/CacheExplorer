@@ -41,29 +41,6 @@ namespace fs = std::filesystem;
 
 namespace
 {
-    const char* CacheErrorMessage(CacheError error)
-    {
-        switch (error)
-        {
-            case CacheError::None:
-                return "No error.";
-
-            case CacheError::FileNotFound:
-                return "texture.entries could not be found.";
-
-            case CacheError::ReadError:
-                return "The cache entry table could not be read.";
-
-            case CacheError::InvalidHeader:
-                return "The texture.entries header is invalid.";
-
-            case CacheError::UnsupportedVersion:
-                return "The cache version is unsupported.";
-        }
-
-        return "Unknown cache error.";
-    }
-
     enum class PreviewRequestKind
     {
         Manual,
