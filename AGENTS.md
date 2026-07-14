@@ -278,6 +278,8 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/PreviewImage.*` contains Qt-only conversion from decoded RGBA data to `QPixmap`.
 
+`cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
+
 `cachegui_qt/CacheEntryTableModel.*` contains the Qt model for cache entries, table sorting data roles, preview status text, and generated gallery placeholder icons.
 
 Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries.

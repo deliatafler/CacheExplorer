@@ -3,6 +3,7 @@
 #include "PreviewCache.h"
 #include "PreviewDecodeWorker.h"
 #include "PreviewImage.h"
+#include "QtHelpers.h"
 #include "TextureCacheDatabase.h"
 #include "TextureExporter.h"
 
@@ -29,7 +30,6 @@
 #include <QScrollBar>
 #include <QResizeEvent>
 #include <QSortFilterProxyModel>
-#include <QStandardPaths>
 #include <QStackedWidget>
 #include <QTableView>
 #include <QTimer>
@@ -61,58 +61,6 @@ namespace
         }
 
         return "Unknown cache error.";
-    }
-
-    QString ToQString(const std::string& value)
-    {
-        return QString::fromUtf8(value.data(), static_cast<int>(value.size()));
-    }
-
-    QString PathToQString(const fs::path& path)
-    {
-#ifdef _WIN32
-        return QString::fromStdWString(path.wstring());
-#else
-        return QString::fromUtf8(path.u8string().c_str());
-#endif
-    }
-
-    fs::path PathFromQString(const QString& value)
-    {
-        const QByteArray utf8 = value.toUtf8();
-        return fs::u8path(utf8.constData());
-    }
-
-    fs::path ResolveTextureCacheDirectory(const fs::path& suppliedPath)
-    {
-        if (fs::exists(suppliedPath / "texture.entries"))
-        {
-            return suppliedPath;
-        }
-
-        const fs::path childTextureCache = suppliedPath / "texturecache";
-
-        if (fs::exists(childTextureCache / "texture.entries"))
-        {
-            return childTextureCache;
-        }
-
-        return suppliedPath;
-    }
-
-    QString DefaultCachePath()
-    {
-#ifdef _WIN32
-        const QString localAppData =
-            QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-
-        if (!localAppData.isEmpty())
-        {
-            return localAppData + "/FirestormOS_x64/texturecache";
-        }
-#endif
-
-        return {};
     }
 
     enum class PreviewRequestKind
