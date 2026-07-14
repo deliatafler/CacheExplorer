@@ -1,4 +1,5 @@
 #include "CacheEntryTableModel.h"
+#include "GalleryActivityIndicator.h"
 #include "GalleryListView.h"
 #include "GalleryPreviewQueue.h"
 #include "GalleryPreviewScanner.h"
@@ -81,6 +82,7 @@ namespace
             galleryActivityLabel_ = new QLabel(root);
             galleryActivityLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
             galleryActivityLabel_->hide();
+            galleryActivityIndicator_.SetLabel(galleryActivityLabel_);
             previewButton_->setEnabled(false);
             tryNextButton_->setEnabled(false);
             exportButton_->setEnabled(false);
@@ -900,54 +902,16 @@ namespace
 
         void UpdateGalleryActivity()
         {
-            if (galleryActivityLabel_ == nullptr)
-            {
-                return;
-            }
-
-            const bool showLabel =
-                galleryMode_ &&
-                database_.IsOpen() &&
-                (galleryPreviewWorkerActive_ ||
-                    galleryPreviewSearchPending_ ||
-                    galleryPreviewQueue_.RefreshPending() ||
-                    galleryPreviewQueue_.HasEntries());
-
-            galleryActivityLabel_->setVisible(showLabel);
-
-            if (!showLabel)
-            {
-                galleryActivityLabel_->clear();
-                return;
-            }
-
-            if (galleryPreviewSearchPending_)
-            {
-                galleryActivityLabel_->setText(QStringLiteral("Scanning visible items..."));
-                return;
-            }
-
-            if (galleryPreviewQueue_.RefreshPending())
-            {
-                galleryActivityLabel_->setText(QStringLiteral("Refreshing thumbnails..."));
-                return;
-            }
-
-            if (galleryPreviewQueue_.Total() > 0)
-            {
-                const std::size_t current =
-                    std::min(
-                        galleryPreviewQueue_.Total(),
-                        galleryPreviewQueue_.Completed() +
-                            (galleryPreviewWorkerActive_ ? 1u : 0u));
-                galleryActivityLabel_->setText(
-                    QStringLiteral("Checking thumbnails %1 / %2")
-                        .arg(static_cast<qulonglong>(current))
-                        .arg(static_cast<qulonglong>(galleryPreviewQueue_.Total())));
-                return;
-            }
-
-            galleryActivityLabel_->setText(QStringLiteral("Checking thumbnails..."));
+            galleryActivityIndicator_.Update(
+                GalleryActivityState{
+                    galleryMode_,
+                    database_.IsOpen(),
+                    galleryPreviewWorkerActive_,
+                    galleryPreviewSearchPending_,
+                    galleryPreviewQueue_.RefreshPending(),
+                    galleryPreviewQueue_.HasEntries(),
+                    galleryPreviewQueue_.Total(),
+                    galleryPreviewQueue_.Completed()});
         }
 
         void ExportSelected()
@@ -1006,6 +970,7 @@ namespace
         QLabel* galleryActivityLabel_ = nullptr;
         QLabel* previewLabel_ = nullptr;
         QLabel* statusLabel_ = nullptr;
+        GalleryActivityIndicator galleryActivityIndicator_;
         PreviewPanel previewPanel_;
         PreviewCache previewCache_;
         CacheEntryTableModel tableModel_;

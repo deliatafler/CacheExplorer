@@ -265,6 +265,8 @@ Gallery lazy loading uses a separate async thumbnail worker from manual Preview/
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
 
+`cachegui_qt/GalleryActivityIndicator.*` contains Qt gallery thumbnail activity label state and text.
+
 `cachegui_qt/GalleryListView.*` contains the gallery hit-testing view subclass. Keep this kind of Qt-only UI behavior out of `cachelib`.
 
 `cachegui_qt/GalleryPreviewQueue.*` contains gallery thumbnail queue bookkeeping and progress counters. It should stay UI-adjacent and must not start worker threads or inspect widgets directly.
