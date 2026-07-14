@@ -101,3 +101,27 @@ QString PreviewReadyStatus(
         .arg(width)
         .arg(height);
 }
+
+QString PreviewUnavailablePanelMessage(PreviewDecodeStatus status)
+{
+    if (status == PreviewDecodeStatus::Incomplete)
+    {
+        return QStringLiteral("Incomplete cached texture.");
+    }
+
+    return QStringLiteral("Preview unavailable.");
+}
+
+QString PreviewUnavailableStatus(
+    PreviewDecodeStatus status,
+    const std::string& detailMessage)
+{
+    if (status == PreviewDecodeStatus::Incomplete)
+    {
+        return QStringLiteral(
+            "Preview unavailable: cached texture is incomplete or undecodable.");
+    }
+
+    return QStringLiteral("Preview unavailable: ")
+        + ToQString(detailMessage);
+}

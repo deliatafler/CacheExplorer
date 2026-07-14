@@ -526,10 +526,12 @@ namespace
 
                 if (requestKind == PreviewRequestKind::Manual)
                 {
-                    previewPanel_.SetMessage(QStringLiteral("Preview unavailable."));
+                    previewPanel_.SetMessage(
+                        PreviewUnavailablePanelMessage(result.status));
                     statusLabel_->setText(
-                        QStringLiteral("Preview unavailable: ")
-                        + ToQString(result.message));
+                        PreviewUnavailableStatus(
+                            result.status,
+                            result.message));
                 }
 
                 FinishFailedPreviewAttempt(requestKind);

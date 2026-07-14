@@ -22,6 +22,7 @@ PreviewDecodeResult DecodePreview(
 
     if (rebuildResult != RebuildError::None)
     {
+        result.status = PreviewDecodeStatus::RebuildFailed;
         result.message = TextureRebuilder::ErrorMessage(rebuildResult);
         return result;
     }
@@ -32,10 +33,12 @@ PreviewDecodeResult DecodePreview(
 
     if (decodeResult != DecodeError::None)
     {
+        result.status = PreviewDecodeStatus::Incomplete;
         result.message = J2CDecoder::ErrorMessage(decodeResult);
         return result;
     }
 
+    result.status = PreviewDecodeStatus::Decoded;
     result.succeeded = true;
     return result;
 }

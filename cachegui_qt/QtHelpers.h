@@ -1,5 +1,6 @@
 #pragma once
 
+#include "PreviewDecodeWorker.h"
 #include "TextureCacheDatabase.h"
 
 #include <cstddef>
@@ -31,3 +32,9 @@ QString PreviewReadyStatus(
     const std::string& uuidText,
     std::uint32_t width,
     std::uint32_t height);
+
+QString PreviewUnavailablePanelMessage(PreviewDecodeStatus status);
+
+QString PreviewUnavailableStatus(
+    PreviewDecodeStatus status,
+    const std::string& detailMessage);

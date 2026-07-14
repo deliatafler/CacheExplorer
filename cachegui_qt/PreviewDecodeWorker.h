@@ -7,11 +7,19 @@
 #include <filesystem>
 #include <string>
 
+enum class PreviewDecodeStatus
+{
+    Decoded,
+    Incomplete,
+    RebuildFailed
+};
+
 struct PreviewDecodeResult
 {
     std::uint64_t requestId = 0;
     CacheEntry entry;
     bool succeeded = false;
+    PreviewDecodeStatus status = PreviewDecodeStatus::Incomplete;
     std::string message;
     DecodedImage image;
 };
