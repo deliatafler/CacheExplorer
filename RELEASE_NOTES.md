@@ -1,8 +1,8 @@
 # CacheExplorer Release Notes
 
-## 0.1.0 beta draft
+## 0.1.0-beta
 
-CacheExplorer 0.1.0 beta is the first planned public test build of the Qt GUI.
+CacheExplorer 0.1.0-beta is the first public test build candidate of the Qt GUI.
 
 ### Highlights
 
@@ -39,3 +39,10 @@ The beta package should include:
 
 Generate the shared Qt package from a Visual Studio developer shell using
 `scripts/package-qt-shared.ps1 -Zip`.
+
+Current validated beta candidate:
+
+```text
+cacheexplorer-0.1.0-beta.zip
+cbe8eade55a8ddabc5ad2f6a9255ff4a8074998ce80261e6066d921e8fb8be00
+```
