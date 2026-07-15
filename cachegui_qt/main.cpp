@@ -43,8 +43,10 @@
 #include <QScrollBar>
 #include <QResizeEvent>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QTableView>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -114,9 +116,15 @@ namespace
     private:
         void CreateControls(QWidget* root)
         {
-            pathLabel_ = new QLabel(QStringLiteral("Texture cache folder"), root);
-            pathEdit_ = new QLineEdit(DefaultCachePath(), root);
-            browseButton_ = new QPushButton(QStringLiteral("Browse"), root);
+            pathLabel_ = new QLabel(QStringLiteral("Texture cache"), root);
+            pathEdit_ = new QLineEdit(PreferredCachePath(), root);
+            defaultCacheButton_ = new QToolButton(root);
+            defaultCacheButton_->setIcon(
+                style()->standardIcon(QStyle::SP_DirHomeIcon));
+            defaultCacheButton_->setToolTip(
+                QStringLiteral("Open the default Firestorm texture cache"));
+            defaultCacheButton_->setVisible(DefaultCachePathExists());
+            browseButton_ = new QPushButton(QStringLiteral("Choose Folder..."), root);
             openButton_ = new QPushButton(QStringLiteral("Open"), root);
             aboutButton_ = new QPushButton(QStringLiteral("About"), root);
 
@@ -227,9 +235,10 @@ namespace
             auto* pathLayout = new QGridLayout();
             pathLayout->addWidget(pathLabel_, 0, 0);
             pathLayout->addWidget(pathEdit_, 0, 1);
-            pathLayout->addWidget(browseButton_, 0, 2);
-            pathLayout->addWidget(openButton_, 0, 3);
-            pathLayout->addWidget(aboutButton_, 0, 4);
+            pathLayout->addWidget(defaultCacheButton_, 0, 2);
+            pathLayout->addWidget(browseButton_, 0, 3);
+            pathLayout->addWidget(openButton_, 0, 4);
+            pathLayout->addWidget(aboutButton_, 0, 5);
             pathLayout->setColumnStretch(1, 1);
 
             auto* actionLayout = new QHBoxLayout();
@@ -266,6 +275,15 @@ namespace
                 [this]()
                 {
                     BrowseForCache();
+                });
+
+            connect(
+                defaultCacheButton_,
+                &QToolButton::clicked,
+                this,
+                [this]()
+                {
+                    OpenDefaultCache();
                 });
 
             connect(
@@ -436,7 +454,21 @@ namespace
             if (!selectedDirectory.isEmpty())
             {
                 pathEdit_->setText(selectedDirectory);
+                OpenCache();
             }
+        }
+
+        void OpenDefaultCache()
+        {
+            const QString defaultPath = DefaultCachePath();
+
+            if (defaultPath.isEmpty())
+            {
+                return;
+            }
+
+            pathEdit_->setText(defaultPath);
+            OpenCache();
         }
 
         void OpenCache()
@@ -472,6 +504,7 @@ namespace
         void HandleOpenCacheSuccess()
         {
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
+            RememberOpenedCachePath(pathEdit_->text());
             PopulateTable();
             ClearPreviewUiState();
             LoadPersistentPreviewState();
@@ -537,6 +570,7 @@ namespace
                 *pathEdit_,
                 *table_,
                 *galleryView_);
+            defaultCacheButton_->setEnabled(!busy_);
             UpdateActionState();
             UpdateGalleryActivity();
 
@@ -1172,6 +1206,7 @@ namespace
         QLabel* pathLabel_ = nullptr;
         QLineEdit* pathEdit_ = nullptr;
         QPushButton* browseButton_ = nullptr;
+        QToolButton* defaultCacheButton_ = nullptr;
         QPushButton* openButton_ = nullptr;
         QPushButton* aboutButton_ = nullptr;
         QPushButton* tryNextButton_ = nullptr;

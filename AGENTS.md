@@ -61,6 +61,7 @@ build/cachecli/Release/cachecli.exe
 ```
 
 See `docs/qt-build.md` for detailed Qt GUI build, prebuilt-Qt, static-Qt, and deployment notes. See `docs/qt-packaging.md` for the shared-Qt package helper and smoke-test checklist. See `docs/qt-user-guide.md` for user-facing Qt GUI usage notes, `docs/beta-release-checklist.md` before tagging or sharing a beta, and `RELEASE_NOTES.md` for draft release notes.
+Use `docs/work-checklist.md` for the active beta and post-beta work list.
 
 Primary Qt GUI build with a prebuilt shared Qt installation. This is the preferred developer path because it avoids rebuilding Qt locally and matches the official Qt SDK runtime model:
 
@@ -353,6 +354,9 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 `cachegui_qt/QtGalleryStatus.*` contains Gallery-only count/filter status text.
 
 `cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
+It also persists the last successfully opened cache path through Qt settings and
+exposes the default-cache shortcut state; keep this per-user UI state outside
+the Firestorm cache directory.
 Path probing should use non-throwing filesystem checks so odd user-selected
 directories report normal open errors instead of surfacing exceptions.
 

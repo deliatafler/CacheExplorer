@@ -3,6 +3,7 @@
 #include <system_error>
 
 #include <QByteArray>
+#include <QSettings>
 #include <QStandardPaths>
 
 namespace
@@ -71,6 +72,28 @@ QString DefaultCachePath()
 #endif
 
     return {};
+}
+
+QString PreferredCachePath()
+{
+    QSettings settings;
+    const QString lastOpenedPath =
+        settings.value(QStringLiteral("cache/lastOpenedPath")).toString();
+
+    return lastOpenedPath.isEmpty() ? DefaultCachePath() : lastOpenedPath;
+}
+
+bool DefaultCachePathExists()
+{
+    const QString defaultPath = DefaultCachePath();
+    return !defaultPath.isEmpty() &&
+        TextureEntriesFileExists(PathFromQString(defaultPath));
+}
+
+void RememberOpenedCachePath(const QString& cachePath)
+{
+    QSettings settings;
+    settings.setValue(QStringLiteral("cache/lastOpenedPath"), cachePath);
 }
 
 const char* CacheErrorMessage(CacheError error)

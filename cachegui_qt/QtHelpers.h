@@ -21,6 +21,12 @@ std::filesystem::path ResolveTextureCacheDirectory(
 
 QString DefaultCachePath();
 
+QString PreferredCachePath();
+
+bool DefaultCachePathExists();
+
+void RememberOpenedCachePath(const QString& cachePath);
+
 const char* CacheErrorMessage(CacheError error);
 
 QString LoadedCacheStatus(

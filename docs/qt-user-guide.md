@@ -21,9 +21,12 @@ FastCache.cache
 f/
 ```
 
-Click `Open` to load the cache shown in the path box. If a cache opens
-successfully, the status bar reports the number of valid texture entries and the
-cache version.
+Click `Choose Folder...` to select either folder; the app opens the selected
+cache immediately. The home button beside the path box opens the usual
+Firestorm cache location when it is available. CacheExplorer remembers the last
+successfully opened cache path, and you can still edit the path box and click
+`Open` for unusual installations. If a cache opens successfully, the status bar
+reports the number of valid texture entries and the cache version.
 
 ## Browse textures
 
