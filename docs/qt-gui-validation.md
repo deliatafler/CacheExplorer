@@ -40,8 +40,9 @@ export checks below.
    without blocking the UI. The activity label may briefly report visible
    thumbnail loading or refreshing. Waiting/loading placeholders should stay
    visually quiet while scrolling, while no-preview and error labels should be
-   readable. Newly visible tiles should begin loading before far-off lookahead
-   tiles.
+   readable. The grid should fill rows from left to right and use the available
+   browsing width. Newly visible tiles should begin loading before far-off
+   lookahead tiles.
 9. Confirm `Try Next Preview` is hidden in `Gallery`, while
    `Export PNG`, the Gallery filter/sort controls, and the `Table` toggle remain
    visible.

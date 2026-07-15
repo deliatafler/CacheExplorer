@@ -249,6 +249,8 @@ namespace
             galleryView_->setModelColumn(0);
             galleryView_->setSelectionMode(QAbstractItemView::ExtendedSelection);
             galleryView_->setViewMode(QListView::IconMode);
+            galleryView_->setFlow(QListView::LeftToRight);
+            galleryView_->setWrapping(true);
             galleryView_->setResizeMode(QListView::Adjust);
             galleryView_->setMovement(QListView::Static);
             galleryView_->setIconSize(QSize(128, 128));
