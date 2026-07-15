@@ -22,7 +22,6 @@ namespace
         {
             case GalleryPreviewFilter::All:
             case GalleryPreviewFilter::CachedComplete:
-            case GalleryPreviewFilter::Previewable:
             case GalleryPreviewFilter::Unknown:
             case GalleryPreviewFilter::NoPreview:
             case GalleryPreviewFilter::LoadFailed:
@@ -137,9 +136,6 @@ bool GalleryFilterProxyModel::filterAcceptsRow(
         case GalleryPreviewFilter::CachedComplete:
             return IsCachedComplete(sourceIndex);
 
-        case GalleryPreviewFilter::Previewable:
-            return previewState == PreviewState::Previewable;
-
         case GalleryPreviewFilter::Unknown:
             return previewState == PreviewState::Unknown ||
                 previewState == PreviewState::Checking;
@@ -162,9 +158,6 @@ void ConfigureGalleryPreviewFilterControl(QComboBox& comboBox)
     comboBox.addItem(
         QStringLiteral("Cached complete"),
         ToComboValue(GalleryPreviewFilter::CachedComplete));
-    comboBox.addItem(
-        QStringLiteral("Previewable"),
-        ToComboValue(GalleryPreviewFilter::Previewable));
     comboBox.addItem(
         QStringLiteral("Unknown"),
         ToComboValue(GalleryPreviewFilter::Unknown));

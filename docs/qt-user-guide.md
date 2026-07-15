@@ -39,7 +39,8 @@ state.
 The Gallery `Show` filter includes `Cached complete`, which shows entries whose
 stored header and body bytes cover the advertised image size. This can include
 small header-only entries with body size `0`; it is a useful browsing/debugging
-hint, not a guarantee that the JPEG2000 decoder will accept every entry.
+hint, not a guarantee that the JPEG2000 decoder will accept every entry. The
+other filters focus on unknown, no-preview, and load-failed entries.
 
 Use `Table` for debugging and inspection. The table shows UUID, image size, body
 size, raw cache index, timestamp, and preview status. Table sorting is useful

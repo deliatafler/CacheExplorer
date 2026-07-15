@@ -8,7 +8,6 @@ enum class GalleryPreviewFilter
 {
     All,
     CachedComplete,
-    Previewable,
     Unknown,
     NoPreview,
     LoadFailed

@@ -30,11 +30,11 @@ workers, gallery loading, export, or cache-open behavior.
 9. Confirm `Preview` and `Try Next Preview` are hidden in `Gallery`, while
    `Export PNG`, the Gallery filter/sort controls, and the `Table` toggle remain
    visible.
-10. Change the Gallery filter control and confirm the gallery shows only the
-    selected preview state, the Gallery count updates, and empty filters report
-    no matching entries in the status bar. Confirm `Cached complete` includes
-    entries whose cached header/body bytes cover the advertised image size.
-    Toggle back to `Table` and confirm all rows return.
+10. Change the Gallery filter control and confirm the gallery shows the
+    selected cache/preview state, the Gallery count updates, and empty filters
+    report no matching entries in the status bar. Confirm `Cached complete`
+    includes entries whose cached header/body bytes cover the advertised image
+    size. Toggle back to `Table` and confirm all rows return.
 11. Change the Gallery sort control and confirm the gallery reorders and resumes
     lazy thumbnail loading without blocking the UI. Slower sorts, especially
     UUID, should update the bottom status bar before the sort completes.
