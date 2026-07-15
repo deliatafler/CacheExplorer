@@ -40,6 +40,7 @@ void CacheEntryTableModel::SetDatabase(const TextureCacheDatabase* database)
 {
     beginResetModel();
     database_ = database;
+    RebuildDisplayCache();
     endResetModel();
 }
 
@@ -105,10 +106,12 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
 
     if (role == Qt::DisplayRole)
     {
+        const RowDisplayCache* display = DisplayCacheAt(index.row());
+
         switch (index.column())
         {
             case 0:
-                return ToQString(entry->uuid.ToString());
+                return display == nullptr ? QString{} : display->uuid;
 
             case 1:
                 return entry->imageSize;
@@ -120,7 +123,7 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
                 return static_cast<qulonglong>(entry->cacheIndex);
 
             case 4:
-                return FormatTime(entry->timestamp);
+                return display == nullptr ? QString{} : display->timestamp;
 
             case 5:
                 return PreviewStatusText(*entry);
@@ -132,10 +135,12 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
 
     if (role == Qt::UserRole)
     {
+        const RowDisplayCache* display = DisplayCacheAt(index.row());
+
         switch (index.column())
         {
             case 0:
-                return ToQString(entry->uuid.ToString());
+                return display == nullptr ? QString{} : display->uuid;
 
             case 1:
                 return entry->imageSize;
@@ -216,6 +221,45 @@ const CacheEntry* CacheEntryTableModel::EntryAt(int row) const
     }
 
     return &entries[index];
+}
+
+void CacheEntryTableModel::RebuildDisplayCache()
+{
+    displayCache_.clear();
+
+    if (database_ == nullptr)
+    {
+        return;
+    }
+
+    const auto& entries = database_->Entries();
+    displayCache_.reserve(entries.size());
+
+    for (const CacheEntry& entry : entries)
+    {
+        displayCache_.push_back(
+            RowDisplayCache{
+                ToQString(entry.uuid.ToString()),
+                FormatTime(entry.timestamp)});
+    }
+}
+
+const CacheEntryTableModel::RowDisplayCache*
+CacheEntryTableModel::DisplayCacheAt(int row) const
+{
+    if (row < 0)
+    {
+        return nullptr;
+    }
+
+    const auto index = static_cast<std::size_t>(row);
+
+    if (index >= displayCache_.size())
+    {
+        return nullptr;
+    }
+
+    return &displayCache_[index];
 }
 
 int CacheEntryTableModel::RowForEntry(const CacheEntry& entry) const

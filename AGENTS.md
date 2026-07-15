@@ -309,7 +309,7 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 
 `cachegui_qt/TryNextPreviewState.*` contains the Qt GUI "Try Next Preview" row/attempt bookkeeping. It should not inspect Qt models or start preview workers directly.
 
-`cachegui_qt/CacheEntryTableModel.*` contains the Qt model for cache entries, table sorting data roles, preview status text, and generated gallery placeholder icons.
+`cachegui_qt/CacheEntryTableModel.*` contains the Qt model for cache entries, cached display/sort strings, table sorting data roles, preview status text, and generated gallery placeholder icons.
 
 Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries.
 

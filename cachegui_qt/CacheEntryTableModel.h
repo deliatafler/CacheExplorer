@@ -3,6 +3,7 @@
 #include "TextureCacheDatabase.h"
 
 #include <cstdint>
+#include <vector>
 
 #include <QAbstractTableModel>
 #include <QColor>
@@ -34,6 +35,14 @@ public:
     int RowForEntry(const CacheEntry& entry) const;
 
 private:
+    struct RowDisplayCache
+    {
+        QString uuid;
+        QString timestamp;
+    };
+
+    void RebuildDisplayCache();
+    const RowDisplayCache* DisplayCacheAt(int row) const;
     QString PreviewStatusText(const CacheEntry& entry) const;
     int PreviewStatusRank(const CacheEntry& entry) const;
     QVariant PreviewIcon(const CacheEntry& entry) const;
@@ -45,4 +54,5 @@ private:
 
     const TextureCacheDatabase* database_ = nullptr;
     const PreviewCache* previewCache_ = nullptr;
+    std::vector<RowDisplayCache> displayCache_;
 };
