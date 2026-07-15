@@ -311,7 +311,7 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 
 `cachegui_qt/CacheEntryTableModel.*` contains the Qt model for cache entries, cached display/sort strings, table sorting data roles, preview status text, and generated gallery placeholder icons.
 
-Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries.
+Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries. Placeholder icons should keep state labels readable at the configured gallery tile size.
 
 Gallery mode shows a lightweight activity label while it is scanning visible items, refreshing the visible thumbnail queue, or checking thumbnails with queued progress. The main bottom status label remains reserved for explicit user actions such as Preview, Try Next Preview, Export, and cache open results.
 

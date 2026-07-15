@@ -168,7 +168,7 @@ namespace
             galleryView_->setResizeMode(QListView::Adjust);
             galleryView_->setMovement(QListView::Static);
             galleryView_->setIconSize(QSize(128, 128));
-            galleryView_->setGridSize(QSize(180, 170));
+            galleryView_->setGridSize(QSize(196, 174));
             galleryView_->setUniformItemSizes(true);
             galleryView_->setWordWrap(false);
             galleryView_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);

@@ -294,7 +294,7 @@ QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
         return QIcon(PlaceholderPixmap(
             QColor(44, 47, 51),
             QColor(112, 119, 128),
-            QStringLiteral("...")));
+            QStringLiteral("WAIT")));
     }
 
     const PreviewRecord* record = previewCache_->Find(entry);
@@ -304,7 +304,7 @@ QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
         return QIcon(PlaceholderPixmap(
             QColor(44, 47, 51),
             QColor(112, 119, 128),
-            QStringLiteral("...")));
+            QStringLiteral("WAIT")));
     }
 
     if (record->state == PreviewState::Previewable && !record->pixmap.isNull())
@@ -322,19 +322,19 @@ QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
             return QIcon(PlaceholderPixmap(
                 QColor(44, 47, 51),
                 QColor(112, 119, 128),
-                QStringLiteral("...")));
+                QStringLiteral("WAIT")));
 
         case PreviewState::Checking:
             return QIcon(PlaceholderPixmap(
                 QColor(30, 60, 95),
                 QColor(108, 166, 222),
-                QStringLiteral("...")));
+                QStringLiteral("LOAD")));
 
         case PreviewState::Unavailable:
             return QIcon(PlaceholderPixmap(
                 QColor(54, 45, 45),
                 QColor(154, 130, 130),
-                QStringLiteral("N/A")));
+                QStringLiteral("NO PREVIEW")));
 
         case PreviewState::LoadFailed:
             return QIcon(PlaceholderPixmap(
@@ -346,7 +346,7 @@ QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
             return QIcon(PlaceholderPixmap(
                 QColor(44, 47, 51),
                 QColor(112, 119, 128),
-                QStringLiteral("...")));
+                QStringLiteral("WAIT")));
     }
 
     return {};
@@ -364,15 +364,16 @@ QPixmap CacheEntryTableModel::PlaceholderPixmap(
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
+    painter.fillRect(QRect(0, 86, 128, 42), background.darker(125));
     painter.setPen(QPen(foreground, 2));
-    painter.drawRect(QRect(10, 10, 108, 108));
+    painter.drawRoundedRect(QRect(10, 10, 108, 108), 4, 4);
     painter.setPen(foreground);
     QFont labelFont = painter.font();
-    labelFont.setPointSize(18);
+    labelFont.setPointSize(label.size() > 4 ? 12 : 18);
     labelFont.setBold(true);
     painter.setFont(labelFont);
     painter.drawText(
-        pixmap.rect(),
+        QRect(8, 84, 112, 38),
         Qt::AlignCenter,
         label);
     return pixmap;
