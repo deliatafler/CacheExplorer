@@ -18,6 +18,7 @@ struct CachedSelectionPreview
     QPixmap pixmap;
     QString statusText;
     QString panelMessage;
+    bool panelMessageIsError = false;
 };
 
 QModelIndex SelectedProxyIndex(

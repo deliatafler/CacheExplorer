@@ -768,7 +768,14 @@ namespace
             {
                 if (!preview.panelMessage.isEmpty())
                 {
-                    previewPanel_.SetMessage(preview.panelMessage);
+                    if (preview.panelMessageIsError)
+                    {
+                        previewPanel_.SetMessage(preview.panelMessage);
+                    }
+                    else
+                    {
+                        previewPanel_.SetNotice(preview.panelMessage);
+                    }
                 }
 
                 if (!preview.statusText.isEmpty())

@@ -36,6 +36,20 @@ void PreviewPanel::SetMessage(const QString& message)
     label_->setPixmap({});
 }
 
+void PreviewPanel::SetNotice(const QString& message)
+{
+    pixmap_ = {};
+
+    if (label_ == nullptr)
+    {
+        return;
+    }
+
+    ApplyState(PreviewPanelState::Notice);
+    label_->setText(message);
+    label_->setPixmap({});
+}
+
 void PreviewPanel::SetPixmap(const QPixmap& pixmap)
 {
     pixmap_ = pixmap;
@@ -76,6 +90,11 @@ void PreviewPanel::ApplyState(PreviewPanelState state)
         case PreviewPanelState::Empty:
             label_->setStyleSheet(
                 QStringLiteral("QLabel { background: #202020; color: #a8a8a8; }"));
+            break;
+
+        case PreviewPanelState::Notice:
+            label_->setStyleSheet(
+                QStringLiteral("QLabel { background: #202020; color: #d0d0d0; }"));
             break;
 
         case PreviewPanelState::Message:

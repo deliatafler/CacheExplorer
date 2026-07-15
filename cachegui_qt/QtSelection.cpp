@@ -162,6 +162,7 @@ CachedSelectionPreview CachedPreviewForSelection(
             + ToQString(entry.uuid.ToString());
         preview.panelMessage =
             QStringLiteral("Preview could not be loaded.");
+        preview.panelMessageIsError = true;
         return preview;
     }
 

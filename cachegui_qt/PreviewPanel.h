@@ -8,6 +8,7 @@ class QLabel;
 enum class PreviewPanelState
 {
     Empty,
+    Notice,
     Message,
     Image
 };
@@ -17,6 +18,7 @@ class PreviewPanel
 public:
     void SetLabel(QLabel* label);
     void Clear();
+    void SetNotice(const QString& message);
     void SetMessage(const QString& message);
     void SetPixmap(const QPixmap& pixmap);
     void Refresh();
