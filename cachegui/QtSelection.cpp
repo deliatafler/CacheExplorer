@@ -104,7 +104,7 @@ std::vector<const CacheEntry*> SelectedEntries(
     return entries;
 }
 
-void SelectEntry(
+bool SelectEntry(
     const CacheEntry& entry,
     const CacheEntryTableModel& tableModel,
     const QSortFilterProxyModel& proxyModel,
@@ -115,7 +115,7 @@ void SelectEntry(
 
     if (sourceRow < 0)
     {
-        return;
+        return false;
     }
 
     const QModelIndex sourceIndex = tableModel.index(sourceRow, 0);
@@ -123,7 +123,7 @@ void SelectEntry(
 
     if (!proxyIndex.isValid())
     {
-        return;
+        return false;
     }
 
     QItemSelectionModel* selectionModel = table.selectionModel();
@@ -139,6 +139,7 @@ void SelectEntry(
 
     table.scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
     galleryView.scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
+    return true;
 }
 
 void SyncActiveViewSelection(

@@ -40,7 +40,7 @@ std::vector<const CacheEntry*> SelectedEntries(
     const QSortFilterProxyModel& proxyModel,
     const CacheEntryTableModel& tableModel);
 
-void SelectEntry(
+bool SelectEntry(
     const CacheEntry& entry,
     const CacheEntryTableModel& tableModel,
     const QSortFilterProxyModel& proxyModel,

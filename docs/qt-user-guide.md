@@ -57,6 +57,13 @@ Both views support Ctrl-click and Shift-click multi-selection. Selected entries
 remain selected when switching between Gallery and Table; the current entry is
 still the one shown in the large preview panel.
 
+## Find a texture UUID
+
+Enter an in-world texture UUID in `Find UUID` and click `Find` to select its
+cache entry. The lookup accepts the standard hyphenated UUID form or 32
+hexadecimal digits. If a Gallery-only filter hides the matching entry,
+CacheExplorer changes that filter to `All` so the result can be shown.
+
 ## Preview and export
 
 In `Table`, selecting an entry loads its preview into the large preview panel.

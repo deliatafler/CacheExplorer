@@ -301,6 +301,10 @@ the same sorted proxy model and preview cache as the table. Cached previews
 appear as icons after they have been decoded by Table selection, Try Next
 Preview, or the gallery's lazy visible-item loader.
 
+The Qt GUI provides a `Find UUID` control that looks up an in-world texture UUID
+through `TextureCacheDatabase::Find`, selects the matching entry in either view,
+and clears a Gallery-only filter only when that filter hides the result.
+
 Gallery mode hides the Table-only `Try Next Preview` action because thumbnails
 load lazily in the gallery itself. It shows Gallery-only filter and sort combos
 for unknown/no-preview/load-failed states, cached-complete entries, and orders

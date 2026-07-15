@@ -22,6 +22,7 @@
 #include "QtViewMode.h"
 #include "TextureCacheDatabase.h"
 #include "TryNextPreviewState.h"
+#include "UUID.h"
 
 #include <cstdint>
 #include <chrono>
@@ -29,6 +30,7 @@
 #include <filesystem>
 #include <future>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <QApplication>
@@ -134,6 +136,14 @@ namespace
             openButton_ = new QPushButton(QStringLiteral("Open"), root);
             aboutButton_ = new QPushButton(QStringLiteral("About"), root);
 
+            uuidLookupLabel_ = new QLabel(QStringLiteral("Find UUID"), root);
+            uuidLookupEdit_ = new QLineEdit(root);
+            uuidLookupEdit_->setPlaceholderText(
+                QStringLiteral("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"));
+            uuidLookupEdit_->setClearButtonEnabled(true);
+            uuidLookupEdit_->setMinimumWidth(290);
+            findUuidButton_ = new QPushButton(QStringLiteral("Find"), root);
+
             tryNextButton_ = new QPushButton(QStringLiteral("Try Next Preview"), root);
             exportButton_ = new QPushButton(QStringLiteral("Export PNG"), root);
             viewToggleButton_ = new QPushButton(QStringLiteral("Gallery"), root);
@@ -165,6 +175,8 @@ namespace
             tryNextButton_->setEnabled(false);
             exportButton_->setEnabled(false);
             viewToggleButton_->setEnabled(false);
+            uuidLookupEdit_->setEnabled(false);
+            findUuidButton_->setEnabled(false);
 
             table_ = new QTableView(root);
             galleryView_ = new GalleryListView(root);
@@ -256,6 +268,12 @@ namespace
             pathLayout->addWidget(aboutButton_, 0, 5);
             pathLayout->setColumnStretch(1, 1);
 
+            auto* lookupLayout = new QHBoxLayout();
+            lookupLayout->addWidget(uuidLookupLabel_);
+            lookupLayout->addWidget(uuidLookupEdit_);
+            lookupLayout->addWidget(findUuidButton_);
+            lookupLayout->addStretch(1);
+
             auto* actionLayout = new QHBoxLayout();
             actionLayout->addWidget(tryNextButton_);
             actionLayout->addWidget(exportButton_);
@@ -276,6 +294,7 @@ namespace
             contentLayout->addWidget(previewLabel_, 1);
 
             layout->addLayout(pathLayout);
+            layout->addLayout(lookupLayout);
             layout->addLayout(actionLayout);
             layout->addLayout(contentLayout, 1);
             layout->addWidget(statusLabel_);
@@ -326,6 +345,33 @@ namespace
                 [this]()
                 {
                     ShowAboutDialog(*this, database_);
+                });
+
+            connect(
+                uuidLookupEdit_,
+                &QLineEdit::returnPressed,
+                this,
+                [this]()
+                {
+                    FindUuid();
+                });
+
+            connect(
+                uuidLookupEdit_,
+                &QLineEdit::textChanged,
+                this,
+                [this](const QString&)
+                {
+                    UpdateActionState();
+                });
+
+            connect(
+                findUuidButton_,
+                &QPushButton::clicked,
+                this,
+                [this]()
+                {
+                    FindUuid();
                 });
 
             connect(
@@ -585,6 +631,11 @@ namespace
                 selectedEntries.size() > 1
                     ? QStringLiteral("Export Selected PNGs...")
                     : QStringLiteral("Export PNG"));
+
+            const bool lookupAvailable = !busy_ && database_.IsOpen();
+            uuidLookupEdit_->setEnabled(lookupAvailable);
+            findUuidButton_->setEnabled(
+                lookupAvailable && !uuidLookupEdit_->text().trimmed().isEmpty());
         }
 
         void SetBusy(bool busy, const QString& message = {})
@@ -610,14 +661,71 @@ namespace
 
         }
 
-        void SelectEntry(const CacheEntry& entry)
+        bool SelectEntry(const CacheEntry& entry)
         {
-            ::SelectEntry(
+            return ::SelectEntry(
                 entry,
                 tableModel_,
                 *proxyModel_,
                 *table_,
                 *galleryView_);
+        }
+
+        void FindUuid()
+        {
+            if (!database_.IsOpen() || busy_)
+            {
+                return;
+            }
+
+            const QByteArray uuidText =
+                uuidLookupEdit_->text().trimmed().toUtf8();
+            const std::optional<UUID> uuid = UUID::FromString(
+                std::string(
+                    uuidText.constData(),
+                    static_cast<std::size_t>(uuidText.size())));
+
+            if (!uuid.has_value())
+            {
+                statusLabel_->setText(
+                    QStringLiteral("Enter a valid texture UUID."));
+                uuidLookupEdit_->setFocus();
+                return;
+            }
+
+            const CacheEntry* entry = database_.Find(*uuid);
+
+            if (entry == nullptr)
+            {
+                statusLabel_->setText(
+                    QStringLiteral("UUID was not found in this cache: %1")
+                        .arg(ToQString(uuid->ToString())));
+                return;
+            }
+
+            bool filterCleared = false;
+
+            if (!SelectEntry(*entry) && galleryMode_)
+            {
+                const int allFilterIndex = galleryFilterCombo_->findData(
+                    static_cast<int>(GalleryPreviewFilter::All));
+
+                if (allFilterIndex >= 0)
+                {
+                    galleryFilterCombo_->setCurrentIndex(allFilterIndex);
+                    filterCleared = true;
+                }
+
+                SelectEntry(*entry);
+            }
+
+            statusLabel_->setText(
+                filterCleared
+                    ? QStringLiteral("Found texture and cleared the Gallery filter: %1")
+                        .arg(ToQString(entry->uuid.ToString()))
+                    : QStringLiteral("Found texture: %1")
+                        .arg(ToQString(entry->uuid.ToString())));
+            ScheduleGalleryPreviewSearch();
         }
 
         void StartPreviewRequest(
@@ -1329,6 +1437,9 @@ namespace
         QToolButton* defaultCacheButton_ = nullptr;
         QPushButton* openButton_ = nullptr;
         QPushButton* aboutButton_ = nullptr;
+        QLabel* uuidLookupLabel_ = nullptr;
+        QLineEdit* uuidLookupEdit_ = nullptr;
+        QPushButton* findUuidButton_ = nullptr;
         QPushButton* tryNextButton_ = nullptr;
         QPushButton* exportButton_ = nullptr;
         QPushButton* viewToggleButton_ = nullptr;
