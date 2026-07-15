@@ -1,0 +1,94 @@
+name: Windows CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-package:
+    name: Build, test, and package
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\.vcpkg-binary-cache
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-windows-x64-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-windows-x64-
+
+      - name: Set up vcpkg at the manifest baseline
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "$env:VCPKG_ROOT"
+          git -C "$env:VCPKG_ROOT" checkout f87344cac03158cbf1467264565f1fd36b382a24
+          & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics
+
+      - name: Configure and test core
+        shell: pwsh
+        run: |
+          cmake -S . -B build -A x64 `
+            "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static
+          cmake --build build --config Release
+          ctest --test-dir build -C Release --output-on-failure
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.11.1
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Configure and build Qt GUI
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/configure-qt-prebuilt.ps1 `
+            -QtDir "$env:QT_ROOT_DIR" `
+            -VcpkgRoot "$env:VCPKG_ROOT" `
+            -Build
+
+      - name: Package shared Qt GUI
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
+            -BuildDir build-qt-prebuilt `
+            -Configuration Release `
+            -QtBinDir "$env:QT_ROOT_DIR\bin" `
+            -OutputDir artifacts\cacheexplorer-qt-shared `
+            -Zip
+
+      - name: Smoke-test packaged GUI
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
+            -PackageDir artifacts\cacheexplorer-qt-shared `
+            -ZipPath artifacts\cacheexplorer-qt-shared.zip `
+            -ExtractAndLaunch `
+            -LaunchSeconds 10
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CacheExplorer-Windows-x64
+          path: |
+            artifacts/cacheexplorer-qt-shared.zip
+            artifacts/cacheexplorer-qt-shared.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
