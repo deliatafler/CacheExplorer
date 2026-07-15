@@ -54,7 +54,7 @@ namespace
 {
     enum class PreviewRequestKind
     {
-        Manual,
+        TableSelection,
         TryNext
     };
 
@@ -73,6 +73,19 @@ namespace
             ConfigureGallery();
             CreateLayout(root);
             ConnectSignals();
+
+            ApplyViewMode(
+                galleryMode_,
+                *viewStack_,
+                *table_,
+                *galleryView_,
+                *viewToggleButton_);
+            tryNextButton_->setVisible(false);
+            galleryFilterLabel_->setVisible(true);
+            galleryFilterCombo_->setVisible(true);
+            gallerySortLabel_->setVisible(true);
+            gallerySortCombo_->setVisible(true);
+            galleryCountLabel_->setVisible(true);
 
             setCentralWidget(root);
         }
@@ -107,7 +120,6 @@ namespace
             openButton_ = new QPushButton(QStringLiteral("Open"), root);
             aboutButton_ = new QPushButton(QStringLiteral("About"), root);
 
-            previewButton_ = new QPushButton(QStringLiteral("Preview"), root);
             tryNextButton_ = new QPushButton(QStringLiteral("Try Next Preview"), root);
             exportButton_ = new QPushButton(QStringLiteral("Export PNG"), root);
             viewToggleButton_ = new QPushButton(QStringLiteral("Gallery"), root);
@@ -136,7 +148,6 @@ namespace
             galleryActivityLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
             galleryActivityLabel_->hide();
             galleryActivityIndicator_.SetLabel(galleryActivityLabel_);
-            previewButton_->setEnabled(false);
             tryNextButton_->setEnabled(false);
             exportButton_->setEnabled(false);
             viewToggleButton_->setEnabled(false);
@@ -147,6 +158,9 @@ namespace
 
             previewPollTimer_ = new QTimer(root);
             previewPollTimer_->setInterval(50);
+            tableSelectionPreviewTimer_ = new QTimer(root);
+            tableSelectionPreviewTimer_->setSingleShot(true);
+            tableSelectionPreviewTimer_->setInterval(125);
             galleryPreviewPollTimer_ = new QTimer(root);
             galleryPreviewPollTimer_->setInterval(50);
 
@@ -219,7 +233,6 @@ namespace
             pathLayout->setColumnStretch(1, 1);
 
             auto* actionLayout = new QHBoxLayout();
-            actionLayout->addWidget(previewButton_);
             actionLayout->addWidget(tryNextButton_);
             actionLayout->addWidget(exportButton_);
             actionLayout->addStretch(1);
@@ -290,6 +303,7 @@ namespace
                 {
                     UpdateActionState();
                     ShowCachedPreviewForSelection();
+                    ScheduleTableSelectionPreview();
                 });
 
             connect(
@@ -361,15 +375,6 @@ namespace
                 });
 
             connect(
-                previewButton_,
-                &QPushButton::clicked,
-                this,
-                [this]()
-                {
-                    PreviewSelected();
-                });
-
-            connect(
                 tryNextButton_,
                 &QPushButton::clicked,
                 this,
@@ -403,6 +408,15 @@ namespace
                 [this]()
                 {
                     PollPreviewWorker();
+                });
+
+            connect(
+                tableSelectionPreviewTimer_,
+                &QTimer::timeout,
+                this,
+                [this]()
+                {
+                    StartSelectedTablePreview();
                 });
 
             connect(
@@ -508,7 +522,6 @@ namespace
                     tryNextPreview_.IsActive(),
                     database_.IsOpen(),
                     galleryMode_},
-                *previewButton_,
                 *tryNextButton_,
                 *exportButton_,
                 *viewToggleButton_);
@@ -605,7 +618,11 @@ namespace
         void ApplyPreviewResult(const PreviewDecodeResult& result)
         {
             const PreviewRequestKind requestKind = activePreviewRequestKind_;
-            activePreviewRequestKind_ = PreviewRequestKind::Manual;
+            activePreviewRequestKind_ = PreviewRequestKind::TableSelection;
+            const CacheEntry* selectedEntry = SelectedEntry();
+            const bool resultIsSelected =
+                selectedEntry != nullptr &&
+                selectedEntry->cacheIndex == result.entry.cacheIndex;
 
             if (!result.succeeded)
             {
@@ -616,7 +633,8 @@ namespace
                     ToQString(result.message));
                 SavePersistentPreviewState();
 
-                if (requestKind == PreviewRequestKind::Manual)
+                if (requestKind == PreviewRequestKind::TableSelection &&
+                    resultIsSelected)
                 {
                     previewPanel_.SetMessage(
                         PreviewUnavailablePanelMessage(result.status));
@@ -642,7 +660,8 @@ namespace
                     imageError))
             {
                 SavePersistentPreviewState();
-                if (requestKind == PreviewRequestKind::Manual)
+                if (requestKind == PreviewRequestKind::TableSelection &&
+                    resultIsSelected)
                 {
                     previewPanel_.SetMessage(imageError);
                     statusLabel_->setText(imageError);
@@ -652,16 +671,31 @@ namespace
                 return;
             }
 
-            previewPanel_.SetPixmap(pixmap);
             SavePersistentPreviewState();
-            SelectEntry(result.entry);
-            tryNextPreview_.Stop();
-            statusLabel_->setText(
-                PreviewReadyStatus(
-                    result.entry.uuid.ToString(),
-                    result.image.width,
-                    result.image.height));
+
+            if (requestKind == PreviewRequestKind::TryNext)
+            {
+                previewPanel_.SetPixmap(pixmap);
+                SelectEntry(result.entry);
+                tryNextPreview_.Stop();
+                statusLabel_->setText(
+                    PreviewReadyStatus(
+                        result.entry.uuid.ToString(),
+                        result.image.width,
+                        result.image.height));
+            }
+            else if (resultIsSelected)
+            {
+                previewPanel_.SetPixmap(pixmap);
+                statusLabel_->setText(
+                    PreviewReadyStatus(
+                        result.entry.uuid.ToString(),
+                        result.image.width,
+                        result.image.height));
+            }
+
             UpdateActionState();
+            ScheduleTableSelectionPreview();
         }
 
         void FinishFailedPreviewAttempt(PreviewRequestKind requestKind)
@@ -673,6 +707,7 @@ namespace
             }
 
             UpdateActionState();
+            ScheduleTableSelectionPreview();
         }
 
         void ScheduleTryNextPreviewContinuation()
@@ -818,16 +853,42 @@ namespace
             statusLabel_->setText(preview.statusText);
         }
 
-        void PreviewSelected()
+        void ScheduleTableSelectionPreview()
         {
-            const CacheEntry* entry = SelectedEntry();
-
-            if (entry == nullptr)
+            if (galleryMode_ ||
+                !database_.IsOpen() ||
+                tryNextPreview_.IsActive())
             {
                 return;
             }
 
-            StartPreviewRequest(*entry, PreviewRequestKind::Manual);
+            const CacheEntry* entry = SelectedEntry();
+
+            if (entry != nullptr && previewCache_.ShouldAttemptPreview(*entry))
+            {
+                tableSelectionPreviewTimer_->start();
+            }
+        }
+
+        void StartSelectedTablePreview()
+        {
+            if (galleryMode_ || !database_.IsOpen() || tryNextPreview_.IsActive())
+            {
+                return;
+            }
+
+            if (previewWorker_.IsActive())
+            {
+                tableSelectionPreviewTimer_->start();
+                return;
+            }
+
+            const CacheEntry* entry = SelectedEntry();
+
+            if (entry != nullptr && previewCache_.ShouldAttemptPreview(*entry))
+            {
+                StartPreviewRequest(*entry, PreviewRequestKind::TableSelection);
+            }
         }
 
         void StartTryNextPreview()
@@ -893,7 +954,7 @@ namespace
             {
                 ClearGalleryPreviewQueue();
             }
-            previewButton_->setVisible(!galleryMode_);
+            tableSelectionPreviewTimer_->stop();
             tryNextButton_->setVisible(!galleryMode_);
             galleryFilterLabel_->setVisible(galleryMode_);
             galleryFilterCombo_->setVisible(galleryMode_);
@@ -919,6 +980,7 @@ namespace
             UpdateGalleryEntryCount();
             UpdateGalleryActivity();
             ScheduleGalleryPreviewSearch();
+            ScheduleTableSelectionPreview();
         }
 
         void SyncActiveViewSelection(const QModelIndex& selectedIndex)
@@ -1112,7 +1174,6 @@ namespace
         QPushButton* browseButton_ = nullptr;
         QPushButton* openButton_ = nullptr;
         QPushButton* aboutButton_ = nullptr;
-        QPushButton* previewButton_ = nullptr;
         QPushButton* tryNextButton_ = nullptr;
         QPushButton* exportButton_ = nullptr;
         QPushButton* viewToggleButton_ = nullptr;
@@ -1133,6 +1194,7 @@ namespace
         CacheEntryTableModel tableModel_;
         GalleryFilterProxyModel* proxyModel_ = nullptr;
         QTimer* previewPollTimer_ = nullptr;
+        QTimer* tableSelectionPreviewTimer_ = nullptr;
         QTimer* galleryPreviewPollTimer_ = nullptr;
         GalleryPreviewController galleryPreviewController_;
         TextureCacheDatabase database_;
@@ -1140,9 +1202,9 @@ namespace
         bool busy_ = false;
         PreviewWorkerState previewWorker_;
         PreviewWorkerState galleryPreviewWorker_;
-        PreviewRequestKind activePreviewRequestKind_ = PreviewRequestKind::Manual;
+        PreviewRequestKind activePreviewRequestKind_ = PreviewRequestKind::TableSelection;
         TryNextPreviewState tryNextPreview_;
-        bool galleryMode_ = false;
+        bool galleryMode_ = true;
         std::uint64_t nextPreviewRequestId_ = 1;
     };
 }

@@ -17,7 +17,6 @@ struct MainActionState
 
 void ApplyMainActionState(
     const MainActionState& state,
-    QPushButton& previewButton,
     QPushButton& tryNextButton,
     QPushButton& exportButton,
     QPushButton& viewToggleButton);

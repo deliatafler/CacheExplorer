@@ -8,19 +8,15 @@
 
 void ApplyMainActionState(
     const MainActionState& state,
-    QPushButton& previewButton,
     QPushButton& tryNextButton,
     QPushButton& exportButton,
     QPushButton& viewToggleButton)
 {
     const bool previewIdle = !state.previewWorkerActive;
     const bool actionIdle = !state.busy && !state.tryNextActive && previewIdle;
-    const bool manualPreviewActionsAvailable = !state.galleryMode;
-
-    previewButton.setEnabled(
-        actionIdle && state.hasSelection && manualPreviewActionsAvailable);
+    const bool tableActionsAvailable = !state.galleryMode;
     tryNextButton.setEnabled(
-        actionIdle && state.databaseOpen && manualPreviewActionsAvailable);
+        actionIdle && state.databaseOpen && tableActionsAvailable);
     exportButton.setEnabled(actionIdle && state.hasSelection);
     viewToggleButton.setEnabled(!state.busy && state.databaseOpen);
 }

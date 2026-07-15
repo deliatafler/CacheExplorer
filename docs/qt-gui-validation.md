@@ -25,8 +25,8 @@ export checks below.
      -QtDir C:\Qt\6.11.1\msvc2022_64
    ```
 2. Click `Open` with the default Firestorm texture-cache path.
-3. Confirm the table populates and the status bar reports loaded entries.
-4. Select a row and click `Preview`.
+3. Confirm Gallery is the initial view and the status bar reports loaded entries.
+4. Switch to `Table`, then select a row and wait briefly for its preview to load.
 5. Confirm one of these expected outcomes:
    * A preview appears and the status bar reports image dimensions.
    * The row is marked `No preview` or `Load failed` without freezing.
@@ -41,7 +41,7 @@ export checks below.
    visually quiet while scrolling, while no-preview and error labels should be
    readable. Newly visible tiles should begin loading before far-off lookahead
    tiles.
-9. Confirm `Preview` and `Try Next Preview` are hidden in `Gallery`, while
+9. Confirm `Try Next Preview` is hidden in `Gallery`, while
    `Export PNG`, the Gallery filter/sort controls, and the `Table` toggle remain
    visible.
 10. Change the Gallery filter control and confirm the gallery shows the

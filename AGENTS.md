@@ -288,11 +288,26 @@ Qt-only; reusable cache facts should still come from `cachelib`.
 
 Use `docs/qt-gui-validation.md` for the manual Qt GUI smoke/regression checklist. Build-only validation is acceptable for narrow helper moves; run the GUI checklist after changes to async preview flow, selection behavior, gallery loading, export, cache-open behavior, or rendering.
 
-The Qt GUI also has an early Gallery/Table toggle. Gallery reuses the same sorted proxy model and preview cache as the table. Cached previews appear as icons after they have been decoded by Preview, Try Next Preview, or the gallery's lazy visible-item loader.
+The Qt GUI opens in Gallery mode and has a Gallery/Table toggle. Gallery reuses
+the same sorted proxy model and preview cache as the table. Cached previews
+appear as icons after they have been decoded by Table selection, Try Next
+Preview, or the gallery's lazy visible-item loader.
 
-Gallery mode hides the manual `Preview` and `Try Next Preview` actions because thumbnails load lazily in the gallery itself. It shows Gallery-only filter and sort combos for unknown/no-preview/load-failed states, cached-complete entries, and orders such as newest, largest body, largest image, cache index, and UUID. `Cached complete` means the meaningful header bytes plus body bytes cover the advertised image size; it can include header-only entries with body size `0` and is not a decode guarantee. Do not expose a Gallery `Previewable` filter unless it has a clearer workflow than merely showing entries already decoded during this session.
+Gallery mode hides the Table-only `Try Next Preview` action because thumbnails
+load lazily in the gallery itself. It shows Gallery-only filter and sort combos
+for unknown/no-preview/load-failed states, cached-complete entries, and orders
+such as newest, largest body, largest image, cache index, and UUID. `Cached
+complete` means the meaningful header bytes plus body bytes cover the advertised
+image size; it can include header-only entries with body size `0` and is not a
+decode guarantee. Do not expose a Gallery `Previewable` filter unless it has a
+clearer workflow than merely showing entries already decoded during this
+session.
 
-Gallery lazy loading uses a separate async thumbnail worker from manual Preview/Try Next. It builds a bounded queue from the visible gallery neighborhood, prioritizes visible tiles near the viewport center before nearby lookahead rows, attempts unknown entries one at a time, caches successful thumbnails, and marks incomplete/undecodable entries without selecting them.
+Gallery lazy loading uses a separate async thumbnail worker from Table selection
+previewing and Try Next. It builds a bounded queue from the visible gallery
+neighborhood, prioritizes visible tiles near the viewport center before nearby
+lookahead rows, attempts unknown entries one at a time, caches successful
+thumbnails, and marks incomplete/undecodable entries without selecting them.
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
 
@@ -355,7 +370,10 @@ directories report normal open errors instead of surfacing exceptions.
 
 Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries. Unknown/checking placeholders should stay visually quiet during scrolling; terminal no-preview/error labels should remain readable at the configured gallery tile size.
 
-Gallery mode shows a lightweight activity label while it is scanning visible items, refreshing the visible thumbnail queue, or checking thumbnails with queued progress. The main bottom status label remains reserved for explicit user actions such as Preview, Try Next Preview, Export, and cache open results.
+Gallery mode shows a lightweight activity label while it is scanning visible
+items, refreshing the visible thumbnail queue, or checking thumbnails with
+queued progress. The main bottom status label remains reserved for Table
+selection previewing, Try Next Preview, Export, and cache open results.
 
 `tests/cachelib_tests.cpp` contains the initial CTest-backed cachelib regression
 coverage. It uses synthetic `texture.entries` data to verify usable-entry
@@ -371,7 +389,7 @@ The Qt table must stay model-backed. An earlier `QTableWidget` version locked up
 
 Qt previews should be rendered from decoded RGBA in memory, not by writing PNG and asking Qt to reload it. The static/minimal Qt build may not have the PNG image loader available even when `TextureExporter` successfully writes a valid PNG.
 
-Qt preview decode now runs off the UI thread via `std::async`, with a Qt timer polling for completion. Worker code uses `TextureRebuilder::Rebuild(cacheDirectory, entry, ...)` so it operates on copied entry data and a cache path instead of touching the live GUI-owned `TextureCacheDatabase`.
+Qt preview decode now runs off the UI thread via `std::async`, with a Qt timer polling for completion. Worker code uses `TextureRebuilder::Rebuild(cacheDirectory, entry, ...)` so it operates on copied entry data and a cache path instead of touching the live GUI-owned `TextureCacheDatabase`. Table selection previewing uses a short debounce; a finished stale request may populate the cache but must not replace the currently selected entry's panel.
 
 `Try Next Preview` should scan forward in the current visible/sorted Qt table order, not raw cache-entry order.
 

@@ -27,7 +27,7 @@ cache version.
 
 ## Browse textures
 
-Use `Gallery` for normal browsing. Gallery thumbnails load lazily as you scroll.
+CacheExplorer opens in `Gallery` for normal browsing. Gallery thumbnails load lazily as you scroll.
 Some entries will remain `No preview` or `Load failed`; this is normal for real
 Firestorm caches because many cached JPEG2000 textures are incomplete or
 progressively cached.
@@ -48,9 +48,12 @@ when investigating cache layout or looking for large entries.
 
 ## Preview and export
 
-In `Table`, select an entry and click `Preview` to decode it into the large
-preview panel. `Try Next Preview` scans forward through the current table order
-until it finds a previewable entry or exhausts the search.
+In `Table`, selecting an entry loads its preview into the large preview panel.
+Cached previews appear immediately; new selections wait briefly so fast keyboard
+or mouse navigation does not start unnecessary decodes. Incomplete or
+undecodable entries report their no-preview state in the panel and status bar.
+`Try Next Preview` scans forward through the current table order until it finds
+a previewable entry or exhausts the search.
 
 In `Gallery`, select a thumbnail tile to show its cached preview in the large
 preview panel. Manual preview buttons are hidden because Gallery loads
