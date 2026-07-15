@@ -1,8 +1,9 @@
 # CacheExplorer
 
-CacheExplorer is a standalone browser and PNG exporter for the Firestorm Viewer
-texture cache. It is intended as a modern, open-source replacement for the
-defunct SLCacheViewer.
+CacheExplorer is a standalone browser and PNG exporter for Second Life viewer
+texture caches. It is intended as a modern, open-source replacement for the
+defunct SLCacheViewer. It is verified with the official Second Life viewer and
+Firestorm.
 
 CacheExplorer does not link against Firestorm and does not require Firestorm
 source code. Firestorm source was used only to understand the texture-cache file
@@ -14,12 +15,12 @@ CacheExplorer is approaching a first beta. The Qt 6 GUI is the app path for
 future development, beta testing, and cross-platform work.
 
 Many real cache entries are expected to be incomplete or undecodable because
-Firestorm uses progressive JPEG2000 texture caching. CacheExplorer should treat
-those entries as ordinary no-preview cases, not application failures.
+viewers use progressive JPEG2000 texture caching. CacheExplorer treats those
+entries as ordinary no-preview cases, not application failures.
 
 ## Features
 
-* Open a Firestorm `texturecache` folder directly.
+* Open a compatible viewer `texturecache` folder directly.
 * Browse cache entries in Table or Gallery view.
 * Lazy-load Gallery thumbnails while scrolling.
 * Preview decodable textures.

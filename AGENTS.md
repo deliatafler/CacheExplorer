@@ -2,7 +2,10 @@
 
 ## Project purpose
 
-CacheExplorer is a standalone, open-source browser and extractor for the Firestorm Viewer texture cache. It is intended as a modern replacement for SLCacheViewer.
+CacheExplorer is a standalone, open-source browser and extractor for compatible
+Second Life viewer texture caches. It is intended as a modern replacement for
+SLCacheViewer. It is verified with the official Second Life viewer and
+Firestorm.
 
 The project must not link against or depend on Firestorm itself. Firestorm source code was used only to understand the cache format.
 
@@ -106,7 +109,11 @@ cmake --build build-qt --config Release --target cachegui_qt
 
 The `qt-gui` vcpkg feature requests a minimal target Qt Widgets set, but the first Windows static vcpkg configure can still take a long time because host-side Qt tools pull and build a broader dependency graph.
 
-## Firestorm texture-cache format
+## Viewer texture-cache format
+
+The format below was documented from Firestorm source and is verified against
+the official Second Life viewer as well. Keep viewer-specific compatibility
+claims limited to viewers that have been tested.
 
 The selected cache directory directly contains:
 

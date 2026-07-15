@@ -4,7 +4,9 @@ The Qt GUI is the supported beta interface for CacheExplorer.
 
 ## Open a cache
 
-CacheExplorer reads Firestorm texture caches directly. You can select either:
+CacheExplorer reads compatible Second Life viewer texture caches directly. It is
+verified with the official Second Life viewer and Firestorm. You can select
+either:
 
 * the `texturecache` folder itself, or
 * the parent Firestorm cache/profile folder that contains `texturecache`.
@@ -32,7 +34,7 @@ reports the number of valid texture entries and the cache version.
 
 CacheExplorer opens in `Gallery` for normal browsing. Gallery thumbnails load lazily as you scroll.
 Some entries will remain `No preview` or `Load failed`; this is normal for real
-Firestorm caches because many cached JPEG2000 textures are incomplete or
+viewer caches because many cached JPEG2000 textures are incomplete or
 progressively cached.
 
 CacheExplorer remembers terminal `No preview` and `Load failed` states for a
@@ -75,6 +77,6 @@ diagnostics. This information is useful in beta bug reports.
 ## Limitations
 
 * Many cache entries are expected to be incomplete or undecodable.
-* CacheExplorer does not repair or modify the Firestorm cache.
+* CacheExplorer does not repair or modify the viewer cache.
 * CacheExplorer does not require Firestorm source code and does not link against
   Firestorm.

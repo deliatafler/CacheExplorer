@@ -207,7 +207,7 @@ std::uint64_t CachedEntrySize(
 }
 
     constexpr const char* ProgramName =
-        "Firestorm Cache Explorer";
+        "CacheExplorer (Second Life Viewer Cache)";
 
     constexpr const char* ProgramVersion = CACHEEXPLORER_VERSION;
 
@@ -237,7 +237,7 @@ std::uint64_t CachedEntrySize(
             << "  --no-state           Disable export state tracking.\n\n"
             << "The cache directory may be either:\n"
             << "  - the texturecache directory itself, or\n"
-            << "  - its parent Firestorm cache directory.\n";
+            << "  - its parent viewer cache/profile directory.\n";
     }
 
     const char* CacheErrorMessage(CacheError error)

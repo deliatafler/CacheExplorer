@@ -9,7 +9,7 @@ QString ChooseCacheDirectory(
 {
     return QFileDialog::getExistingDirectory(
         &parent,
-        QStringLiteral("Choose Firestorm texture cache folder"),
+        QStringLiteral("Choose Second Life viewer texture cache folder"),
         currentPath);
 }
 

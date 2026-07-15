@@ -24,7 +24,8 @@ export checks below.
    powershell -ExecutionPolicy Bypass -File scripts/launch-qt-prebuilt.ps1 `
      -QtDir C:\Qt\6.11.1\msvc2022_64
    ```
-2. Click `Open` with the default Firestorm texture-cache path.
+2. Open a known-compatible viewer texture cache, such as the default Firestorm
+   cache path or an official Second Life viewer cache.
 3. Confirm Gallery is the initial view and the status bar reports loaded entries.
 4. Switch to `Table`, then select a row and wait briefly for its preview to load.
 5. Confirm one of these expected outcomes:

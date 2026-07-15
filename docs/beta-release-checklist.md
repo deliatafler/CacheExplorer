@@ -59,7 +59,7 @@ Run the packaged `CacheExplorer.exe`, then complete
 
 Minimum beta acceptance:
 
-* Opens a real Firestorm texture cache without freezing.
+* Opens a real compatible viewer texture cache without freezing.
 * Table and Gallery views both work.
 * Gallery thumbnails load while scrolling.
 * Preview/export works for known-good entries.
@@ -73,6 +73,6 @@ Before publishing, write short notes that include:
 * This is a beta.
 * Qt GUI is the supported interface.
 * The Qt GUI is the only GUI target.
-* Many Firestorm cache entries may not preview because they are incomplete.
+* Many viewer cache entries may not preview because they are incomplete.
 * The app is standalone and does not depend on Firestorm.
 * The package checksum.

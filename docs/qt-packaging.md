@@ -47,7 +47,7 @@ testing, but use a developer shell for packages you plan to share.
 
 Run the packaged executable from inside the package directory, then:
 
-* Open a real Firestorm `texturecache` folder.
+* Open a real compatible viewer `texturecache` folder.
 * Switch between Table and Gallery views.
 * Confirm Gallery thumbnails load while scrolling.
 * Preview a texture from Table view.

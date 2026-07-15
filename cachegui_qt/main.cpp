@@ -179,7 +179,7 @@ namespace
             previewPanel_.Clear();
 
             statusLabel_ = new QLabel(
-                QStringLiteral("Choose a Firestorm texture cache folder."),
+                QStringLiteral("Choose a Second Life viewer texture cache folder."),
                 root);
         }
 

@@ -61,7 +61,8 @@ void ShowAboutDialog(
     aboutBox.setText(QStringLiteral("Cache Explorer"));
     aboutBox.setInformativeText(
         QStringLiteral(
-            "Standalone Firestorm texture-cache browser and PNG exporter."));
+            "Standalone Second Life viewer texture-cache browser and PNG exporter.\n"
+            "Verified with the official Second Life viewer and Firestorm."));
     aboutBox.setDetailedText(BuildDiagnosticText(database));
     aboutBox.exec();
 }
