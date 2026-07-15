@@ -38,7 +38,7 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
     message(STATUS
         "Primary Qt GUI enabled. Prefer an official/prebuilt Qt SDK via CMAKE_PREFIX_PATH or Qt6_DIR; "
         "use the vcpkg qt-gui feature only for optional static/reproducible Qt experiments.")
-    add_subdirectory(cachegui_qt)
+    add_subdirectory(cachegui)
 endif()
 
 if(CACHEEXPLORER_BUILD_TESTS)

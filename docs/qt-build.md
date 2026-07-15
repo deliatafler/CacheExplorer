@@ -1,6 +1,6 @@
 # Qt GUI build notes
 
-The Qt 6 GUI in `cachegui_qt` is the GUI path for future cross-platform work
+The Qt 6 GUI in `cachegui` is the GUI path for future cross-platform work
 and beta testing.
 
 ## Fast developer build with prebuilt Qt
@@ -34,10 +34,10 @@ cmake -S . -B build-qt-prebuilt -A x64 \
   -DCACHEEXPLORER_BUILD_QT_GUI=ON \
   -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
 
-cmake --build build-qt-prebuilt --config Release --target cachegui_qt
+cmake --build build-qt-prebuilt --config Release --target cachegui
 ```
 
-The target remains named `cachegui_qt`, but the user-facing executable is
+The target remains named `cachegui`, but the user-facing executable is
 `CacheExplorer.exe`. The resulting GUI launches when the prebuilt Qt `bin`
 directory is on `PATH`. Use the helper script so the raw build output starts
 with the matching Qt runtime:
@@ -78,7 +78,7 @@ not require contributors to replace their local SDK.
   that Qt tree, `x64-windows-static-md`, and no `qt-gui` vcpkg manifest feature.
   vcpkg restored only OpenJPEG/libpng/zlib from binary cache.
 * Configure completed in about 18 seconds.
-* `cmake --build build-qt-prebuilt --config Release --target cachegui_qt`
+* `cmake --build build-qt-prebuilt --config Release --target cachegui`
   completed in about 7 seconds.
 * The prebuilt helper disables CacheExplorer's static MSVC runtime setting so
   the app matches the official Qt SDK's dynamic runtime model.
@@ -96,7 +96,7 @@ cmake -S . -B build-qt -A x64 \
   -DVCPKG_MANIFEST_FEATURES=qt-gui \
   -DCACHEEXPLORER_BUILD_QT_GUI=ON
 
-cmake --build build-qt --config Release --target cachegui_qt
+cmake --build build-qt --config Release --target cachegui
 ```
 
 The `qt-gui` vcpkg feature requests a minimal target Qt Widgets set, but the
@@ -110,7 +110,7 @@ For a shared/prebuilt Qt developer build, `windeployqt` identifies the expected
 Qt DLL/plugin deployment set:
 
 ```bash
-windeployqt --dry-run --release build-qt-prebuilt/cachegui_qt/Release/CacheExplorer.exe
+windeployqt --dry-run --release build-qt-prebuilt/cachegui/Release/CacheExplorer.exe
 ```
 
 Run `windeployqt` from a proper Visual Studio developer environment for

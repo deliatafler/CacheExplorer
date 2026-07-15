@@ -11,7 +11,7 @@ the optional vcpkg static Qt path described in `docs/qt-build.md`.
 
 Prerequisites:
 
-* A Release `cachegui_qt` build configured against a prebuilt shared Qt
+* A Release `cachegui` build configured against a prebuilt shared Qt
   installation. Prefer `scripts/configure-qt-prebuilt.ps1` for this configure.
 * `windeployqt.exe` from that same Qt installation, either on `PATH` or supplied
   with `-QtBinDir`.

@@ -75,17 +75,17 @@ $packageVersion = Get-CMakeCacheValue `
     -BuildDirectory $resolvedBuildDir `
     -Name "CACHEEXPLORER_DISPLAY_VERSION" `
     -DefaultValue "unknown"
-$builtExe = Join-Path $resolvedBuildDir "cachegui_qt/$Configuration/CacheExplorer.exe"
+$builtExe = Join-Path $resolvedBuildDir "cachegui/$Configuration/CacheExplorer.exe"
 
 if (-not (Test-Path -LiteralPath $builtExe -PathType Leaf)) {
-    $legacyBuiltExe = Join-Path $resolvedBuildDir "cachegui_qt/$Configuration/cachegui_qt.exe"
+    $legacyBuiltExe = Join-Path $resolvedBuildDir "cachegui/$Configuration/cachegui.exe"
     if (Test-Path -LiteralPath $legacyBuiltExe -PathType Leaf) {
         $builtExe = $legacyBuiltExe
     }
 }
 
 if (-not (Test-Path -LiteralPath $builtExe -PathType Leaf)) {
-    throw "Built executable not found. Build cachegui_qt first."
+    throw "Built executable not found. Build cachegui first."
 }
 
 if ([string]::IsNullOrWhiteSpace($env:VCINSTALLDIR)) {

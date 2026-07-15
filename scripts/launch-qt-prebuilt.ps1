@@ -56,7 +56,7 @@ if ($LaunchSeconds -lt 1) {
 }
 
 $resolvedBuildDir = Resolve-RepoPath $BuildDir
-$exePath = Join-Path $resolvedBuildDir "cachegui_qt\$Configuration\CacheExplorer.exe"
+$exePath = Join-Path $resolvedBuildDir "cachegui\$Configuration\CacheExplorer.exe"
 if (-not (Test-Path -LiteralPath $exePath -PathType Leaf)) {
     throw "CacheExplorer.exe not found at: $exePath"
 }

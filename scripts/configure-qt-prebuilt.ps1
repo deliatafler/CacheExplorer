@@ -99,7 +99,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if ($Build) {
-    cmake --build $BuildDir --config Release --target cachegui_qt
+    cmake --build $BuildDir --config Release --target cachegui
     if ($LASTEXITCODE -ne 0) {
         throw "Qt GUI build failed with exit code $LASTEXITCODE"
     }

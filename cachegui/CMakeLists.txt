@@ -1,6 +1,6 @@
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
-add_executable(cachegui_qt WIN32
+add_executable(cachegui WIN32
     CacheEntryTableModel.cpp
     CacheEntryTableModel.h
     GalleryFilterProxyModel.cpp
@@ -54,35 +54,35 @@ add_executable(cachegui_qt WIN32
     TryNextPreviewState.h
 )
 
-set_target_properties(cachegui_qt
+set_target_properties(cachegui
     PROPERTIES
         OUTPUT_NAME CacheExplorer
 )
 
-target_compile_features(cachegui_qt
+target_compile_features(cachegui
     PRIVATE
         cxx_std_17
 )
 
-target_compile_definitions(cachegui_qt
+target_compile_definitions(cachegui
     PRIVATE
         CACHEEXPLORER_VERSION="${CACHEEXPLORER_DISPLAY_VERSION}"
 )
 
-target_link_libraries(cachegui_qt
+target_link_libraries(cachegui
     PRIVATE
         cachelib
         Qt6::Widgets
 )
 
 if(MSVC)
-    target_compile_options(cachegui_qt
+    target_compile_options(cachegui
         PRIVATE
             /W4
             /permissive-
     )
 else()
-    target_compile_options(cachegui_qt
+    target_compile_options(cachegui
         PRIVATE
             -Wall
             -Wextra
@@ -91,5 +91,5 @@ else()
 endif()
 
 if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(cachegui_qt)
+    qt_finalize_executable(cachegui)
 endif()

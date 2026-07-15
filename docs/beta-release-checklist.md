@@ -18,7 +18,7 @@ Run:
 ```bash
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
-cmake --build build-qt-prebuilt --config Release --target cachegui_qt
+cmake --build build-qt-prebuilt --config Release --target cachegui
 ```
 
 The beta GUI package should be built from the prebuilt-Qt configuration. The

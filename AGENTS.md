@@ -15,7 +15,7 @@ The project has three current targets:
 
 * `cachelib`: reusable cache-reading, reconstruction, decoding, and export library
 * `cachecli`: thin command-line frontend
-* `cachegui_qt`: Qt 6 cross-platform GUI frontend
+* `cachegui`: Qt 6 cross-platform GUI frontend
 
 The GUI depends directly on `cachelib`. It must not wrap or invoke the CLI.
 
@@ -84,10 +84,10 @@ cmake -S . -B build-qt-prebuilt -A x64 \
   -DCACHEEXPLORER_BUILD_QT_GUI=ON \
   -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
 
-cmake --build build-qt-prebuilt --config Release --target cachegui_qt
+cmake --build build-qt-prebuilt --config Release --target cachegui
 ```
 
-The CMake target remains `cachegui_qt`; its user-facing executable name is
+The CMake target remains `cachegui`; its user-facing executable name is
 `CacheExplorer.exe`.
 
 Launch raw prebuilt Qt build outputs through `scripts/launch-qt-prebuilt.ps1`
@@ -104,7 +104,7 @@ cmake -S . -B build-qt -A x64 \
   -DVCPKG_MANIFEST_FEATURES=qt-gui \
   -DCACHEEXPLORER_BUILD_QT_GUI=ON
 
-cmake --build build-qt --config Release --target cachegui_qt
+cmake --build build-qt --config Release --target cachegui
 ```
 
 The `qt-gui` vcpkg feature requests a minimal target Qt Widgets set, but the first Windows static vcpkg configure can still take a long time because host-side Qt tools pull and build a broader dependency graph.
@@ -286,7 +286,7 @@ Complete these tasks in order:
 
 ### Qt GUI
 
-The Qt 6 GUI in `cachegui_qt` is the supported GUI path. It opens a cache
+The Qt 6 GUI in `cachegui` is the supported GUI path. It opens a cache
 through `cachelib`, shows entries in a sortable model-backed table, can preview
 and export selected entries as PNG through `TextureExporter`, and tracks preview
 status in the table.
@@ -319,48 +319,48 @@ thumbnails, and marks incomplete/undecodable entries without selecting them.
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
 
-`cachegui_qt/GalleryActivityIndicator.*` contains Qt gallery thumbnail activity label state and text.
+`cachegui/GalleryActivityIndicator.*` contains Qt gallery thumbnail activity label state and text.
 
-`cachegui_qt/GalleryFilterProxyModel.*` contains the Gallery-only preview-state filtering proxy. Table mode should show all entries even when a Gallery filter is selected.
+`cachegui/GalleryFilterProxyModel.*` contains the Gallery-only preview-state filtering proxy. Table mode should show all entries even when a Gallery filter is selected.
 
-`cachegui_qt/GalleryListView.*` contains the gallery hit-testing view subclass. Keep this kind of Qt-only UI behavior out of `cachelib`.
+`cachegui/GalleryListView.*` contains the gallery hit-testing view subclass. Keep this kind of Qt-only UI behavior out of `cachelib`.
 
-`cachegui_qt/GalleryPreviewController.*` contains gallery thumbnail queue/search bookkeeping, scheduled-search decisions, attemptable-entry selection, and activity-state packaging. It should not decode images or inspect widgets directly.
+`cachegui/GalleryPreviewController.*` contains gallery thumbnail queue/search bookkeeping, scheduled-search decisions, attemptable-entry selection, and activity-state packaging. It should not decode images or inspect widgets directly.
 
-`cachegui_qt/GalleryPreviewQueue.*` contains gallery thumbnail queue bookkeeping and progress counters. It should stay UI-adjacent and must not start worker threads or inspect widgets directly.
+`cachegui/GalleryPreviewQueue.*` contains gallery thumbnail queue bookkeeping and progress counters. It should stay UI-adjacent and must not start worker threads or inspect widgets directly.
 
-`cachegui_qt/GalleryPreviewScanner.*` contains Qt gallery visible-row scanning and queue candidate prioritization. It may inspect Qt view/model geometry, but should not own async worker state.
+`cachegui/GalleryPreviewScanner.*` contains Qt gallery visible-row scanning and queue candidate prioritization. It may inspect Qt view/model geometry, but should not own async worker state.
 
-`cachegui_qt/PreviewCache.*` contains Qt GUI preview state and cached pixmaps. It is intentionally GUI-owned because it stores `QPixmap`; reusable decode/export logic must remain in `cachelib`.
+`cachegui/PreviewCache.*` contains Qt GUI preview state and cached pixmaps. It is intentionally GUI-owned because it stores `QPixmap`; reusable decode/export logic must remain in `cachelib`.
 
-`cachegui_qt/QtPreviewStateStore.*` contains Qt-only persistence for terminal
+`cachegui/QtPreviewStateStore.*` contains Qt-only persistence for terminal
 preview states. It stores no-preview/load-failed records outside the Firestorm
 cache directory and validates UUID/cacheIndex/image/body metadata before
 restoring them into `PreviewCache`.
 
-`cachegui_qt/PreviewDecodeWorker.*` contains the Qt GUI async preview decode wrapper around `TextureRebuilder` and `J2CDecoder`. Keep reusable reconstruction and decoding behavior in `cachelib`; this wrapper should only package copied request data/results for the GUI worker flow.
+`cachegui/PreviewDecodeWorker.*` contains the Qt GUI async preview decode wrapper around `TextureRebuilder` and `J2CDecoder`. Keep reusable reconstruction and decoding behavior in `cachelib`; this wrapper should only package copied request data/results for the GUI worker flow.
 
 Qt preview decode results distinguish rebuild failures from incomplete/undecodable cached texture data so the GUI can show user-friendly incomplete-texture feedback without changing `cachelib` export semantics.
 
-`cachegui_qt/PreviewImage.*` contains Qt-only conversion from decoded RGBA data to `QPixmap`.
+`cachegui/PreviewImage.*` contains Qt-only conversion from decoded RGBA data to `QPixmap`.
 
-`cachegui_qt/PreviewPanel.*` contains Qt-only preview label/pixmap/message display state, styling, and scaling.
+`cachegui/PreviewPanel.*` contains Qt-only preview label/pixmap/message display state, styling, and scaling.
 
-`cachegui_qt/PreviewStatus.*` contains Qt preview cache/model notification helpers, including decoded-image-to-cached-pixmap storage.
+`cachegui/PreviewStatus.*` contains Qt preview cache/model notification helpers, including decoded-image-to-cached-pixmap storage.
 
-`cachegui_qt/PreviewWorkerState.*` contains async preview request state and decode-worker startup shared by manual and gallery preview workers.
+`cachegui/PreviewWorkerState.*` contains async preview request state and decode-worker startup shared by manual and gallery preview workers.
 
-`cachegui_qt/QtAboutDialog.*` contains the Qt-only About/diagnostics dialog.
+`cachegui/QtAboutDialog.*` contains the Qt-only About/diagnostics dialog.
 
-`cachegui_qt/QtActionState.*` contains Qt button enable/disable rules for the main window.
+`cachegui/QtActionState.*` contains Qt button enable/disable rules for the main window.
 
-`cachegui_qt/QtFileDialogs.*` contains Qt file/folder dialog helpers for browse/export commands.
+`cachegui/QtFileDialogs.*` contains Qt file/folder dialog helpers for browse/export commands.
 
-`cachegui_qt/QtGallerySort.*` contains the Gallery-only sort control options and proxy-model sort application.
+`cachegui/QtGallerySort.*` contains the Gallery-only sort control options and proxy-model sort application.
 
-`cachegui_qt/QtGalleryStatus.*` contains Gallery-only count/filter status text.
+`cachegui/QtGalleryStatus.*` contains Gallery-only count/filter status text.
 
-`cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem
+`cachegui/QtHelpers.*` contains Qt boundary helpers for strings, filesystem
 paths, default cache path discovery, and accepting either a viewer profile
 directory or its nested `texturecache` folder.
 It also persists the last successfully opened cache path through Qt settings and
@@ -371,23 +371,23 @@ outside the viewer cache directory.
 Path probing should use non-throwing filesystem checks so odd user-selected
 directories report normal open errors instead of surfacing exceptions.
 
-`cachegui_qt/QtSelection.*` contains shared Qt table/gallery selection helpers,
+`cachegui/QtSelection.*` contains shared Qt table/gallery selection helpers,
 selected-entry collection, and selected cached-preview lookup. Table and Gallery
 share one extended-selection model so multi-selection survives view changes;
 the current selection remains the preview target.
 
-`cachegui_qt/QtTextureExport.*` contains Qt GUI export filenames, status text,
+`cachegui/QtTextureExport.*` contains Qt GUI export filenames, status text,
 and option defaults around `TextureExporter`; reusable export behavior must
 remain in `cachelib`. Multiple selected entries export asynchronously to a
 chosen folder without overwriting existing PNGs.
 
-`cachegui_qt/QtTryNextPreview.*` contains Qt proxy-model navigation and status text for the "Try Next Preview" action.
+`cachegui/QtTryNextPreview.*` contains Qt proxy-model navigation and status text for the "Try Next Preview" action.
 
-`cachegui_qt/QtViewMode.*` contains Qt table/gallery stacked-widget and toggle-button state helpers.
+`cachegui/QtViewMode.*` contains Qt table/gallery stacked-widget and toggle-button state helpers.
 
-`cachegui_qt/TryNextPreviewState.*` contains the Qt GUI "Try Next Preview" row/attempt bookkeeping. It should not inspect Qt models or start preview workers directly.
+`cachegui/TryNextPreviewState.*` contains the Qt GUI "Try Next Preview" row/attempt bookkeeping. It should not inspect Qt models or start preview workers directly.
 
-`cachegui_qt/CacheEntryTableModel.*` contains the Qt model for cache entries, cached display/sort strings, table sorting data roles, preview status text, and generated gallery placeholder icons.
+`cachegui/CacheEntryTableModel.*` contains the Qt model for cache entries, cached display/sort strings, table sorting data roles, preview status text, and generated gallery placeholder icons.
 
 Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries. Unknown/checking placeholders should stay visually quiet during scrolling; terminal no-preview/error labels should remain readable at the configured gallery tile size.
 
@@ -426,7 +426,7 @@ Good next low-risk slices:
 * Prefer official/prebuilt shared Qt for normal local development and contributor builds.
 * Keep the vcpkg static Qt path available only for reproducible/distribution experiments, ideally with binary caching in CI.
 * Improve Qt gallery UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
-* Improve `cachegui_qt` preview presentation and Gallery layout behavior based on real-cache validation.
+* Improve `cachegui` preview presentation and Gallery layout behavior based on real-cache validation.
 * Continue packaging/deployment work for the Qt GUI.
 * Keep `docs/qt-user-guide.md` and `docs/beta-release-checklist.md` aligned with beta behavior.
 * Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable archive.

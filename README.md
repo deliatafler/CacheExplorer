@@ -75,11 +75,11 @@ cmake -S . -B build-qt-prebuilt -A x64 \
   -DCACHEEXPLORER_BUILD_QT_GUI=ON \
   -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
 
-cmake --build build-qt-prebuilt --config Release --target cachegui_qt
+cmake --build build-qt-prebuilt --config Release --target cachegui
 ```
 
-The target name is `cachegui_qt`; the built GUI executable is
-`build-qt-prebuilt/cachegui_qt/Release/CacheExplorer.exe`.
+The target name is `cachegui`; the built GUI executable is
+`build-qt-prebuilt/cachegui/Release/CacheExplorer.exe`.
 Launch the raw prebuilt build through the helper so Windows can find the Qt
 runtime DLLs:
 
