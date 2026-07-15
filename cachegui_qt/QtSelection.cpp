@@ -73,7 +73,21 @@ std::vector<const CacheEntry*> SelectedEntries(
         return entries;
     }
 
-    const QModelIndexList selectedRows = selectionModel->selectedRows(0);
+    QModelIndexList selectedRows = selectionModel->selectedRows(0);
+
+    if (selectedRows.empty())
+    {
+        const QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
+
+        for (const QModelIndex& selectedIndex : selectedIndexes)
+        {
+            if (selectedIndex.column() == 0)
+            {
+                selectedRows.push_back(selectedIndex);
+            }
+        }
+    }
+
     entries.reserve(static_cast<std::size_t>(selectedRows.size()));
 
     for (const QModelIndex& proxyIndex : selectedRows)
