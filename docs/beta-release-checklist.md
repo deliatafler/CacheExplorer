@@ -46,7 +46,8 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
 ```
 
 The package archive should contain `CacheExplorer.exe`, Qt DLLs, and Qt plugin
-folders.
+folders. The package script should also create a `.sha256` checksum next to the
+zip.
 
 ## GUI smoke test
 
@@ -71,3 +72,4 @@ Before publishing, write short notes that include:
 * Win32 GUI is deprecated legacy.
 * Many Firestorm cache entries may not preview because they are incomplete.
 * The app is standalone and does not depend on Firestorm.
+* The package checksum.

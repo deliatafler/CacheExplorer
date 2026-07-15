@@ -90,3 +90,4 @@ See `docs/qt-packaging.md` for package contents and smoke testing.
 Use `docs/qt-gui-validation.md` after GUI behavior changes. Build-only
 validation is usually enough for documentation-only and narrow helper changes.
 Use `docs/beta-release-checklist.md` before tagging or sharing a beta package.
+See `RELEASE_NOTES.md` for draft beta release notes.

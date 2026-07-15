@@ -33,7 +33,8 @@ If `windeployqt.exe` is already on `PATH`, omit `-QtBinDir`.
 
 The package directory contains `CacheExplorer.exe` plus the Qt DLLs and plugin
 folders copied by `windeployqt`. With `-Zip`, the script also creates
-`artifacts/cacheexplorer-qt-shared.zip` unless `-ZipPath` is supplied.
+`artifacts/cacheexplorer-qt-shared.zip` unless `-ZipPath` is supplied. It also
+writes a `.sha256` checksum file next to the zip unless `-NoChecksum` is used.
 
 If `VCINSTALLDIR` is not set, the script warns that it is not running from a
 Visual Studio developer environment. That warning is acceptable for local smoke

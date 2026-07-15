@@ -5,7 +5,8 @@ param(
     [string]$QtBinDir = "",
     [string]$OutputDir = "artifacts/cacheexplorer-qt-shared",
     [switch]$Zip,
-    [string]$ZipPath = ""
+    [string]$ZipPath = "",
+    [switch]$NoChecksum
 )
 
 Set-StrictMode -Version Latest
@@ -88,4 +89,19 @@ if ($Zip) {
 
     Write-Host "Created package archive:"
     Write-Host "  $resolvedZipPath"
+
+    if (-not $NoChecksum) {
+        $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $resolvedZipPath
+        $checksumPath = "$resolvedZipPath.sha256"
+        $checksumLine = "$($hash.Hash.ToLowerInvariant())  $(Split-Path -Leaf $resolvedZipPath)"
+
+        Set-Content `
+            -LiteralPath $checksumPath `
+            -Value $checksumLine `
+            -Encoding ASCII
+
+        Write-Host "Created SHA256 checksum:"
+        Write-Host "  $checksumPath"
+        Write-Host "  $checksumLine"
+    }
 }
