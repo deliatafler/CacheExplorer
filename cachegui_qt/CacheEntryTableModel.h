@@ -16,6 +16,8 @@ class PreviewCache;
 class CacheEntryTableModel final : public QAbstractTableModel
 {
 public:
+    static constexpr int PreviewStateRole = Qt::UserRole + 1;
+
     explicit CacheEntryTableModel(QObject* parent = nullptr);
 
     void SetDatabase(const TextureCacheDatabase* database);
@@ -43,6 +45,7 @@ private:
 
     void RebuildDisplayCache();
     const RowDisplayCache* DisplayCacheAt(int row) const;
+    int PreviewStateValue(const CacheEntry& entry) const;
     QString PreviewStatusText(const CacheEntry& entry) const;
     int PreviewStatusRank(const CacheEntry& entry) const;
     QVariant PreviewIcon(const CacheEntry& entry) const;

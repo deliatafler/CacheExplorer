@@ -261,13 +261,15 @@ Use `docs/qt-gui-validation.md` for the manual Qt GUI smoke/regression checklist
 
 The Qt GUI also has an early Gallery/Table toggle. Gallery reuses the same sorted proxy model and preview cache as the table. Cached previews appear as icons after they have been decoded by Preview, Try Next Preview, or the gallery's lazy visible-item loader.
 
-Gallery mode hides the manual `Preview` and `Try Next Preview` actions because thumbnails load lazily in the gallery itself. It shows a Gallery-only sort combo for common orders such as newest, largest body, largest image, cache index, and UUID.
+Gallery mode hides the manual `Preview` and `Try Next Preview` actions because thumbnails load lazily in the gallery itself. It shows Gallery-only filter and sort combos for common preview states and orders such as newest, largest body, largest image, cache index, and UUID.
 
 Gallery lazy loading uses a separate async thumbnail worker from manual Preview/Try Next. It builds a bounded queue from the visible gallery neighborhood, prioritizes visible tiles near the viewport center before nearby lookahead rows, attempts unknown entries one at a time, caches successful thumbnails, and marks incomplete/undecodable entries without selecting them.
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
 
 `cachegui_qt/GalleryActivityIndicator.*` contains Qt gallery thumbnail activity label state and text.
+
+`cachegui_qt/GalleryFilterProxyModel.*` contains the Gallery-only preview-state filtering proxy. Table mode should show all entries even when a Gallery filter is selected.
 
 `cachegui_qt/GalleryListView.*` contains the gallery hit-testing view subclass. Keep this kind of Qt-only UI behavior out of `cachelib`.
 

@@ -1,4 +1,5 @@
 #include "CacheEntryTableModel.h"
+#include "GalleryFilterProxyModel.h"
 #include "GalleryActivityIndicator.h"
 #include "GalleryListView.h"
 #include "GalleryPreviewController.h"
@@ -36,7 +37,6 @@
 #include <QPushButton>
 #include <QScrollBar>
 #include <QResizeEvent>
-#include <QSortFilterProxyModel>
 #include <QStackedWidget>
 #include <QTableView>
 #include <QTimer>
@@ -95,6 +95,11 @@ namespace
             tryNextButton_ = new QPushButton(QStringLiteral("Try Next Preview"), root);
             exportButton_ = new QPushButton(QStringLiteral("Export PNG"), root);
             viewToggleButton_ = new QPushButton(QStringLiteral("Gallery"), root);
+            galleryFilterLabel_ = new QLabel(QStringLiteral("Show"), root);
+            galleryFilterCombo_ = new QComboBox(root);
+            ConfigureGalleryPreviewFilterControl(*galleryFilterCombo_);
+            galleryFilterLabel_->hide();
+            galleryFilterCombo_->hide();
             gallerySortLabel_ = new QLabel(QStringLiteral("Sort"), root);
             gallerySortCombo_ = new QComboBox(root);
             ConfigureGallerySortControl(*gallerySortCombo_);
@@ -131,7 +136,7 @@ namespace
 
         void ConfigureModels()
         {
-            proxyModel_ = new QSortFilterProxyModel(this);
+            proxyModel_ = new GalleryFilterProxyModel(this);
             tableModel_.SetPreviewCache(&previewCache_);
             proxyModel_->setSourceModel(&tableModel_);
             proxyModel_->setSortRole(Qt::UserRole);
@@ -190,6 +195,8 @@ namespace
             actionLayout->addWidget(tryNextButton_);
             actionLayout->addWidget(exportButton_);
             actionLayout->addStretch(1);
+            actionLayout->addWidget(galleryFilterLabel_);
+            actionLayout->addWidget(galleryFilterCombo_);
             actionLayout->addWidget(gallerySortLabel_);
             actionLayout->addWidget(gallerySortCombo_);
             actionLayout->addWidget(galleryActivityLabel_);
@@ -293,6 +300,20 @@ namespace
                     statusLabel_->setText(GallerySortCompleteStatus(sortMode));
                     ClearGalleryPreviewQueue();
                     UpdateGalleryActivity();
+                    ScheduleGalleryPreviewSearch();
+                });
+
+            connect(
+                galleryFilterCombo_,
+                &QComboBox::currentIndexChanged,
+                this,
+                [this]()
+                {
+                    proxyModel_->SetPreviewFilter(
+                        CurrentGalleryPreviewFilter(*galleryFilterCombo_));
+                    ClearGalleryPreviewQueue();
+                    UpdateGalleryActivity();
+                    statusLabel_->setText(QStringLiteral("Gallery filter updated."));
                     ScheduleGalleryPreviewSearch();
                 });
 
@@ -809,8 +830,11 @@ namespace
             }
             previewButton_->setVisible(!galleryMode_);
             tryNextButton_->setVisible(!galleryMode_);
+            galleryFilterLabel_->setVisible(galleryMode_);
+            galleryFilterCombo_->setVisible(galleryMode_);
             gallerySortLabel_->setVisible(galleryMode_);
             gallerySortCombo_->setVisible(galleryMode_);
+            proxyModel_->SetGalleryMode(galleryMode_);
             ApplyViewMode(
                 galleryMode_,
                 *viewStack_,
@@ -974,6 +998,8 @@ namespace
         QPushButton* tryNextButton_ = nullptr;
         QPushButton* exportButton_ = nullptr;
         QPushButton* viewToggleButton_ = nullptr;
+        QLabel* galleryFilterLabel_ = nullptr;
+        QComboBox* galleryFilterCombo_ = nullptr;
         QLabel* gallerySortLabel_ = nullptr;
         QComboBox* gallerySortCombo_ = nullptr;
         QTableView* table_ = nullptr;
@@ -986,7 +1012,7 @@ namespace
         PreviewPanel previewPanel_;
         PreviewCache previewCache_;
         CacheEntryTableModel tableModel_;
-        QSortFilterProxyModel* proxyModel_ = nullptr;
+        GalleryFilterProxyModel* proxyModel_ = nullptr;
         QTimer* previewPollTimer_ = nullptr;
         QTimer* galleryPreviewPollTimer_ = nullptr;
         GalleryPreviewController galleryPreviewController_;

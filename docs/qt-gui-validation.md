@@ -24,16 +24,19 @@ workers, gallery loading, export, or cache-open behavior.
    readable. Newly visible tiles should begin loading before far-off lookahead
    tiles.
 9. Confirm `Preview` and `Try Next Preview` are hidden in `Gallery`, while
-   `Export PNG`, the Gallery sort control, and the `Table` toggle remain visible.
-10. Change the Gallery sort control and confirm the gallery reorders and resumes
+   `Export PNG`, the Gallery filter/sort controls, and the `Table` toggle remain
+   visible.
+10. Change the Gallery filter control and confirm the gallery shows only the
+    selected preview state. Toggle back to `Table` and confirm all rows return.
+11. Change the Gallery sort control and confirm the gallery reorders and resumes
     lazy thumbnail loading without blocking the UI. Slower sorts, especially
     UUID, should update the bottom status bar before the sort completes.
-11. Click a Gallery item marked `No preview` or `Load failed` and confirm the
+12. Click a Gallery item marked `No preview` or `Load failed` and confirm the
     bottom status bar reports that state.
-12. Toggle back to `Table` and confirm columns render normally.
-13. Select an already-previewed item in both `Table` and `Gallery`; confirm the
+13. Toggle back to `Table` and confirm columns render normally.
+14. Select an already-previewed item in both `Table` and `Gallery`; confirm the
     cached preview appears in the large preview panel without decoding again.
-14. If a preview is visible, resize the window and confirm the preview rescales.
+15. If a preview is visible, resize the window and confirm the preview rescales.
 
 ## Export smoke test
 
@@ -56,6 +59,7 @@ Run at least the basic smoke test after changes involving:
 * `MainWindow` preview or gallery orchestration
 * `PreviewCache`, `PreviewPanel`, or `TryNextPreviewState`
 * `GalleryPreviewController`, `GalleryPreviewQueue`, or `GalleryPreviewScanner`
+* Gallery filtering or sorting behavior
 * table/gallery model roles or selection behavior
 * cache open/close behavior
 * PNG export behavior

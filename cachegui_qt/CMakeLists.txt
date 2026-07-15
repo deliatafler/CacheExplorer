@@ -3,6 +3,8 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 add_executable(cachegui_qt WIN32
     CacheEntryTableModel.cpp
     CacheEntryTableModel.h
+    GalleryFilterProxyModel.cpp
+    GalleryFilterProxyModel.h
     GalleryActivityIndicator.cpp
     GalleryActivityIndicator.h
     GalleryListView.cpp

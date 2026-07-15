@@ -58,7 +58,7 @@ void CacheEntryTableModel::NotifyAllPreviewStatusesChanged()
         emit dataChanged(
             index(0, 0),
             index(rowCount() - 1, 5),
-            {Qt::DisplayRole, Qt::DecorationRole, Qt::UserRole});
+            {Qt::DisplayRole, Qt::DecorationRole, Qt::UserRole, PreviewStateRole});
     }
 }
 
@@ -71,7 +71,7 @@ void CacheEntryTableModel::NotifyPreviewStatusChanged(std::uint32_t cacheIndex)
         emit dataChanged(
             index(row, 0),
             index(row, 5),
-            {Qt::DisplayRole, Qt::DecorationRole, Qt::UserRole});
+            {Qt::DisplayRole, Qt::DecorationRole, Qt::UserRole, PreviewStateRole});
     }
 }
 
@@ -160,6 +160,11 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
             default:
                 return {};
         }
+    }
+
+    if (role == PreviewStateRole)
+    {
+        return PreviewStateValue(*entry);
     }
 
     if (role == Qt::DecorationRole && index.column() == 0)
@@ -285,6 +290,23 @@ int CacheEntryTableModel::PreviewStatusRank(const CacheEntry& entry) const
     }
 
     return previewCache_->StatusRank(entry);
+}
+
+int CacheEntryTableModel::PreviewStateValue(const CacheEntry& entry) const
+{
+    if (previewCache_ == nullptr)
+    {
+        return static_cast<int>(PreviewState::Unknown);
+    }
+
+    const PreviewRecord* record = previewCache_->Find(entry);
+
+    if (record == nullptr)
+    {
+        return static_cast<int>(PreviewState::Unknown);
+    }
+
+    return static_cast<int>(record->state);
 }
 
 QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
