@@ -10,17 +10,17 @@ the Qt GUI:
 
 * Consider a bounded multi-worker thumbnail queue if one-at-a-time lazy loading
   is not fast enough on large real caches.
-* Consider a "likely complete" or cached-byte-size filter for debugging and for
-  users who want to bias Gallery toward entries more likely to preview.
-
 Keep these as Qt/cachelib features if they are implemented. Do not resurrect
 platform-specific GUI code for them.
 
-Completed first slice:
+Completed slices:
 
 * The Qt GUI persists terminal no-preview/load-failed states across runs, keyed
   by cache path plus UUID/cacheIndex/image/body metadata, so Gallery can skip
   rechecking entries already known to be incomplete or undecodable.
+* The Gallery `Show` filter includes `Cached complete`, a cached-byte-size
+  filter for debugging and for users who want to bias Gallery toward entries
+  more likely to preview.
 
 Possible follow-up:
 

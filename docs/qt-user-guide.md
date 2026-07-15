@@ -36,6 +36,11 @@ CacheExplorer remembers terminal `No preview` and `Load failed` states for a
 cache between runs, while still checking the entry metadata before reusing that
 state.
 
+The Gallery `Show` filter includes `Cached complete`, which shows entries whose
+stored header and body bytes cover the advertised image size. This can include
+small header-only entries with body size `0`; it is a useful browsing/debugging
+hint, not a guarantee that the JPEG2000 decoder will accept every entry.
+
 Use `Table` for debugging and inspection. The table shows UUID, image size, body
 size, raw cache index, timestamp, and preview status. Table sorting is useful
 when investigating cache layout or looking for large entries.
