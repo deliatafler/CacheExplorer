@@ -64,6 +64,12 @@ checksum and a fresh-extraction launch smoke, and uploads the ZIP plus its
 publish GitHub Releases; release publication remains an explicit tagged-release
 step after human validation.
 
+Local Windows development currently uses Qt 6.11.1 through the official Qt
+installer. CI uses the public Qt 6.8.3 MSVC 2022 package because it is available
+through the non-authenticated aqt repository used by GitHub Actions. Both use
+the same supported compiler family and the GUI's Qt Widgets API surface; CI does
+not require contributors to replace their local SDK.
+
 ### Validated prebuilt-Qt developer setup
 
 * Qt 6.11.1 `msvc2022_64` installed into
