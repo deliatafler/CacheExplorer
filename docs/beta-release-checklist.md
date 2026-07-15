@@ -52,6 +52,15 @@ folders, `README.md`, `RELEASE_NOTES.md`, and `docs/qt-user-guide.md`. The
 package script should also include `PACKAGE_INFO.txt` and create a `.sha256`
 checksum next to the zip.
 
+Run the package smoke script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
+  -PackageDir artifacts\cacheexplorer-qt-shared `
+  -ZipPath artifacts\cacheexplorer-qt-shared.zip `
+  -Launch
+```
+
 ## GUI smoke test
 
 Run the packaged `CacheExplorer.exe`, then complete

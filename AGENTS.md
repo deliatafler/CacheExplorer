@@ -376,6 +376,8 @@ Good next low-risk slices:
 * Continue packaging/deployment work for the Qt GUI.
 * Keep `docs/qt-user-guide.md` and `docs/beta-release-checklist.md` aligned with beta behavior.
 * Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable archive.
+* Use `scripts/test-qt-package.ps1` to verify shared-Qt package contents,
+  archive contents, checksum, and optional short launch smoke.
 * Defer Win32 cleanup unless needed to keep the deprecated legacy target building.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.
 

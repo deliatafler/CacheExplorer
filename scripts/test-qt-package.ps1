@@ -1,0 +1,145 @@
+param(
+    [string]$PackageDir = "artifacts/cacheexplorer-qt-shared",
+    [string]$ZipPath = "",
+    [string]$ChecksumPath = "",
+    [switch]$Launch,
+    [int]$LaunchSeconds = 5
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $scriptRoot
+
+function Resolve-RepoPath {
+    param([string]$Path)
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return [System.IO.Path]::GetFullPath($Path)
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $repoRoot $Path))
+}
+
+function Assert-FileExists {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Required package file not found: $Path"
+    }
+}
+
+function Test-ZipEntry {
+    param(
+        [System.IO.Compression.ZipArchive]$Archive,
+        [string]$EntryName
+    )
+
+    $normalizedName = $EntryName.Replace("\", "/")
+
+    foreach ($entry in $Archive.Entries) {
+        if ($entry.FullName.Replace("\", "/") -eq $normalizedName) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+$resolvedPackageDir = Resolve-RepoPath $PackageDir
+
+if (-not (Test-Path -LiteralPath $resolvedPackageDir -PathType Container)) {
+    throw "Package directory not found: $resolvedPackageDir"
+}
+
+$requiredFiles = @(
+    "CacheExplorer.exe",
+    "PACKAGE_INFO.txt",
+    "README.md",
+    "RELEASE_NOTES.md",
+    "docs/qt-user-guide.md",
+    "platforms/qwindows.dll"
+)
+
+foreach ($file in $requiredFiles) {
+    Assert-FileExists (Join-Path $resolvedPackageDir $file)
+}
+
+Write-Host "Package directory contains required files:"
+Write-Host "  $resolvedPackageDir"
+
+if ($ZipPath.Length -gt 0) {
+    $resolvedZipPath = Resolve-RepoPath $ZipPath
+    Assert-FileExists $resolvedZipPath
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($resolvedZipPath)
+
+    try {
+        foreach ($file in $requiredFiles) {
+            if (-not (Test-ZipEntry -Archive $archive -EntryName $file)) {
+                throw "Required package archive entry not found: $file"
+            }
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+
+    Write-Host "Package archive contains required files:"
+    Write-Host "  $resolvedZipPath"
+
+    if ($ChecksumPath.Length -gt 0) {
+        $resolvedChecksumPath = Resolve-RepoPath $ChecksumPath
+    } else {
+        $resolvedChecksumPath = "$resolvedZipPath.sha256"
+    }
+
+    Assert-FileExists $resolvedChecksumPath
+
+    $checksumLine =
+        (Get-Content -LiteralPath $resolvedChecksumPath -TotalCount 1).Trim()
+    $expectedHash = ($checksumLine -split "\s+")[0].ToLowerInvariant()
+    $actualHash =
+        (Get-FileHash -Algorithm SHA256 -LiteralPath $resolvedZipPath).
+            Hash.ToLowerInvariant()
+
+    if ($expectedHash -ne $actualHash) {
+        throw "Package checksum mismatch. Expected $expectedHash, got $actualHash."
+    }
+
+    Write-Host "Package checksum matches:"
+    Write-Host "  $expectedHash"
+}
+
+if ($Launch) {
+    if ($LaunchSeconds -lt 1) {
+        throw "LaunchSeconds must be at least 1."
+    }
+
+    $exePath = Join-Path $resolvedPackageDir "CacheExplorer.exe"
+
+    $process = Start-Process `
+        -FilePath $exePath `
+        -WorkingDirectory $resolvedPackageDir `
+        -WindowStyle Hidden `
+        -PassThru
+
+    try {
+        Start-Sleep -Seconds $LaunchSeconds
+
+        if ($process.HasExited) {
+            throw "Packaged CacheExplorer exited with code $($process.ExitCode)."
+        }
+
+        Write-Host "Package launch smoke passed:"
+        Write-Host "  Process $($process.Id) stayed running for $LaunchSeconds second(s)."
+    }
+    finally {
+        if (-not $process.HasExited) {
+            Stop-Process -Id $process.Id -Force
+        }
+    }
+}

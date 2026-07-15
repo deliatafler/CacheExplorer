@@ -55,6 +55,15 @@ Run the packaged executable from inside the package directory, then:
 
 Use `docs/qt-gui-validation.md` for the fuller GUI regression checklist.
 
+For a repeatable package-content, checksum, and launch smoke test:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
+  -PackageDir artifacts\cacheexplorer-qt-shared `
+  -ZipPath artifacts\cacheexplorer-qt-shared.zip `
+  -Launch
+```
+
 ## Static release path
 
 The shared package is convenient for development and test sharing, but it is not

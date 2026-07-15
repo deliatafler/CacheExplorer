@@ -87,7 +87,9 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
 
 The package includes `CacheExplorer.exe`, Qt runtime files, the README, release
 notes, Qt user guide, and `PACKAGE_INFO.txt` with version/build details. See
-`docs/qt-packaging.md` for package contents and smoke testing.
+`docs/qt-packaging.md` for package contents and smoke testing. Use
+`scripts/test-qt-package.ps1` for repeatable package-content, checksum, and
+launch smoke checks.
 
 ## Validation
 
