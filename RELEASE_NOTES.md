@@ -20,8 +20,6 @@ CacheExplorer 0.1.0-beta is the first public test build candidate of the Qt GUI.
   will not preview. These are expected no-preview cases, not app failures.
 * The shared Qt zip is the practical beta distribution path. Static/single-file
   distribution remains future work.
-* The native Win32 GUI is deprecated legacy code and is not the supported beta
-  interface.
 * CacheExplorer reads and exports cache data; it does not repair or modify the
   Firestorm cache.
 * CacheExplorer is standalone and does not depend on or link against Firestorm.

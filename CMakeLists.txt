@@ -11,10 +11,6 @@ option(CACHEEXPLORER_BUILD_QT_GUI
     "Build the primary Qt 6 cross-platform GUI"
     OFF)
 
-option(CACHEEXPLORER_BUILD_LEGACY_WIN32_GUI
-    "Build the deprecated legacy native Win32 GUI"
-    OFF)
-
 option(CACHEEXPLORER_BUILD_TESTS
     "Build CacheExplorer regression tests"
     ON)
@@ -32,10 +28,6 @@ endif()
 
 add_subdirectory(cachelib)
 add_subdirectory(cachecli)
-
-if(CACHEEXPLORER_BUILD_LEGACY_WIN32_GUI)
-    add_subdirectory(cachegui)
-endif()
 
 if(CACHEEXPLORER_BUILD_QT_GUI)
     message(STATUS

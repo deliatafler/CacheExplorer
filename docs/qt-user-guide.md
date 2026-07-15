@@ -62,5 +62,3 @@ diagnostics. This information is useful in beta bug reports.
 * CacheExplorer does not repair or modify the Firestorm cache.
 * CacheExplorer does not require Firestorm source code and does not link against
   Firestorm.
-* The native Win32 GUI is deprecated legacy code; use the Qt GUI for beta
-  testing.

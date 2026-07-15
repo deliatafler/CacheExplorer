@@ -10,12 +10,8 @@ format.
 
 ## Status
 
-CacheExplorer is approaching a first beta. The Qt 6 GUI is the primary app path
-for future development, beta testing, and cross-platform work.
-
-The native Win32 GUI is deprecated legacy code. It is still kept buildable as a
-short-term reference/fallback, but new GUI features and user-facing polish should
-target the Qt GUI.
+CacheExplorer is approaching a first beta. The Qt 6 GUI is the app path for
+future development, beta testing, and cross-platform work.
 
 Many real cache entries are expected to be incomplete or undecodable because
 Firestorm uses progressive JPEG2000 texture caching. CacheExplorer should treat
@@ -49,8 +45,7 @@ ctest --test-dir build -C Release --output-on-failure
 ```
 
 This default build includes the core CLI/library path and cachelib regression
-tests. The deprecated Win32 GUI remains available as an opt-in legacy target
-with `-DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=ON`.
+tests.
 
 ### Qt GUI with prebuilt shared Qt
 

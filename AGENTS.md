@@ -8,18 +8,19 @@ The project must not link against or depend on Firestorm itself. Firestorm sourc
 
 ## Architecture
 
-The project has four current targets:
+The project has three current targets:
 
 * `cachelib`: reusable cache-reading, reconstruction, decoding, and export library
 * `cachecli`: thin command-line frontend
-* `cachegui_qt`: primary Qt 6 cross-platform GUI frontend
-* `cachegui`: legacy native Win32 GUI frontend
+* `cachegui_qt`: Qt 6 cross-platform GUI frontend
 
-GUI targets depend directly on `cachelib`. A GUI must not wrap or invoke the CLI.
+The GUI depends directly on `cachelib`. It must not wrap or invoke the CLI.
 
 Business logic belongs in `cachelib`. CLI-specific argument parsing and console presentation belong in `cachecli`.
 
-The project direction is Qt 6 for future GUI development, beta testing, and cross-platform support. The Win32 GUI is deprecated legacy code. Keep it buildable for now as maintenance-only/reference code, but do not add new features there unless needed to preserve behavior or expose a shared `cachelib` issue.
+The project direction is Qt 6 for GUI development, beta testing, and
+cross-platform support. The native Win32 GUI prototype has been removed; useful
+follow-up ideas from it are parked in `docs/post-beta-roadmap.md`.
 
 ## Platform and build
 
@@ -87,12 +88,6 @@ cmake --build build-qt --config Release --target cachegui_qt
 ```
 
 The `qt-gui` vcpkg feature requests a minimal target Qt Widgets set, but the first Windows static vcpkg configure can still take a long time because host-side Qt tools pull and build a broader dependency graph.
-
-The deprecated Win32 GUI is opt-in. To build it, configure with:
-
-```bash
--DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=ON
-```
 
 ## Firestorm texture-cache format
 
@@ -262,17 +257,12 @@ Complete these tasks in order:
 
 ## Current GUI work
 
-### Milestone 4A: Win32 deprecation
+### Qt GUI
 
-The Qt GUI is the supported beta GUI. The Win32 GUI remains buildable as an
-opt-in legacy target for now, but it is deprecated and should not receive new
-feature work. Keep it only as short-term maintenance/reference code until after
-the first Qt beta, then decide whether to remove it or carry it for one more
-release cycle.
-
-The first GUI cleanup step extracted standalone Win32 utility helpers into `cachegui/GuiUtils.*` without changing behavior. Win32 is now legacy/maintenance-only; do not spend new feature work there unless it protects existing behavior.
-
-The Qt 6 GUI in `cachegui_qt` is the primary GUI path. It opens a cache through `cachelib`, shows entries in a sortable model-backed table, can preview/export a selected entry as PNG through `TextureExporter`, and tracks preview status in the table.
+The Qt 6 GUI in `cachegui_qt` is the supported GUI path. It opens a cache
+through `cachelib`, shows entries in a sortable model-backed table, can
+preview/export a selected entry as PNG through `TextureExporter`, and tracks
+preview status in the table.
 
 The Qt GUI has an `About` diagnostics dialog for beta/support reports. Keep it
 Qt-only; reusable cache facts should still come from `cachelib`.
@@ -379,7 +369,6 @@ Good next low-risk slices:
 * Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable archive.
 * Use `scripts/test-qt-package.ps1` to verify shared-Qt package contents,
   archive contents, checksum, and optional short launch smoke.
-* Defer Win32 cleanup unless needed to keep the deprecated legacy target building.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.
 
 ## Coding guidelines

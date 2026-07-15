@@ -7,8 +7,7 @@ Use this checklist before tagging or sharing a beta package.
 * Confirm `CMakeLists.txt` has the intended numeric project version and
   user-facing `CACHEEXPLORER_DISPLAY_VERSION` beta version.
 * Confirm the CLI usage output and Qt `About` dialog show that same version.
-* Confirm the Qt GUI is the beta-facing UI and the Win32 GUI remains documented
-  as deprecated legacy.
+* Confirm the Qt GUI is the beta-facing UI.
 * Confirm known limitations are documented in `README.md` and
   `docs/qt-user-guide.md`.
 
@@ -21,17 +20,6 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 cmake --build build-qt --config Release --target cachegui_qt
 cmake --build build-qt-prebuilt --config Release --target cachegui_qt
-```
-
-For the deprecated Win32 opt-in path, at least once before beta:
-
-```bash
-cmake -S . -B build-legacy-win32 -A x64 \
-  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-  -DVCPKG_TARGET_TRIPLET=x64-windows-static \
-  -DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=ON
-
-cmake --build build-legacy-win32 --config Release
 ```
 
 ## Package
@@ -81,7 +69,7 @@ Before publishing, write short notes that include:
 
 * This is a beta.
 * Qt GUI is the supported interface.
-* Win32 GUI is deprecated legacy.
+* The Qt GUI is the only GUI target.
 * Many Firestorm cache entries may not preview because they are incomplete.
 * The app is standalone and does not depend on Firestorm.
 * The package checksum.

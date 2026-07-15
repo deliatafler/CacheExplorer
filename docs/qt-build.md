@@ -1,8 +1,7 @@
 # Qt GUI build notes
 
-The Qt 6 GUI in `cachegui_qt` is the primary GUI path for future
-cross-platform work and beta testing. The native Win32 GUI is deprecated
-legacy code and is not the beta-facing UI.
+The Qt 6 GUI in `cachegui_qt` is the GUI path for future cross-platform work
+and beta testing.
 
 ## Fast developer build with prebuilt Qt
 
@@ -86,15 +85,3 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
 
 See `docs/qt-packaging.md` for package contents, smoke testing, and
 troubleshooting notes.
-
-## Legacy Win32 GUI
-
-The native Win32 `cachegui` target is deprecated and kept buildable only as a
-short-term maintenance/reference target. New GUI work should target
-`cachegui_qt`.
-
-To skip Win32 when configuring a core or Qt-focused build, pass:
-
-```bash
--DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=OFF
-```
