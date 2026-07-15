@@ -9,6 +9,7 @@
 #include <string>
 
 #include <QString>
+#include <QStringList>
 
 QString ToQString(const std::string& value);
 
@@ -26,6 +27,10 @@ QString PreferredCachePath();
 bool DefaultCachePathExists();
 
 void RememberOpenedCachePath(const QString& cachePath);
+
+QStringList RecentCachePaths();
+
+void ClearRecentCachePaths();
 
 const char* CacheErrorMessage(CacheError error);
 

@@ -8,6 +8,8 @@
 
 namespace
 {
+    constexpr int RecentCacheLimit = 8;
+
     bool TextureEntriesFileExists(const std::filesystem::path& directory)
     {
         std::error_code error;
@@ -17,6 +19,15 @@ namespace
                 error);
 
         return exists && !error;
+    }
+
+    Qt::CaseSensitivity CachePathCaseSensitivity()
+    {
+#ifdef _WIN32
+        return Qt::CaseInsensitive;
+#else
+        return Qt::CaseSensitive;
+#endif
     }
 }
 
@@ -109,6 +120,50 @@ void RememberOpenedCachePath(const QString& cachePath)
 {
     QSettings settings;
     settings.setValue(QStringLiteral("cache/lastOpenedPath"), cachePath);
+
+    QStringList recentPaths;
+    recentPaths.append(cachePath);
+
+    for (const QString& recentPath : RecentCachePaths())
+    {
+        if (recentPath.compare(cachePath, CachePathCaseSensitivity()) != 0)
+        {
+            recentPaths.append(recentPath);
+        }
+    }
+
+    while (recentPaths.size() > RecentCacheLimit)
+    {
+        recentPaths.removeLast();
+    }
+
+    settings.setValue(QStringLiteral("cache/recentPaths"), recentPaths);
+}
+
+QStringList RecentCachePaths()
+{
+    QSettings settings;
+    const QStringList storedPaths =
+        settings.value(QStringLiteral("cache/recentPaths")).toStringList();
+    QStringList validPaths;
+
+    for (const QString& storedPath : storedPaths)
+    {
+        if (!storedPath.isEmpty() &&
+            TextureEntriesFileExists(PathFromQString(storedPath)) &&
+            !validPaths.contains(storedPath, CachePathCaseSensitivity()))
+        {
+            validPaths.append(storedPath);
+        }
+    }
+
+    return validPaths;
+}
+
+void ClearRecentCachePaths()
+{
+    QSettings settings;
+    settings.remove(QStringLiteral("cache/recentPaths"));
 }
 
 const char* CacheErrorMessage(CacheError error)

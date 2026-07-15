@@ -45,6 +45,7 @@
 #include <QLineEdit>
 #include <QListView>
 #include <QMainWindow>
+#include <QMenu>
 #include <QPixmap>
 #include <QPushButton>
 #include <QScrollBar>
@@ -132,6 +133,13 @@ namespace
             defaultCacheButton_->setToolTip(
                 QStringLiteral("Open the preferred viewer texture cache"));
             defaultCacheButton_->setVisible(DefaultCachePathExists());
+            recentCacheButton_ = new QToolButton(root);
+            recentCacheButton_->setText(QStringLiteral("Recent"));
+            recentCacheButton_->setToolButtonStyle(Qt::ToolButtonTextOnly);
+            recentCacheButton_->setPopupMode(QToolButton::InstantPopup);
+            recentCacheMenu_ = new QMenu(recentCacheButton_);
+            recentCacheButton_->setMenu(recentCacheMenu_);
+            recentCacheButton_->setVisible(false);
             browseButton_ = new QPushButton(QStringLiteral("Choose Folder..."), root);
             openButton_ = new QPushButton(QStringLiteral("Open"), root);
             aboutButton_ = new QPushButton(QStringLiteral("About"), root);
@@ -177,6 +185,8 @@ namespace
             viewToggleButton_->setEnabled(false);
             uuidLookupEdit_->setEnabled(false);
             findUuidButton_->setEnabled(false);
+
+            RefreshRecentCacheMenu();
 
             table_ = new QTableView(root);
             galleryView_ = new GalleryListView(root);
@@ -263,9 +273,10 @@ namespace
             pathLayout->addWidget(pathLabel_, 0, 0);
             pathLayout->addWidget(pathEdit_, 0, 1);
             pathLayout->addWidget(defaultCacheButton_, 0, 2);
-            pathLayout->addWidget(browseButton_, 0, 3);
-            pathLayout->addWidget(openButton_, 0, 4);
-            pathLayout->addWidget(aboutButton_, 0, 5);
+            pathLayout->addWidget(recentCacheButton_, 0, 3);
+            pathLayout->addWidget(browseButton_, 0, 4);
+            pathLayout->addWidget(openButton_, 0, 5);
+            pathLayout->addWidget(aboutButton_, 0, 6);
             pathLayout->setColumnStretch(1, 1);
 
             auto* lookupLayout = new QHBoxLayout();
@@ -566,6 +577,7 @@ namespace
         {
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
             RememberOpenedCachePath(pathEdit_->text());
+            RefreshRecentCacheMenu();
             PopulateTable();
             ClearPreviewUiState();
             LoadPersistentPreviewState();
@@ -649,6 +661,7 @@ namespace
                 *table_,
                 *galleryView_);
             defaultCacheButton_->setEnabled(!busy_);
+            recentCacheButton_->setEnabled(!busy_);
             galleryFilterCombo_->setEnabled(!busy_);
             gallerySortCombo_->setEnabled(!busy_);
             UpdateActionState();
@@ -669,6 +682,49 @@ namespace
                 *proxyModel_,
                 *table_,
                 *galleryView_);
+        }
+
+        void RefreshRecentCacheMenu()
+        {
+            const QStringList recentPaths = RecentCachePaths();
+            recentCacheMenu_->clear();
+
+            for (const QString& recentPath : recentPaths)
+            {
+                QAction* action = recentCacheMenu_->addAction(recentPath);
+
+                connect(
+                    action,
+                    &QAction::triggered,
+                    this,
+                    [this, recentPath]()
+                    {
+                        pathEdit_->setText(recentPath);
+                        OpenCache();
+                    });
+            }
+
+            if (!recentPaths.isEmpty())
+            {
+                recentCacheMenu_->addSeparator();
+                QAction* clearAction = recentCacheMenu_->addAction(
+                    QStringLiteral("Clear recent caches"));
+
+                connect(
+                    clearAction,
+                    &QAction::triggered,
+                    this,
+                    [this]()
+                    {
+                        ClearRecentCachePaths();
+                        RefreshRecentCacheMenu();
+                        statusLabel_->setText(
+                            QStringLiteral("Cleared recent cache locations."));
+                    });
+            }
+
+            recentCacheButton_->setVisible(!recentPaths.isEmpty());
+            recentCacheButton_->setEnabled(!busy_ && !recentPaths.isEmpty());
         }
 
         void FindUuid()
@@ -1435,6 +1491,8 @@ namespace
         QLineEdit* pathEdit_ = nullptr;
         QPushButton* browseButton_ = nullptr;
         QToolButton* defaultCacheButton_ = nullptr;
+        QToolButton* recentCacheButton_ = nullptr;
+        QMenu* recentCacheMenu_ = nullptr;
         QPushButton* openButton_ = nullptr;
         QPushButton* aboutButton_ = nullptr;
         QLabel* uuidLookupLabel_ = nullptr;

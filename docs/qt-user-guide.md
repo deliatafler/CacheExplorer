@@ -35,6 +35,10 @@ of valid texture entries and the cache version.
 Click `Open` again for the currently displayed path to reread the cache. This is
 useful while a viewer is running and adding or replacing cached textures.
 
+After you open more than one cache, the `Recent` menu beside the path field
+lists up to eight existing cache folders. Choose a path to reopen it immediately
+or use `Clear recent caches` to remove the remembered list.
+
 ## Browse textures
 
 CacheExplorer opens in `Gallery` for normal browsing. Gallery thumbnails load lazily as you scroll.
