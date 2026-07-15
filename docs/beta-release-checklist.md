@@ -23,15 +23,15 @@ cmake --build build-qt --config Release --target cachegui_qt
 cmake --build build-qt-prebuilt --config Release --target cachegui_qt
 ```
 
-For the deprecated Win32 opt-out path, at least once before beta:
+For the deprecated Win32 opt-in path, at least once before beta:
 
 ```bash
-cmake -S . -B build-cli-only -A x64 \
+cmake -S . -B build-legacy-win32 -A x64 \
   -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
   -DVCPKG_TARGET_TRIPLET=x64-windows-static \
-  -DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=OFF
+  -DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=ON
 
-cmake --build build-cli-only --config Release
+cmake --build build-legacy-win32 --config Release
 ```
 
 ## Package

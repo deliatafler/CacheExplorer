@@ -88,10 +88,10 @@ cmake --build build-qt --config Release --target cachegui_qt
 
 The `qt-gui` vcpkg feature requests a minimal target Qt Widgets set, but the first Windows static vcpkg configure can still take a long time because host-side Qt tools pull and build a broader dependency graph.
 
-To skip the deprecated Win32 GUI in non-Qt builds, configure with:
+The deprecated Win32 GUI is opt-in. To build it, configure with:
 
 ```bash
--DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=OFF
+-DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=ON
 ```
 
 ## Firestorm texture-cache format
@@ -264,10 +264,11 @@ Complete these tasks in order:
 
 ### Milestone 4A: Win32 deprecation
 
-The Qt GUI is the supported beta GUI. The Win32 GUI remains buildable for now,
-but it is deprecated and should not receive new feature work. Keep it only as
-short-term maintenance/reference code until after the first Qt beta, then decide
-whether to remove it or carry it for one more release cycle.
+The Qt GUI is the supported beta GUI. The Win32 GUI remains buildable as an
+opt-in legacy target for now, but it is deprecated and should not receive new
+feature work. Keep it only as short-term maintenance/reference code until after
+the first Qt beta, then decide whether to remove it or carry it for one more
+release cycle.
 
 The first GUI cleanup step extracted standalone Win32 utility helpers into `cachegui/GuiUtils.*` without changing behavior. Win32 is now legacy/maintenance-only; do not spend new feature work there unless it protects existing behavior.
 

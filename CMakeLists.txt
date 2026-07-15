@@ -13,7 +13,7 @@ option(CACHEEXPLORER_BUILD_QT_GUI
 
 option(CACHEEXPLORER_BUILD_LEGACY_WIN32_GUI
     "Build the deprecated legacy native Win32 GUI"
-    ON)
+    OFF)
 
 option(CACHEEXPLORER_BUILD_TESTS
     "Build CacheExplorer regression tests"

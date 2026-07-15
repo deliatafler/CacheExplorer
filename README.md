@@ -48,9 +48,9 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-This default build currently also builds the deprecated Win32 GUI and the
-cachelib regression tests. To build only the core CLI/library path, add
-`-DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=OFF`.
+This default build includes the core CLI/library path and cachelib regression
+tests. The deprecated Win32 GUI remains available as an opt-in legacy target
+with `-DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=ON`.
 
 ### Qt GUI with prebuilt shared Qt
 
