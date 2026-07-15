@@ -2,6 +2,37 @@
 
 #include "QtHelpers.h"
 
+namespace
+{
+    QString FormatCachedByteCount(std::size_t bytes)
+    {
+        if (bytes == 1)
+        {
+            return QStringLiteral("1 cached byte");
+        }
+
+        return QStringLiteral("%1 cached bytes")
+            .arg(bytes);
+    }
+
+    QString ExportFailurePrefix(TexturePngExportStatus status)
+    {
+        switch (status)
+        {
+            case TexturePngExportStatus::Incomplete:
+                return QStringLiteral("Export unavailable: ");
+
+            case TexturePngExportStatus::RebuildFailed:
+            case TexturePngExportStatus::WriteFailed:
+            case TexturePngExportStatus::SkippedExisting:
+            case TexturePngExportStatus::Exported:
+                return QStringLiteral("Export failed: ");
+        }
+
+        return QStringLiteral("Export failed: ");
+    }
+}
+
 QString DefaultPngExportFileName(const CacheEntry& entry)
 {
     return ToQString(entry.uuid.ToString()) + QStringLiteral(".png");
@@ -31,9 +62,21 @@ QString PngExportStatusText(
 {
     if (!result.Succeeded())
     {
-        return QStringLiteral("Export failed: ")
+        return ExportFailurePrefix(result.status)
+            + QString::fromUtf8(TextureExporter::StatusMessage(result.status))
+            + QStringLiteral(" ")
             + ToQString(result.message);
     }
 
-    return QStringLiteral("Exported PNG: %1").arg(outputFile);
+    if (result.status == TexturePngExportStatus::SkippedExisting)
+    {
+        return QStringLiteral("PNG already exists: %1")
+            .arg(outputFile);
+    }
+
+    return QStringLiteral("Exported PNG: %1 (%2 x %3, %4)")
+        .arg(outputFile)
+        .arg(result.width)
+        .arg(result.height)
+        .arg(FormatCachedByteCount(result.cachedBytes));
 }

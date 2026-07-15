@@ -47,7 +47,8 @@ workers, gallery loading, export, or cache-open behavior.
 1. Select a row that has a successful preview in `Table`.
 2. Click `Export PNG`.
 3. Save to a temporary file.
-4. Confirm the status bar reports success and the PNG opens in an image viewer.
+4. Confirm the status bar reports success with image dimensions and cached byte
+   count, and the PNG opens in an image viewer.
 5. Repeat from `Gallery` for a previewable texture.
 
 ## When a build-only check is enough

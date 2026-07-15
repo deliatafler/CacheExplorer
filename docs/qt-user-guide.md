@@ -47,6 +47,9 @@ preview panel. Manual preview buttons are hidden because Gallery loads
 thumbnails itself.
 
 If a preview is available, click `Export PNG` and choose an output file.
+Successful exports report the PNG path, decoded dimensions, and cached byte
+count in the status bar. If the cached texture cannot be decoded, export reports
+that the cached data is incomplete or undecodable.
 
 ## Diagnostics
 
