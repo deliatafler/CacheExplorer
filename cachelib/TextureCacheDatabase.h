@@ -40,6 +40,11 @@ struct CacheEntry
     std::time_t timestamp = 0;
 };
 
+inline constexpr std::uint32_t TextureCacheHeaderBlockSize = 600;
+
+std::uint64_t CachedTextureByteCount(const CacheEntry& entry);
+bool HasCompleteCachedTexture(const CacheEntry& entry);
+
 class TextureCacheDatabase
 {
 public:

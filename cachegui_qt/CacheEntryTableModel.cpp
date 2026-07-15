@@ -58,7 +58,12 @@ void CacheEntryTableModel::NotifyAllPreviewStatusesChanged()
         emit dataChanged(
             index(0, 0),
             index(rowCount() - 1, 5),
-            {Qt::DisplayRole, Qt::DecorationRole, Qt::UserRole, PreviewStateRole});
+            {
+                Qt::DisplayRole,
+                Qt::DecorationRole,
+                Qt::UserRole,
+                PreviewStateRole,
+                CachedCompleteRole});
     }
 }
 
@@ -71,7 +76,12 @@ void CacheEntryTableModel::NotifyPreviewStatusChanged(std::uint32_t cacheIndex)
         emit dataChanged(
             index(row, 0),
             index(row, 5),
-            {Qt::DisplayRole, Qt::DecorationRole, Qt::UserRole, PreviewStateRole});
+            {
+                Qt::DisplayRole,
+                Qt::DecorationRole,
+                Qt::UserRole,
+                PreviewStateRole,
+                CachedCompleteRole});
     }
 }
 
@@ -165,6 +175,11 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
     if (role == PreviewStateRole)
     {
         return PreviewStateValue(*entry);
+    }
+
+    if (role == CachedCompleteRole)
+    {
+        return HasCompleteCachedTexture(*entry);
     }
 
     if (role == Qt::DecorationRole && index.column() == 0)

@@ -9,8 +9,6 @@
 
 namespace
 {
-    constexpr int HeaderRecordSize = 600;
-
     int ToComboValue(GalleryPreviewFilter filter)
     {
         return static_cast<int>(filter);
@@ -29,36 +27,6 @@ namespace
         }
 
         return GalleryPreviewFilter::All;
-    }
-
-    bool IsCachedComplete(const QModelIndex& sourceIndex)
-    {
-        const QAbstractItemModel* model = sourceIndex.model();
-
-        if (model == nullptr)
-        {
-            return false;
-        }
-
-        const QModelIndex imageIndex =
-            model->index(sourceIndex.row(), 1, sourceIndex.parent());
-        const QModelIndex bodyIndex =
-            model->index(sourceIndex.row(), 2, sourceIndex.parent());
-
-        const qlonglong imageSize =
-            imageIndex.data(Qt::UserRole).toLongLong();
-        const qlonglong bodySize =
-            bodyIndex.data(Qt::UserRole).toLongLong();
-
-        if (imageSize <= 0 || bodySize < 0)
-        {
-            return false;
-        }
-
-        const qlonglong headerBytes = qMin<qlonglong>(
-            imageSize,
-            HeaderRecordSize);
-        return headerBytes + bodySize >= imageSize;
     }
 }
 
@@ -134,7 +102,9 @@ bool GalleryFilterProxyModel::filterAcceptsRow(
             return true;
 
         case GalleryPreviewFilter::CachedComplete:
-            return IsCachedComplete(sourceIndex);
+            return sourceIndex
+                .data(CacheEntryTableModel::CachedCompleteRole)
+                .toBool();
 
         case GalleryPreviewFilter::Unknown:
             return previewState == PreviewState::Unknown ||

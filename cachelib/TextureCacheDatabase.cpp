@@ -176,3 +176,33 @@ const CacheEntry* TextureCacheDatabase::Find(
 
     return nullptr;
 }
+
+std::uint64_t CachedTextureByteCount(const CacheEntry& entry)
+{
+    if (entry.imageSize <= 0 || entry.bodySize < 0)
+    {
+        return 0;
+    }
+
+    const std::uint64_t imageSize =
+        static_cast<std::uint64_t>(entry.imageSize);
+    const std::uint64_t bodySize =
+        static_cast<std::uint64_t>(entry.bodySize);
+    const std::uint64_t headerBytes =
+        std::min<std::uint64_t>(
+            imageSize,
+            TextureCacheHeaderBlockSize);
+
+    return headerBytes + bodySize;
+}
+
+bool HasCompleteCachedTexture(const CacheEntry& entry)
+{
+    if (entry.imageSize <= 0 || entry.bodySize < 0)
+    {
+        return false;
+    }
+
+    return CachedTextureByteCount(entry) >=
+        static_cast<std::uint64_t>(entry.imageSize);
+}

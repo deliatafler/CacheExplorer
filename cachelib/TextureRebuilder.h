@@ -23,7 +23,8 @@ enum class RebuildError
 class TextureRebuilder
 {
 public:
-    static constexpr std::uint32_t HeaderBlockSize = 600;
+    static constexpr std::uint32_t HeaderBlockSize =
+        TextureCacheHeaderBlockSize;
 
     /// Reconstructs the cached JPEG2000 byte stream and writes it to disk.
     ///

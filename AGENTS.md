@@ -186,6 +186,9 @@ Provides:
 ### TextureCacheDatabase
 
 Reads `texture.entries`, exposes a clean `CacheHeader`, filters free slots, and preserves `cacheIndex`.
+Also exposes cached-byte helpers so UI code can ask whether the header/body
+bytes cover an entry's advertised image size without duplicating cache-format
+math.
 
 ### TextureRebuilder
 

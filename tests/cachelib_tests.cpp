@@ -241,6 +241,53 @@ namespace
         Expect(!removeError, "remove temporary test directory");
     }
 
+    void TestCachedTextureCompletenessHelpers()
+    {
+        CacheEntry completeWithBody{};
+        completeWithBody.imageSize = 700;
+        completeWithBody.bodySize = 100;
+
+        Expect(
+            CachedTextureByteCount(completeWithBody) == 700,
+            "cached byte count combines header and body bytes");
+        Expect(
+            HasCompleteCachedTexture(completeWithBody),
+            "complete body-backed entry is cached complete");
+
+        CacheEntry partial{};
+        partial.imageSize = 4096;
+        partial.bodySize = 512;
+
+        Expect(
+            CachedTextureByteCount(partial) == 1112,
+            "partial cached byte count uses one header block plus body");
+        Expect(
+            !HasCompleteCachedTexture(partial),
+            "partial cached entry is not cached complete");
+
+        CacheEntry headerOnly{};
+        headerOnly.imageSize = 600;
+        headerOnly.bodySize = 0;
+
+        Expect(
+            CachedTextureByteCount(headerOnly) == 600,
+            "header-only cached byte count handles body size zero");
+        Expect(
+            HasCompleteCachedTexture(headerOnly),
+            "header-only entry can be cached complete");
+
+        CacheEntry invalid{};
+        invalid.imageSize = -1;
+        invalid.bodySize = 0;
+
+        Expect(
+            CachedTextureByteCount(invalid) == 0,
+            "invalid cached byte count is zero");
+        Expect(
+            !HasCompleteCachedTexture(invalid),
+            "invalid entry is not cached complete");
+    }
+
     void TestTextureSelectionUsesFilteredDatabaseOrder()
     {
         const UUID first =
@@ -569,6 +616,7 @@ namespace
 int main()
 {
     TestDatabaseFiltersEntriesAndPreservesCacheIndex();
+    TestCachedTextureCompletenessHelpers();
     TestTextureSelectionUsesFilteredDatabaseOrder();
     TestTextureRebuilderUsesRawCacheIndexAndExactBodySize();
     TestTextureRebuilderTrimsSmallHeaderOnlyTexture();
