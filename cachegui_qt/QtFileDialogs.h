@@ -11,3 +11,6 @@ QString ChooseCacheDirectory(
 QString ChoosePngOutputFile(
     QWidget& parent,
     const QString& defaultName);
+
+QString ChoosePngOutputDirectory(
+    QWidget& parent);

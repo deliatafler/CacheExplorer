@@ -4,6 +4,7 @@
 #include <limits>
 
 #include <QAbstractItemModel>
+#include <QItemSelection>
 #include <QItemSelectionModel>
 #include <QMouseEvent>
 
@@ -31,15 +32,35 @@ void GalleryListView::mousePressEvent(QMouseEvent* event)
         return;
     }
 
-    setCurrentIndex(expandedIndex);
+    QItemSelectionModel* itemSelectionModel = selectionModel();
 
-    if (selectionModel() != nullptr)
+    if (itemSelectionModel != nullptr)
     {
-        selectionModel()->setCurrentIndex(
-            expandedIndex,
-            QItemSelectionModel::ClearAndSelect |
+        const Qt::KeyboardModifiers modifiers = event->modifiers();
+
+        if (modifiers.testFlag(Qt::ShiftModifier) &&
+            itemSelectionModel->currentIndex().isValid())
+        {
+            itemSelectionModel->select(
+                QItemSelection(itemSelectionModel->currentIndex(), expandedIndex),
+                QItemSelectionModel::ClearAndSelect |
+                    QItemSelectionModel::Rows);
+            itemSelectionModel->setCurrentIndex(
+                expandedIndex,
+                QItemSelectionModel::Current);
+        }
+        else
+        {
+            QItemSelectionModel::SelectionFlags flags =
                 QItemSelectionModel::Current |
-                QItemSelectionModel::Rows);
+                QItemSelectionModel::Rows;
+
+            flags |= modifiers.testFlag(Qt::ControlModifier)
+                ? QItemSelectionModel::Toggle
+                : QItemSelectionModel::ClearAndSelect;
+
+            itemSelectionModel->setCurrentIndex(expandedIndex, flags);
+        }
     }
 
     event->accept();

@@ -287,9 +287,9 @@ Complete these tasks in order:
 ### Qt GUI
 
 The Qt 6 GUI in `cachegui_qt` is the supported GUI path. It opens a cache
-through `cachelib`, shows entries in a sortable model-backed table, can
-preview/export a selected entry as PNG through `TextureExporter`, and tracks
-preview status in the table.
+through `cachelib`, shows entries in a sortable model-backed table, can preview
+and export selected entries as PNG through `TextureExporter`, and tracks preview
+status in the table.
 
 The Qt GUI has an `About` diagnostics dialog for beta/support reports. Keep it
 Qt-only; reusable cache facts should still come from `cachelib`.
@@ -371,9 +371,15 @@ outside the viewer cache directory.
 Path probing should use non-throwing filesystem checks so odd user-selected
 directories report normal open errors instead of surfacing exceptions.
 
-`cachegui_qt/QtSelection.*` contains Qt table/gallery selection synchronization helpers and selected cached-preview lookup.
+`cachegui_qt/QtSelection.*` contains shared Qt table/gallery selection helpers,
+selected-entry collection, and selected cached-preview lookup. Table and Gallery
+share one extended-selection model so multi-selection survives view changes;
+the current selection remains the preview target.
 
-`cachegui_qt/QtTextureExport.*` contains Qt GUI export filenames, status text, and option defaults around `TextureExporter`; reusable export behavior must remain in `cachelib`.
+`cachegui_qt/QtTextureExport.*` contains Qt GUI export filenames, status text,
+and option defaults around `TextureExporter`; reusable export behavior must
+remain in `cachelib`. Multiple selected entries export asynchronously to a
+chosen folder without overwriting existing PNGs.
 
 `cachegui_qt/QtTryNextPreview.*` contains Qt proxy-model navigation and status text for the "Try Next Preview" action.
 

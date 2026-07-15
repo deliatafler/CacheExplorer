@@ -6,6 +6,8 @@
 #include <QPixmap>
 #include <QString>
 
+#include <vector>
+
 class CacheEntryTableModel;
 class QListView;
 class PreviewCache;
@@ -30,6 +32,11 @@ const CacheEntry* SelectedEntry(
     bool galleryMode,
     const QTableView& table,
     const QListView& galleryView,
+    const QSortFilterProxyModel& proxyModel,
+    const CacheEntryTableModel& tableModel);
+
+std::vector<const CacheEntry*> SelectedEntries(
+    const QTableView& table,
     const QSortFilterProxyModel& proxyModel,
     const CacheEntryTableModel& tableModel);
 

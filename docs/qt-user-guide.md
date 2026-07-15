@@ -53,6 +53,10 @@ Use `Table` for debugging and inspection. The table shows UUID, image size, body
 size, raw cache index, timestamp, and preview status. Table sorting is useful
 when investigating cache layout or looking for large entries.
 
+Both views support Ctrl-click and Shift-click multi-selection. Selected entries
+remain selected when switching between Gallery and Table; the current entry is
+still the one shown in the large preview panel.
+
 ## Preview and export
 
 In `Table`, selecting an entry loads its preview into the large preview panel.
@@ -63,13 +67,19 @@ undecodable entries report their no-preview state in the panel and status bar.
 a previewable entry or exhausts the search.
 
 In `Gallery`, select a thumbnail tile to show its cached preview in the large
-preview panel. Manual preview buttons are hidden because Gallery loads
-thumbnails itself.
+preview panel. `Try Next Preview` is hidden because Gallery loads thumbnails
+itself.
 
 If a preview is available, click `Export PNG` and choose an output file.
 Successful exports report the PNG path, decoded dimensions, and cached byte
 count in the status bar. If the cached texture cannot be decoded, export reports
 that the cached data is incomplete or undecodable.
+
+When multiple entries are selected, the command becomes `Export Selected
+PNGs...`. Choose an output folder and CacheExplorer exports the selected entries
+in the background using their UUIDs as filenames. Existing PNGs are left in
+place; the final status reports exported, incomplete, existing, and failed
+counts.
 
 ## Diagnostics
 

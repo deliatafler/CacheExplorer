@@ -56,6 +56,23 @@ TexturePngExportResult ExportTexturePng(
         options);
 }
 
+BulkExportResults ExportTexturePngs(
+    const TextureCacheDatabase& database,
+    const std::vector<const CacheEntry*>& entries,
+    const std::filesystem::path& outputDirectory)
+{
+    TextureExportOptions options;
+    options.overwriteExisting = false;
+    options.verboseDecoderErrors = false;
+
+    TextureExporter exporter;
+    return exporter.ExportPngEntries(
+        database,
+        entries,
+        outputDirectory,
+        options);
+}
+
 QString PngExportStatusText(
     const TexturePngExportResult& result,
     const QString& outputFile)
@@ -79,4 +96,21 @@ QString PngExportStatusText(
         .arg(result.width)
         .arg(result.height)
         .arg(FormatCachedByteCount(result.cachedBytes));
+}
+
+QString BulkPngExportStatusText(
+    const BulkExportResults& results,
+    const QString& outputDirectory)
+{
+    const std::size_t incomplete =
+        results.skippedKnownIncomplete + results.incompleteTextures;
+
+    return QStringLiteral(
+        "Exported %1 of %2 PNGs to %3. %4 incomplete, %5 existing, %6 failed.")
+        .arg(results.exported)
+        .arg(results.totalEntries)
+        .arg(outputDirectory)
+        .arg(incomplete)
+        .arg(results.skippedExisting)
+        .arg(results.ErrorCount());
 }

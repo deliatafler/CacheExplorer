@@ -11,33 +11,29 @@
 #include <QTableView>
 
 QModelIndex SelectedProxyIndex(
-    bool galleryMode,
+    bool,
     const QTableView& table,
-    const QListView& galleryView)
+    const QListView&)
 {
-    if (galleryMode)
-    {
-        const QModelIndex galleryIndex = galleryView.currentIndex();
+    const QItemSelectionModel* selectionModel = table.selectionModel();
 
-        if (galleryIndex.isValid())
-        {
-            return galleryIndex.sibling(galleryIndex.row(), 0);
-        }
+    if (selectionModel == nullptr)
+    {
+        return {};
     }
 
-    const QModelIndexList selectedRows =
-        table.selectionModel()->selectedRows();
+    const QModelIndex currentIndex = selectionModel->currentIndex();
+
+    if (currentIndex.isValid())
+    {
+        return currentIndex.sibling(currentIndex.row(), 0);
+    }
+
+    const QModelIndexList selectedRows = selectionModel->selectedRows();
 
     if (!selectedRows.empty())
     {
         return selectedRows.front().sibling(selectedRows.front().row(), 0);
-    }
-
-    const QModelIndex galleryIndex = galleryView.currentIndex();
-
-    if (galleryIndex.isValid())
-    {
-        return galleryIndex.sibling(galleryIndex.row(), 0);
     }
 
     return {};
@@ -64,6 +60,36 @@ const CacheEntry* SelectedEntry(
     return tableModel.EntryAt(sourceIndex.row());
 }
 
+std::vector<const CacheEntry*> SelectedEntries(
+    const QTableView& table,
+    const QSortFilterProxyModel& proxyModel,
+    const CacheEntryTableModel& tableModel)
+{
+    std::vector<const CacheEntry*> entries;
+    const QItemSelectionModel* selectionModel = table.selectionModel();
+
+    if (selectionModel == nullptr)
+    {
+        return entries;
+    }
+
+    const QModelIndexList selectedRows = selectionModel->selectedRows(0);
+    entries.reserve(static_cast<std::size_t>(selectedRows.size()));
+
+    for (const QModelIndex& proxyIndex : selectedRows)
+    {
+        const QModelIndex sourceIndex = proxyModel.mapToSource(proxyIndex);
+        const CacheEntry* entry = tableModel.EntryAt(sourceIndex.row());
+
+        if (entry != nullptr)
+        {
+            entries.push_back(entry);
+        }
+    }
+
+    return entries;
+}
+
 void SelectEntry(
     const CacheEntry& entry,
     const CacheEntryTableModel& tableModel,
@@ -86,9 +112,18 @@ void SelectEntry(
         return;
     }
 
-    table.selectRow(proxyIndex.row());
+    QItemSelectionModel* selectionModel = table.selectionModel();
+
+    if (selectionModel != nullptr)
+    {
+        selectionModel->setCurrentIndex(
+            proxyIndex,
+            QItemSelectionModel::ClearAndSelect |
+                QItemSelectionModel::Current |
+                QItemSelectionModel::Rows);
+    }
+
     table.scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
-    galleryView.setCurrentIndex(proxyIndex);
     galleryView.scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
 }
 
@@ -105,13 +140,12 @@ void SyncActiveViewSelection(
 
     if (galleryMode)
     {
-        galleryView.setCurrentIndex(selectedIndex);
         galleryView.scrollTo(selectedIndex, QAbstractItemView::PositionAtCenter);
-        return;
     }
-
-    table.selectRow(selectedIndex.row());
-    table.scrollTo(selectedIndex, QAbstractItemView::PositionAtCenter);
+    else
+    {
+        table.scrollTo(selectedIndex, QAbstractItemView::PositionAtCenter);
+    }
 }
 
 CachedSelectionPreview CachedPreviewForSelection(

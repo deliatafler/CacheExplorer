@@ -23,3 +23,10 @@ QString ChoosePngOutputFile(
         defaultName,
         QStringLiteral("PNG images (*.png)"));
 }
+
+QString ChoosePngOutputDirectory(QWidget& parent)
+{
+    return QFileDialog::getExistingDirectory(
+        &parent,
+        QStringLiteral("Choose PNG export folder"));
+}

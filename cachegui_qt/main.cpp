@@ -24,8 +24,12 @@
 #include "TryNextPreviewState.h"
 
 #include <cstdint>
+#include <chrono>
+#include <exception>
 #include <filesystem>
+#include <future>
 #include <optional>
+#include <vector>
 
 #include <QApplication>
 #include <QCommandLineOption>
@@ -34,6 +38,7 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QItemSelectionModel>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListView>
@@ -73,6 +78,7 @@ namespace
             ConfigureModels();
             ConfigureTable();
             ConfigureGallery();
+            ConfigureSelectionModels();
             CreateLayout(root);
             ConnectSignals();
 
@@ -171,6 +177,8 @@ namespace
             tableSelectionPreviewTimer_->setInterval(125);
             galleryPreviewPollTimer_ = new QTimer(root);
             galleryPreviewPollTimer_->setInterval(50);
+            batchExportPollTimer_ = new QTimer(root);
+            batchExportPollTimer_->setInterval(100);
 
             previewLabel_ = new QLabel(QStringLiteral("No preview selected."), root);
             previewLabel_->setAlignment(Qt::AlignCenter);
@@ -196,7 +204,7 @@ namespace
         {
             table_->setModel(proxyModel_);
             table_->setSelectionBehavior(QAbstractItemView::SelectRows);
-            table_->setSelectionMode(QAbstractItemView::SingleSelection);
+            table_->setSelectionMode(QAbstractItemView::ExtendedSelection);
             table_->setSortingEnabled(true);
             table_->setIconSize(QSize(16, 16));
             table_->verticalHeader()->hide();
@@ -217,7 +225,7 @@ namespace
         {
             galleryView_->setModel(proxyModel_);
             galleryView_->setModelColumn(0);
-            galleryView_->setSelectionMode(QAbstractItemView::SingleSelection);
+            galleryView_->setSelectionMode(QAbstractItemView::ExtendedSelection);
             galleryView_->setViewMode(QListView::IconMode);
             galleryView_->setResizeMode(QListView::Adjust);
             galleryView_->setMovement(QListView::Static);
@@ -226,6 +234,13 @@ namespace
             galleryView_->setUniformItemSizes(true);
             galleryView_->setWordWrap(false);
             galleryView_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+        }
+
+        void ConfigureSelectionModels()
+        {
+            selectionModel_ = new QItemSelectionModel(proxyModel_, this);
+            table_->setSelectionModel(selectionModel_);
+            galleryView_->setSelectionModel(selectionModel_);
         }
 
         void CreateLayout(QWidget* root)
@@ -314,7 +329,7 @@ namespace
                 });
 
             connect(
-                table_->selectionModel(),
+                selectionModel_,
                 &QItemSelectionModel::selectionChanged,
                 this,
                 [this]()
@@ -325,23 +340,14 @@ namespace
                 });
 
             connect(
-                galleryView_->selectionModel(),
-                &QItemSelectionModel::selectionChanged,
-                this,
-                [this]()
-                {
-                    UpdateActionState();
-                    ShowCachedPreviewForSelection();
-                });
-
-            connect(
-                galleryView_->selectionModel(),
+                selectionModel_,
                 &QItemSelectionModel::currentChanged,
                 this,
                 [this](const QModelIndex&, const QModelIndex&)
                 {
                     UpdateActionState();
                     ShowCachedPreviewForSelection();
+                    ScheduleTableSelectionPreview();
                 });
 
             connect(
@@ -445,6 +451,15 @@ namespace
                 {
                     PollGalleryPreviewWorker();
                 });
+
+            connect(
+                batchExportPollTimer_,
+                &QTimer::timeout,
+                this,
+                [this]()
+                {
+                    PollBatchPngExport();
+                });
         }
         void BrowseForCache()
         {
@@ -545,12 +560,19 @@ namespace
                 tableModel_);
         }
 
+        std::vector<const CacheEntry*> SelectedEntries() const
+        {
+            return ::SelectedEntries(*table_, *proxyModel_, tableModel_);
+        }
+
         void UpdateActionState()
         {
+            const std::vector<const CacheEntry*> selectedEntries = SelectedEntries();
+
             ApplyMainActionState(
                 MainActionState{
                     busy_,
-                    SelectedEntry() != nullptr,
+                    !selectedEntries.empty(),
                     previewWorker_.IsActive(),
                     tryNextPreview_.IsActive(),
                     database_.IsOpen(),
@@ -558,6 +580,11 @@ namespace
                 *tryNextButton_,
                 *exportButton_,
                 *viewToggleButton_);
+
+            exportButton_->setText(
+                selectedEntries.size() > 1
+                    ? QStringLiteral("Export Selected PNGs...")
+                    : QStringLiteral("Export PNG"));
         }
 
         void SetBusy(bool busy, const QString& message = {})
@@ -571,6 +598,8 @@ namespace
                 *table_,
                 *galleryView_);
             defaultCacheButton_->setEnabled(!busy_);
+            galleryFilterCombo_->setEnabled(!busy_);
+            gallerySortCombo_->setEnabled(!busy_);
             UpdateActionState();
             UpdateGalleryActivity();
 
@@ -1176,17 +1205,25 @@ namespace
 
         void ExportSelected()
         {
-            const CacheEntry* entry = SelectedEntry();
+            const std::vector<const CacheEntry*> entries = SelectedEntries();
 
-            if (entry == nullptr)
+            if (entries.empty())
             {
                 return;
             }
 
+            if (entries.size() > 1)
+            {
+                StartBatchPngExport(entries);
+                return;
+            }
+
+            const CacheEntry& entry = *entries.front();
+
             const QString outputFile =
                 ChoosePngOutputFile(
                     *this,
-                    DefaultPngExportFileName(*entry));
+                    DefaultPngExportFileName(entry));
 
             if (outputFile.isEmpty())
             {
@@ -1196,11 +1233,94 @@ namespace
             const TexturePngExportResult result =
                 ExportTexturePng(
                     database_,
-                    *entry,
+                    entry,
                     PathFromQString(outputFile),
                     true);
 
             statusLabel_->setText(PngExportStatusText(result, outputFile));
+        }
+
+        void StartBatchPngExport(const std::vector<const CacheEntry*>& entries)
+        {
+            const QString outputDirectory = ChoosePngOutputDirectory(*this);
+
+            if (outputDirectory.isEmpty())
+            {
+                return;
+            }
+
+            const TextureCacheDatabase* database = &database_;
+            const std::filesystem::path outputPath =
+                PathFromQString(outputDirectory);
+
+            try
+            {
+                batchExportFuture_ = std::async(
+                    std::launch::async,
+                    [database, entries, outputPath]()
+                    {
+                        return ExportTexturePngs(
+                            *database,
+                            entries,
+                            outputPath);
+                    });
+            }
+            catch (const std::exception& error)
+            {
+                statusLabel_->setText(
+                    QStringLiteral("Could not start PNG export: %1")
+                        .arg(QString::fromUtf8(error.what())));
+                return;
+            }
+
+            batchExportActive_ = true;
+            batchExportOutputDirectory_ = outputDirectory;
+            SetBusy(
+                true,
+                QStringLiteral("Exporting %1 selected PNGs...")
+                    .arg(entries.size()));
+            batchExportPollTimer_->start();
+        }
+
+        void PollBatchPngExport()
+        {
+            if (!batchExportActive_)
+            {
+                batchExportPollTimer_->stop();
+                return;
+            }
+
+            if (batchExportFuture_.wait_for(std::chrono::seconds(0)) !=
+                std::future_status::ready)
+            {
+                return;
+            }
+
+            batchExportPollTimer_->stop();
+            batchExportActive_ = false;
+            const QString outputDirectory = batchExportOutputDirectory_;
+            batchExportOutputDirectory_.clear();
+
+            try
+            {
+                const BulkExportResults results = batchExportFuture_.get();
+                SetBusy(false);
+                statusLabel_->setText(
+                    BulkPngExportStatusText(
+                        results,
+                        outputDirectory));
+                ScheduleGalleryPreviewSearch();
+                ScheduleTableSelectionPreview();
+            }
+            catch (const std::exception& error)
+            {
+                SetBusy(false);
+                statusLabel_->setText(
+                    QStringLiteral("PNG export failed: %1")
+                        .arg(QString::fromUtf8(error.what())));
+                ScheduleGalleryPreviewSearch();
+                ScheduleTableSelectionPreview();
+            }
         }
 
         QLabel* pathLabel_ = nullptr;
@@ -1228,15 +1348,20 @@ namespace
         PreviewCache previewCache_;
         CacheEntryTableModel tableModel_;
         GalleryFilterProxyModel* proxyModel_ = nullptr;
+        QItemSelectionModel* selectionModel_ = nullptr;
         QTimer* previewPollTimer_ = nullptr;
         QTimer* tableSelectionPreviewTimer_ = nullptr;
         QTimer* galleryPreviewPollTimer_ = nullptr;
+        QTimer* batchExportPollTimer_ = nullptr;
         GalleryPreviewController galleryPreviewController_;
         TextureCacheDatabase database_;
         std::filesystem::path previewStateFile_;
         bool busy_ = false;
         PreviewWorkerState previewWorker_;
         PreviewWorkerState galleryPreviewWorker_;
+        std::future<BulkExportResults> batchExportFuture_;
+        bool batchExportActive_ = false;
+        QString batchExportOutputDirectory_;
         PreviewRequestKind activePreviewRequestKind_ = PreviewRequestKind::TableSelection;
         TryNextPreviewState tryNextPreview_;
         bool galleryMode_ = true;

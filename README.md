@@ -24,7 +24,7 @@ entries as ordinary no-preview cases, not application failures.
 * Browse cache entries in Table or Gallery view.
 * Lazy-load Gallery thumbnails while scrolling.
 * Preview decodable textures.
-* Export decodable textures as PNG.
+* Export one or many selected textures as PNG.
 * Show basic app, Qt, and cache diagnostics from the GUI.
 * Use the CLI for scan, list, verify, stats, and export workflows.
 

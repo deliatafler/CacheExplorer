@@ -61,6 +61,9 @@ export checks below.
 15. If a preview is visible, resize the window and confirm the preview rescales.
 16. Click `About` and confirm the details include the app version, Qt runtime,
     and either the open cache path or `Cache: not open`.
+17. Ctrl-click or Shift-click multiple entries in both views, switch views, and
+    confirm the selection remains. Confirm the current item still drives the
+    large preview panel.
 
 ## Export smoke test
 
@@ -70,6 +73,9 @@ export checks below.
 4. Confirm the status bar reports success with image dimensions and cached byte
    count, and the PNG opens in an image viewer.
 5. Repeat from `Gallery` for a previewable texture.
+6. Select multiple entries, click `Export Selected PNGs...`, choose a temporary
+   folder, and confirm the UI stays responsive while the final status reports
+   exported, incomplete, existing, and failed counts.
 
 ## When a build-only check is enough
 
