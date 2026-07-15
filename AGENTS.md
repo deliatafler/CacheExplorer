@@ -19,7 +19,7 @@ GUI targets depend directly on `cachelib`. A GUI must not wrap or invoke the CLI
 
 Business logic belongs in `cachelib`. CLI-specific argument parsing and console presentation belong in `cachecli`.
 
-The project direction is Qt 6 for future GUI development and cross-platform support. Keep the Win32 GUI buildable for now as legacy/maintenance-only code, but do not add new features there unless needed to preserve behavior or expose a shared `cachelib` issue.
+The project direction is Qt 6 for future GUI development, beta testing, and cross-platform support. The Win32 GUI is deprecated legacy code. Keep it buildable for now as maintenance-only/reference code, but do not add new features there unless needed to preserve behavior or expose a shared `cachelib` issue.
 
 ## Platform and build
 
@@ -87,6 +87,12 @@ cmake --build build-qt --config Release --target cachegui_qt
 ```
 
 The `qt-gui` vcpkg feature requests a minimal target Qt Widgets set, but the first Windows static vcpkg configure can still take a long time because host-side Qt tools pull and build a broader dependency graph.
+
+To skip the deprecated Win32 GUI in non-Qt builds, configure with:
+
+```bash
+-DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=OFF
+```
 
 ## Firestorm texture-cache format
 
@@ -256,6 +262,13 @@ Complete these tasks in order:
 
 ## Current GUI work
 
+### Milestone 4A: Win32 deprecation
+
+The Qt GUI is the supported beta GUI. The Win32 GUI remains buildable for now,
+but it is deprecated and should not receive new feature work. Keep it only as
+short-term maintenance/reference code until after the first Qt beta, then decide
+whether to remove it or carry it for one more release cycle.
+
 The first GUI cleanup step extracted standalone Win32 utility helpers into `cachegui/GuiUtils.*` without changing behavior. Win32 is now legacy/maintenance-only; do not spend new feature work there unless it protects existing behavior.
 
 The Qt 6 GUI in `cachegui_qt` is the primary GUI path. It opens a cache through `cachelib`, shows entries in a sortable model-backed table, can preview/export a selected entry as PNG through `TextureExporter`, and tracks preview status in the table.
@@ -350,7 +363,7 @@ Good next low-risk slices:
 * Improve `cachegui_qt` preview presentation and Gallery layout behavior based on real-cache validation.
 * Continue packaging/deployment work for the Qt GUI.
 * Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable archive.
-* Defer Win32 cleanup unless needed to keep the legacy target building.
+* Defer Win32 cleanup unless needed to keep the deprecated legacy target building.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.
 
 ## Coding guidelines

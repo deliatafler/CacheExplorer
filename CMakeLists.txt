@@ -7,7 +7,7 @@ option(CACHEEXPLORER_BUILD_QT_GUI
     OFF)
 
 option(CACHEEXPLORER_BUILD_LEGACY_WIN32_GUI
-    "Build the legacy native Win32 GUI"
+    "Build the deprecated legacy native Win32 GUI"
     ON)
 
 set(CMAKE_CXX_STANDARD 17)

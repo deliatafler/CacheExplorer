@@ -11,8 +11,11 @@ format.
 ## Status
 
 CacheExplorer is approaching a first beta. The Qt 6 GUI is the primary app path
-for future development and cross-platform work. The native Win32 GUI is still
-kept buildable, but it is legacy/maintenance-only.
+for future development, beta testing, and cross-platform work.
+
+The native Win32 GUI is deprecated legacy code. It is still kept buildable as a
+short-term reference/fallback, but new GUI features and user-facing polish should
+target the Qt GUI.
 
 Many real cache entries are expected to be incomplete or undecodable because
 Firestorm uses progressive JPEG2000 texture caching. CacheExplorer should treat
@@ -32,7 +35,7 @@ those entries as ordinary no-preview cases, not application failures.
 
 The project uses C++17, CMake, MSVC, and vcpkg manifest mode on Windows.
 
-### Core CLI and legacy Win32 GUI
+### Core CLI
 
 ```bash
 cmake -S . -B build -A x64 \
@@ -42,9 +45,13 @@ cmake -S . -B build -A x64 \
 cmake --build build --config Release
 ```
 
+This default build currently also builds the deprecated Win32 GUI. To build only
+the core CLI/library path, add `-DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=OFF`.
+
 ### Qt GUI with prebuilt shared Qt
 
-This is the preferred developer path because it avoids rebuilding Qt locally.
+This is the supported beta GUI path. It is also the preferred developer path
+because it avoids rebuilding Qt locally.
 
 ```bash
 cmake -S . -B build-qt -A x64 \
