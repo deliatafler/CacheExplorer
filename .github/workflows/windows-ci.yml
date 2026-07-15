@@ -68,6 +68,13 @@ jobs:
             -VcpkgRoot "$env:VCPKG_ROOT" `
             -Build
 
+      - name: Test Qt GUI helpers
+        shell: pwsh
+        run: |
+          cmake --build build-qt-prebuilt --config Release --target cachegui_tests cachelib_tests
+          $env:PATH = "$env:QT_ROOT_DIR\bin;$env:PATH"
+          ctest --test-dir build-qt-prebuilt -C Release --output-on-failure
+
       - name: Package shared Qt GUI
         shell: pwsh
         run: |

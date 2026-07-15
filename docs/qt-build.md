@@ -50,13 +50,22 @@ powershell -ExecutionPolicy Bypass -File scripts/launch-qt-prebuilt.ps1 `
 Use `docs/qt-packaging.md` when you want a repeatable shared-Qt package folder
 that can be zipped and shared for smoke testing.
 
+To build and run the focused Qt helper tests, make the SDK runtime available to
+CTest:
+
+```powershell
+cmake --build build-qt-prebuilt --config Release --target cachegui_tests cachelib_tests
+$env:PATH = "C:\Qt\6.11.1\msvc2022_64\bin;$env:PATH"
+ctest --test-dir build-qt-prebuilt -C Release --output-on-failure
+```
+
 ## GitHub Actions CI
 
 `.github/workflows/windows-ci.yml` validates the supported Windows paths on
 pushes, pull requests, and manual dispatches. It checks out the vcpkg manifest
 baseline, restores a vcpkg binary cache, builds and tests the static core
 configuration, then installs the matching prebuilt Qt MSVC 2022 kit to build
-the GUI.
+the GUI and run focused GUI-helper regression tests.
 
 The workflow creates the same shared-Qt ZIP used for beta testing, verifies its
 checksum and a fresh-extraction launch smoke, and uploads the ZIP plus its

@@ -415,6 +415,10 @@ undersized body files as errors. It also checks `TextureExportState`
 load/save behavior for incomplete entries, metadata invalidation, succeeded
 entries, and missing state files.
 
+`cachegui/cachegui_tests.cpp` provides focused CTest coverage for GUI-facing
+pure helpers: gallery queue accounting, bounded Try Next traversal, and gallery
+status text. It is built only when the Qt GUI and project tests are enabled.
+
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 
 Qt previews should be rendered from decoded RGBA in memory, not by writing PNG and asking Qt to reload it. The static/minimal Qt build may not have the PNG image loader available even when `TextureExporter` successfully writes a valid PNG.

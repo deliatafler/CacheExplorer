@@ -93,3 +93,46 @@ endif()
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(cachegui)
 endif()
+
+if(CACHEEXPLORER_BUILD_TESTS)
+    add_executable(cachegui_tests
+        GalleryPreviewQueue.cpp
+        GalleryPreviewQueue.h
+        QtGalleryStatus.cpp
+        QtGalleryStatus.h
+        TryNextPreviewState.cpp
+        TryNextPreviewState.h
+        cachegui_tests.cpp
+    )
+
+    target_link_libraries(cachegui_tests
+        PRIVATE
+            cachelib
+            Qt6::Core
+    )
+
+    target_compile_features(cachegui_tests
+        PRIVATE
+            cxx_std_17
+    )
+
+    if(MSVC)
+        target_compile_options(cachegui_tests
+            PRIVATE
+                /W4
+                /permissive-
+        )
+    else()
+        target_compile_options(cachegui_tests
+            PRIVATE
+                -Wall
+                -Wextra
+                -Wpedantic
+        )
+    endif()
+
+    add_test(
+        NAME cachegui_tests
+        COMMAND cachegui_tests
+    )
+endif()

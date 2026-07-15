@@ -28,7 +28,7 @@ roadmap rather than letting this become a changelog.
 
 ## Reliability and performance
 
-- [ ] Add targeted regression coverage for Qt-facing pure helpers as they are
+- [x] Add targeted regression coverage for Qt-facing pure helpers as they are
   extracted; keep cache-format behavior covered in `cachelib` tests.
 - [ ] Measure real-cache Gallery throughput before considering a bounded
   multi-worker thumbnail queue.

@@ -23,6 +23,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(CACHEEXPLORER_BUILD_TESTS)
+    enable_testing()
+endif()
+
 # Statically link the Microsoft C/C++ runtime by default.
 # Release uses /MT; Debug uses /MTd. Official shared Qt SDKs use /MD, so the
 # prebuilt-Qt helper disables this option for that build path.
@@ -42,6 +46,5 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
 endif()
 
 if(CACHEEXPLORER_BUILD_TESTS)
-    enable_testing()
     add_subdirectory(tests)
 endif()
