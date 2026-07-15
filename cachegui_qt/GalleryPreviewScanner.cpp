@@ -111,13 +111,13 @@ std::deque<CacheEntry> BuildVisibleGalleryPreviewQueue(
 
     const int firstVisibleRow = FirstVisibleGalleryProxyRow(galleryView, rowCount);
 
-    constexpr int MaximumRowsToScan = 260;
-    constexpr std::size_t MaximumQueueSize = 48;
+    constexpr int MaximumRowsToScan = 160;
+    constexpr std::size_t MaximumQueueSize = 24;
     constexpr std::size_t MaximumCandidates = MaximumQueueSize * 3;
     const int finalRow =
         std::min(rowCount, firstVisibleRow + MaximumRowsToScan);
     const QRect viewportRect = galleryView.viewport()->rect();
-    const QRect nearbyArea = viewportRect.adjusted(0, -220, 0, 220);
+    const QRect nearbyArea = viewportRect.adjusted(0, -96, 0, 96);
     std::vector<GalleryCandidate> visibleCandidates;
     std::vector<int> lookaheadRows;
 

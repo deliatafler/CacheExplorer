@@ -292,9 +292,9 @@ QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
     if (previewCache_ == nullptr)
     {
         return QIcon(PlaceholderPixmap(
-            QColor(44, 47, 51),
-            QColor(112, 119, 128),
-            QStringLiteral("WAIT")));
+            QColor(38, 40, 43),
+            QColor(82, 88, 96),
+            QStringLiteral("")));
     }
 
     const PreviewRecord* record = previewCache_->Find(entry);
@@ -302,9 +302,9 @@ QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
     if (record == nullptr)
     {
         return QIcon(PlaceholderPixmap(
-            QColor(44, 47, 51),
-            QColor(112, 119, 128),
-            QStringLiteral("WAIT")));
+            QColor(38, 40, 43),
+            QColor(82, 88, 96),
+            QStringLiteral("")));
     }
 
     if (record->state == PreviewState::Previewable && !record->pixmap.isNull())
@@ -320,15 +320,15 @@ QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
     {
         case PreviewState::Unknown:
             return QIcon(PlaceholderPixmap(
-                QColor(44, 47, 51),
-                QColor(112, 119, 128),
-                QStringLiteral("WAIT")));
+                QColor(38, 40, 43),
+                QColor(82, 88, 96),
+                QStringLiteral("")));
 
         case PreviewState::Checking:
             return QIcon(PlaceholderPixmap(
-                QColor(30, 60, 95),
-                QColor(108, 166, 222),
-                QStringLiteral("LOAD")));
+                QColor(38, 40, 43),
+                QColor(82, 88, 96),
+                QStringLiteral("")));
 
         case PreviewState::Unavailable:
             return QIcon(PlaceholderPixmap(
@@ -344,9 +344,9 @@ QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
 
         case PreviewState::Previewable:
             return QIcon(PlaceholderPixmap(
-                QColor(44, 47, 51),
-                QColor(112, 119, 128),
-                QStringLiteral("WAIT")));
+                QColor(38, 40, 43),
+                QColor(82, 88, 96),
+                QStringLiteral("")));
     }
 
     return {};
@@ -364,9 +364,15 @@ QPixmap CacheEntryTableModel::PlaceholderPixmap(
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.fillRect(QRect(0, 86, 128, 42), background.darker(125));
     painter.setPen(QPen(foreground, 2));
     painter.drawRoundedRect(QRect(10, 10, 108, 108), 4, 4);
+
+    if (label.isEmpty())
+    {
+        return pixmap;
+    }
+
+    painter.fillRect(QRect(0, 86, 128, 42), background.darker(125));
     painter.setPen(foreground);
     QFont labelFont = painter.font();
     labelFont.setPointSize(label.size() > 4 ? 12 : 18);
