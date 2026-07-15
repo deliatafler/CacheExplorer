@@ -39,10 +39,10 @@ roadmap rather than letting this become a changelog.
 
 - [ ] Validate the prebuilt-Qt CMake path on macOS and Linux with their native
   Qt SDKs and document any platform-specific prerequisites.
-- [ ] Confirm the GitHub Actions Windows workflow builds the core and
-  prebuilt-Qt GUI configurations on the hosted runner.
-- [ ] Confirm the GitHub Actions workflow publishes a repeatable beta ZIP,
-  checksum, and package smoke result after its first successful run.
+- [x] Build the core and prebuilt-Qt GUI configurations on the GitHub Actions
+  Windows hosted runner.
+- [x] Produce a repeatable beta ZIP and checksum in GitHub Actions, with a
+  fresh-extraction package smoke test.
 - [ ] Revisit static Qt or single-file distribution only after the shared-Qt
   beta path has proven itself.
 
