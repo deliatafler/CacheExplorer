@@ -40,6 +40,8 @@ add_executable(cachegui_qt WIN32
     QtGalleryStatus.h
     QtHelpers.cpp
     QtHelpers.h
+    QtPreviewStateStore.cpp
+    QtPreviewStateStore.h
     QtSelection.cpp
     QtSelection.h
     QtTextureExport.cpp

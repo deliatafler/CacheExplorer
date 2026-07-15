@@ -123,3 +123,27 @@ int PreviewCache::StatusRank(const CacheEntry& entry) const
 
     return 0;
 }
+
+std::vector<StoredPreviewRecord> PreviewCache::TerminalRecords() const
+{
+    std::vector<StoredPreviewRecord> records;
+
+    for (const auto& item : records_)
+    {
+        const PreviewRecord& record = item.second;
+
+        if (record.state != PreviewState::Unavailable &&
+            record.state != PreviewState::LoadFailed)
+        {
+            continue;
+        }
+
+        records.push_back(
+            StoredPreviewRecord{
+                item.first,
+                record.state,
+                record.message});
+    }
+
+    return records;
+}

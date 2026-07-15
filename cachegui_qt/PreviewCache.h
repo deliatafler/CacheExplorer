@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <unordered_map>
+#include <vector>
 
 #include <QPixmap>
 #include <QString>
@@ -26,6 +27,13 @@ struct PreviewRecord
     std::uint32_t height = 0;
 };
 
+struct StoredPreviewRecord
+{
+    std::uint32_t cacheIndex = 0;
+    PreviewState state = PreviewState::Unknown;
+    QString message;
+};
+
 class PreviewCache
 {
 public:
@@ -43,6 +51,7 @@ public:
     bool ShouldAttemptPreview(const CacheEntry& entry) const;
     QString StatusText(const CacheEntry& entry) const;
     int StatusRank(const CacheEntry& entry) const;
+    std::vector<StoredPreviewRecord> TerminalRecords() const;
 
 private:
     std::unordered_map<std::uint32_t, PreviewRecord> records_;

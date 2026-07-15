@@ -291,6 +291,11 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/PreviewCache.*` contains Qt GUI preview state and cached pixmaps. It is intentionally GUI-owned because it stores `QPixmap`; reusable decode/export logic must remain in `cachelib`.
 
+`cachegui_qt/QtPreviewStateStore.*` contains Qt-only persistence for terminal
+preview states. It stores no-preview/load-failed records outside the Firestorm
+cache directory and validates UUID/cacheIndex/image/body metadata before
+restoring them into `PreviewCache`.
+
 `cachegui_qt/PreviewDecodeWorker.*` contains the Qt GUI async preview decode wrapper around `TextureRebuilder` and `J2CDecoder`. Keep reusable reconstruction and decoding behavior in `cachelib`; this wrapper should only package copied request data/results for the GUI worker flow.
 
 Qt preview decode results distinguish rebuild failures from incomplete/undecodable cached texture data so the GUI can show user-friendly incomplete-texture feedback without changing `cachelib` export semantics.

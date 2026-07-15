@@ -15,6 +15,7 @@
 #include "QtGallerySort.h"
 #include "QtGalleryStatus.h"
 #include "QtHelpers.h"
+#include "QtPreviewStateStore.h"
 #include "QtSelection.h"
 #include "QtTextureExport.h"
 #include "QtTryNextPreview.h"
@@ -433,6 +434,7 @@ namespace
         void HandleOpenCacheFailure(CacheError result)
         {
             tableModel_.SetDatabase(nullptr);
+            previewStateFile_.clear();
             ClearPreviewUiState();
             UpdateGalleryEntryCount();
             SetBusy(false);
@@ -446,6 +448,7 @@ namespace
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
             PopulateTable();
             ClearPreviewUiState();
+            LoadPersistentPreviewState();
             UpdateGalleryEntryCount();
             SetBusy(false);
             ScheduleGalleryPreviewSearch();
@@ -599,6 +602,7 @@ namespace
                     tableModel_,
                     result.entry,
                     ToQString(result.message));
+                SavePersistentPreviewState();
 
                 if (requestKind == PreviewRequestKind::Manual)
                 {
@@ -625,6 +629,7 @@ namespace
                     pixmap,
                     imageError))
             {
+                SavePersistentPreviewState();
                 if (requestKind == PreviewRequestKind::Manual)
                 {
                     previewPanel_.SetMessage(imageError);
@@ -636,6 +641,7 @@ namespace
             }
 
             previewPanel_.SetPixmap(pixmap);
+            SavePersistentPreviewState();
             SelectEntry(result.entry);
             tryNextPreview_.Stop();
             statusLabel_->setText(
@@ -730,6 +736,7 @@ namespace
                     tableModel_,
                     result.entry,
                     ToQString(result.message));
+                SavePersistentPreviewState();
                 StartNextQueuedGalleryPreview();
                 return;
             }
@@ -745,10 +752,12 @@ namespace
                     pixmap,
                     imageError))
             {
+                SavePersistentPreviewState();
                 StartNextQueuedGalleryPreview();
                 return;
             }
 
+            SavePersistentPreviewState();
             const CacheEntry* selectedEntry = SelectedEntry();
 
             if (selectedEntry != nullptr &&
@@ -998,6 +1007,48 @@ namespace
             galleryPreviewController_.Clear();
         }
 
+        void LoadPersistentPreviewState()
+        {
+            if (!database_.IsOpen())
+            {
+                previewStateFile_.clear();
+                return;
+            }
+
+            previewStateFile_ =
+                PreviewStateFilePath(database_.CacheDirectory());
+
+            QString errorMessage;
+            const bool loaded =
+                LoadPreviewState(
+                    previewStateFile_,
+                    database_,
+                    previewCache_,
+                    errorMessage);
+
+            tableModel_.NotifyAllPreviewStatusesChanged();
+
+            if (!loaded)
+            {
+                statusLabel_->setText(errorMessage);
+            }
+        }
+
+        void SavePersistentPreviewState()
+        {
+            if (!database_.IsOpen() || previewStateFile_.empty())
+            {
+                return;
+            }
+
+            QString errorMessage;
+            SavePreviewState(
+                previewStateFile_,
+                database_,
+                previewCache_,
+                errorMessage);
+        }
+
         void UpdateGalleryActivity()
         {
             galleryActivityIndicator_.Update(
@@ -1073,6 +1124,7 @@ namespace
         QTimer* galleryPreviewPollTimer_ = nullptr;
         GalleryPreviewController galleryPreviewController_;
         TextureCacheDatabase database_;
+        std::filesystem::path previewStateFile_;
         bool busy_ = false;
         PreviewWorkerState previewWorker_;
         PreviewWorkerState galleryPreviewWorker_;

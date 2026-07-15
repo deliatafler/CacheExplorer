@@ -32,6 +32,10 @@ Some entries will remain `No preview` or `Load failed`; this is normal for real
 Firestorm caches because many cached JPEG2000 textures are incomplete or
 progressively cached.
 
+CacheExplorer remembers terminal `No preview` and `Load failed` states for a
+cache between runs, while still checking the entry metadata before reusing that
+state.
+
 Use `Table` for debugging and inspection. The table shows UUID, image size, body
 size, raw cache index, timestamp, and preview status. Table sorting is useful
 when investigating cache layout or looking for large entries.
