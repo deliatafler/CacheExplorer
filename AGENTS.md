@@ -342,6 +342,11 @@ Gallery placeholders are generated in the Qt model for unknown/checking/no-previ
 
 Gallery mode shows a lightweight activity label while it is scanning visible items, refreshing the visible thumbnail queue, or checking thumbnails with queued progress. The main bottom status label remains reserved for explicit user actions such as Preview, Try Next Preview, Export, and cache open results.
 
+`tests/cachelib_tests.cpp` contains the initial CTest-backed cachelib regression
+coverage. It uses synthetic `texture.entries` data to verify usable-entry
+filtering, raw `cacheIndex` preservation, UUID lookup behavior, and
+`TextureSelection` ordering/clamping.
+
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 
 Qt previews should be rendered from decoded RGBA in memory, not by writing PNG and asking Qt to reload it. The static/minimal Qt build may not have the PNG image loader available even when `TextureExporter` successfully writes a valid PNG.

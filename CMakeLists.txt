@@ -10,6 +10,10 @@ option(CACHEEXPLORER_BUILD_LEGACY_WIN32_GUI
     "Build the deprecated legacy native Win32 GUI"
     ON)
 
+option(CACHEEXPLORER_BUILD_TESTS
+    "Build CacheExplorer regression tests"
+    ON)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -33,4 +37,9 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
         "Primary Qt GUI enabled. Use CMAKE_PREFIX_PATH or Qt6_DIR for a prebuilt Qt developer build; "
         "use the vcpkg qt-gui feature for a static/reproducible Qt build.")
     add_subdirectory(cachegui_qt)
+endif()
+
+if(CACHEEXPLORER_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()

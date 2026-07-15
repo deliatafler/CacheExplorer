@@ -17,6 +17,7 @@ Run:
 
 ```bash
 cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 cmake --build build-qt --config Release --target cachegui_qt
 cmake --build build-qt-prebuilt --config Release --target cachegui_qt
 ```
