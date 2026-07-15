@@ -17,17 +17,26 @@ void GalleryActivityIndicator::Update(const GalleryActivityState& state)
         return;
     }
 
-    const bool showLabel =
+    const bool reserveLabelSpace =
         state.galleryMode &&
-        state.databaseOpen &&
+        state.databaseOpen;
+
+    const bool showActivity =
+        reserveLabelSpace &&
         (state.workerActive ||
             state.searchPending ||
             state.refreshPending ||
             state.hasQueuedEntries);
 
-    label_->setVisible(showLabel);
+    label_->setVisible(reserveLabelSpace);
 
-    if (!showLabel)
+    if (!reserveLabelSpace)
+    {
+        label_->clear();
+        return;
+    }
+
+    if (!showActivity)
     {
         label_->clear();
         return;

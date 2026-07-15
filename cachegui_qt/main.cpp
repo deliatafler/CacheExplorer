@@ -109,9 +109,17 @@ namespace
             gallerySortLabel_->hide();
             gallerySortCombo_->hide();
             galleryCountLabel_ = new QLabel(root);
+            galleryCountLabel_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            galleryCountLabel_->setMinimumWidth(
+                galleryCountLabel_->fontMetrics().horizontalAdvance(
+                    QStringLiteral("999999 of 999999 entries")));
             galleryCountLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
             galleryCountLabel_->hide();
             galleryActivityLabel_ = new QLabel(root);
+            galleryActivityLabel_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+            galleryActivityLabel_->setMinimumWidth(
+                galleryActivityLabel_->fontMetrics().horizontalAdvance(
+                    QStringLiteral("Refreshing visible thumbnails...")));
             galleryActivityLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
             galleryActivityLabel_->hide();
             galleryActivityIndicator_.SetLabel(galleryActivityLabel_);
