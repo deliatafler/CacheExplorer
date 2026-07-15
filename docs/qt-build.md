@@ -18,7 +18,9 @@ cmake -S . -B build-qt -A x64 \
 cmake --build build-qt --config Release --target cachegui_qt
 ```
 
-The resulting GUI launches when the prebuilt Qt `bin` directory is on `PATH`.
+The target remains named `cachegui_qt`, but the user-facing executable is
+`CacheExplorer.exe`. The resulting GUI launches when the prebuilt Qt `bin`
+directory is on `PATH`.
 Use `docs/qt-packaging.md` when you want a repeatable shared-Qt package folder
 that can be zipped and shared for smoke testing.
 
@@ -64,7 +66,7 @@ For a shared/prebuilt Qt developer build, `windeployqt` identifies the expected
 Qt DLL/plugin deployment set:
 
 ```bash
-windeployqt --dry-run --release build-qt-prebuilt/cachegui_qt/Release/cachegui_qt.exe
+windeployqt --dry-run --release build-qt-prebuilt/cachegui_qt/Release/CacheExplorer.exe
 ```
 
 Run `windeployqt` from a proper Visual Studio developer environment for

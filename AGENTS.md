@@ -71,6 +71,9 @@ cmake -S . -B build-qt -A x64 \
 cmake --build build-qt --config Release --target cachegui_qt
 ```
 
+The CMake target remains `cachegui_qt`; its user-facing executable name is
+`CacheExplorer.exe`.
+
 Primary Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow:
 
 ```bash

@@ -5,6 +5,7 @@
 
 #include <QComboBox>
 #include <QString>
+#include <QtGlobal>
 
 namespace
 {
@@ -41,9 +42,9 @@ void GalleryFilterProxyModel::SetGalleryMode(bool galleryMode)
         return;
     }
 
-    beginFilterChange();
+    BeginFilterUpdate();
     galleryMode_ = galleryMode;
-    endFilterChange();
+    EndFilterUpdate();
 }
 
 void GalleryFilterProxyModel::SetPreviewFilter(GalleryPreviewFilter filter)
@@ -53,9 +54,25 @@ void GalleryFilterProxyModel::SetPreviewFilter(GalleryPreviewFilter filter)
         return;
     }
 
-    beginFilterChange();
+    BeginFilterUpdate();
     filter_ = filter;
+    EndFilterUpdate();
+}
+
+void GalleryFilterProxyModel::BeginFilterUpdate()
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+    beginFilterChange();
+#endif
+}
+
+void GalleryFilterProxyModel::EndFilterUpdate()
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
     endFilterChange();
+#else
+    invalidateFilter();
+#endif
 }
 
 bool GalleryFilterProxyModel::filterAcceptsRow(

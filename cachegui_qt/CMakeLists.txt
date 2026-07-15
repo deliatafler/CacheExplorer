@@ -48,6 +48,11 @@ add_executable(cachegui_qt WIN32
     TryNextPreviewState.h
 )
 
+set_target_properties(cachegui_qt
+    PROPERTIES
+        OUTPUT_NAME CacheExplorer
+)
+
 target_compile_features(cachegui_qt
     PRIVATE
         cxx_std_17

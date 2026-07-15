@@ -1,0 +1,80 @@
+# CacheExplorer
+
+CacheExplorer is a standalone browser and PNG exporter for the Firestorm Viewer
+texture cache. It is intended as a modern, open-source replacement for the
+defunct SLCacheViewer.
+
+CacheExplorer does not link against Firestorm and does not require Firestorm
+source code. Firestorm source was used only to understand the texture-cache file
+format.
+
+## Status
+
+CacheExplorer is approaching a first beta. The Qt 6 GUI is the primary app path
+for future development and cross-platform work. The native Win32 GUI is still
+kept buildable, but it is legacy/maintenance-only.
+
+Many real cache entries are expected to be incomplete or undecodable because
+Firestorm uses progressive JPEG2000 texture caching. CacheExplorer should treat
+those entries as ordinary no-preview cases, not application failures.
+
+## Features
+
+* Open a Firestorm `texturecache` folder directly.
+* Browse cache entries in Table or Gallery view.
+* Lazy-load Gallery thumbnails while scrolling.
+* Preview decodable textures.
+* Export decodable textures as PNG.
+* Use the CLI for scan, list, verify, stats, and export workflows.
+
+## Build
+
+The project uses C++17, CMake, MSVC, and vcpkg manifest mode on Windows.
+
+### Core CLI and legacy Win32 GUI
+
+```bash
+cmake -S . -B build -A x64 \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static
+
+cmake --build build --config Release
+```
+
+### Qt GUI with prebuilt shared Qt
+
+This is the preferred developer path because it avoids rebuilding Qt locally.
+
+```bash
+cmake -S . -B build-qt -A x64 \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static \
+  -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/msvc2022_64" \
+  -DCACHEEXPLORER_BUILD_QT_GUI=ON
+
+cmake --build build-qt --config Release --target cachegui_qt
+```
+
+The target name is `cachegui_qt`; the built GUI executable is
+`build-qt/cachegui_qt/Release/CacheExplorer.exe`.
+
+See `docs/qt-build.md` for static Qt and deployment details.
+
+## Packaging
+
+For a shared-Qt test package:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
+  -BuildDir build-qt-prebuilt `
+  -Configuration Release `
+  -QtBinDir C:\Qt\6.8.3\msvc2022_64\bin `
+  -OutputDir artifacts\cacheexplorer-qt-shared
+```
+
+See `docs/qt-packaging.md` for package contents and smoke testing.
+
+## Validation
+
+Use `docs/qt-gui-validation.md` after GUI behavior changes. Build-only
+validation is usually enough for documentation-only and narrow helper changes.

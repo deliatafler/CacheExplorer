@@ -30,7 +30,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
 
 If `windeployqt.exe` is already on `PATH`, omit `-QtBinDir`.
 
-The package directory contains `cachegui_qt.exe` plus the Qt DLLs and plugin
+The package directory contains `CacheExplorer.exe` plus the Qt DLLs and plugin
 folders copied by `windeployqt`. Zip the package directory after a smoke test if
 you want to share it.
 

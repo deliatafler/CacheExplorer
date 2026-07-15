@@ -30,6 +30,9 @@ protected:
         const QModelIndex& sourceParent) const override;
 
 private:
+    void BeginFilterUpdate();
+    void EndFilterUpdate();
+
     bool galleryMode_ = false;
     GalleryPreviewFilter filter_ = GalleryPreviewFilter::All;
 };

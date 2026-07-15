@@ -1030,6 +1030,9 @@ namespace
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
+    QApplication::setApplicationName(QStringLiteral("CacheExplorer"));
+    QApplication::setApplicationDisplayName(QStringLiteral("Cache Explorer"));
+    QApplication::setOrganizationName(QStringLiteral("CacheExplorer"));
     MainWindow window;
     window.show();
     return app.exec();

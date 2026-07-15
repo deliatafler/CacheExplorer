@@ -24,10 +24,17 @@ function Resolve-RepoPath {
 
 $resolvedBuildDir = Resolve-RepoPath $BuildDir
 $resolvedOutputDir = Resolve-RepoPath $OutputDir
-$builtExe = Join-Path $resolvedBuildDir "cachegui_qt/$Configuration/cachegui_qt.exe"
+$builtExe = Join-Path $resolvedBuildDir "cachegui_qt/$Configuration/CacheExplorer.exe"
 
 if (-not (Test-Path -LiteralPath $builtExe -PathType Leaf)) {
-    throw "Built executable not found: $builtExe. Build cachegui_qt first."
+    $legacyBuiltExe = Join-Path $resolvedBuildDir "cachegui_qt/$Configuration/cachegui_qt.exe"
+    if (Test-Path -LiteralPath $legacyBuiltExe -PathType Leaf) {
+        $builtExe = $legacyBuiltExe
+    }
+}
+
+if (-not (Test-Path -LiteralPath $builtExe -PathType Leaf)) {
+    throw "Built executable not found. Build cachegui_qt first."
 }
 
 if ($QtBinDir.Length -gt 0) {
@@ -45,7 +52,7 @@ if ($QtBinDir.Length -gt 0) {
 
 New-Item -ItemType Directory -Force -Path $resolvedOutputDir | Out-Null
 
-$packageExe = Join-Path $resolvedOutputDir "cachegui_qt.exe"
+$packageExe = Join-Path $resolvedOutputDir "CacheExplorer.exe"
 Copy-Item -LiteralPath $builtExe -Destination $packageExe -Force
 
 & $windeployqt --release --dir $resolvedOutputDir $packageExe
