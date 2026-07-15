@@ -393,6 +393,10 @@ Good next low-risk slices:
 * Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable archive.
 * Use `scripts/test-qt-package.ps1` to verify shared-Qt package contents,
   archive contents, checksum, and optional short launch smoke.
+* `CacheExplorer.exe --smoke-open <cache-folder>` opens a cache through the
+  normal Qt main-window path, verifies the entry model was populated, and exits
+  with a success/failure code. `scripts/test-qt-package.ps1 -ExtractAndLaunch
+  -SmokeOpenCache <cache-folder>` runs it from a fresh package extraction.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.
 
 ## Coding guidelines

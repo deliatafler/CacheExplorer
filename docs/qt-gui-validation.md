@@ -3,6 +3,20 @@
 Use this checklist after changes that affect Qt GUI state, selection, preview
 workers, gallery loading, export, or cache-open behavior.
 
+Before the interactive checks, the packaged app can exercise its normal
+cache-open/model-population path unattended:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
+  -PackageDir artifacts\cacheexplorer-qt-shared `
+  -ZipPath artifacts\cacheexplorer-qt-shared.zip `
+  -ExtractAndLaunch `
+  -SmokeOpenCache C:\Path\To\texturecache
+```
+
+This complements, but does not replace, the interactive Gallery, Preview, and
+export checks below.
+
 ## Basic smoke test
 
 1. Launch the prebuilt Qt GUI with:

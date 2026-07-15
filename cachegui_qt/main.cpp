@@ -28,6 +28,8 @@
 #include <optional>
 
 #include <QApplication>
+#include <QCommandLineOption>
+#include <QCommandLineParser>
 #include <QComboBox>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -73,6 +75,16 @@ namespace
             ConnectSignals();
 
             setCentralWidget(root);
+        }
+
+        bool SmokeOpenCache(const QString& cachePath)
+        {
+            pathEdit_->setText(cachePath);
+            OpenCache();
+
+            return database_.IsOpen()
+                && static_cast<std::size_t>(tableModel_.rowCount())
+                    == database_.Entries().size();
         }
 
     protected:
@@ -1142,7 +1154,22 @@ int main(int argc, char* argv[])
     QApplication::setApplicationDisplayName(QStringLiteral("Cache Explorer"));
     QApplication::setApplicationVersion(QStringLiteral(CACHEEXPLORER_VERSION));
     QApplication::setOrganizationName(QStringLiteral("CacheExplorer"));
+
+    QCommandLineParser commandLine;
+    const QCommandLineOption smokeOpenOption(
+        QStringLiteral("smoke-open"),
+        QStringLiteral("Open a cache, populate the entry model, and exit."),
+        QStringLiteral("cache-folder"));
+    commandLine.addOption(smokeOpenOption);
+    commandLine.process(app);
+
     MainWindow window;
+
+    if (commandLine.isSet(smokeOpenOption))
+    {
+        return window.SmokeOpenCache(commandLine.value(smokeOpenOption)) ? 0 : 1;
+    }
+
     window.show();
     return app.exec();
 }

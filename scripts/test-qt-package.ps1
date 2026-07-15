@@ -4,6 +4,7 @@ param(
     [string]$ChecksumPath = "",
     [switch]$Launch,
     [switch]$ExtractAndLaunch,
+    [string]$SmokeOpenCache = "",
     [int]$LaunchSeconds = 5
 )
 
@@ -157,11 +158,35 @@ if ($Launch -or $ExtractAndLaunch) {
     $process = $null
 
     try {
-        $process = Start-Process `
-            -FilePath $exePath `
-            -WorkingDirectory $launchPackageDir `
-            -WindowStyle Hidden `
-            -PassThru
+        if ($SmokeOpenCache.Length -gt 0) {
+            $process = Start-Process `
+                -FilePath $exePath `
+                -WorkingDirectory $launchPackageDir `
+                -WindowStyle Hidden `
+                -ArgumentList @("--smoke-open", $SmokeOpenCache) `
+                -PassThru
+        }
+        else {
+            $process = Start-Process `
+                -FilePath $exePath `
+                -WorkingDirectory $launchPackageDir `
+                -WindowStyle Hidden `
+                -PassThru
+        }
+
+        if ($SmokeOpenCache.Length -gt 0) {
+            if (-not $process.WaitForExit($LaunchSeconds * 1000)) {
+                throw "Packaged CacheExplorer did not complete the cache-open smoke test within $LaunchSeconds second(s)."
+            }
+
+            if ($process.ExitCode -ne 0) {
+                throw "Packaged CacheExplorer could not open the smoke-test cache."
+            }
+
+            Write-Host "Package cache-open smoke passed:"
+            Write-Host "  Process $($process.Id) opened $SmokeOpenCache."
+            return
+        }
 
         Start-Sleep -Seconds $LaunchSeconds
 
