@@ -320,6 +320,8 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 
 `cachegui_qt/QtGallerySort.*` contains the Gallery-only sort control options and proxy-model sort application.
 
+`cachegui_qt/QtGalleryStatus.*` contains Gallery-only count/filter status text.
+
 `cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
 Path probing should use non-throwing filesystem checks so odd user-selected
 directories report normal open errors instead of surfacing exceptions.

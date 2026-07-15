@@ -36,6 +36,8 @@ add_executable(cachegui_qt WIN32
     QtFileDialogs.h
     QtGallerySort.cpp
     QtGallerySort.h
+    QtGalleryStatus.cpp
+    QtGalleryStatus.h
     QtHelpers.cpp
     QtHelpers.h
     QtSelection.cpp

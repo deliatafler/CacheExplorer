@@ -13,6 +13,7 @@
 #include "QtActionState.h"
 #include "QtFileDialogs.h"
 #include "QtGallerySort.h"
+#include "QtGalleryStatus.h"
 #include "QtHelpers.h"
 #include "QtSelection.h"
 #include "QtTextureExport.h"
@@ -107,6 +108,9 @@ namespace
             ConfigureGallerySortControl(*gallerySortCombo_);
             gallerySortLabel_->hide();
             gallerySortCombo_->hide();
+            galleryCountLabel_ = new QLabel(root);
+            galleryCountLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
+            galleryCountLabel_->hide();
             galleryActivityLabel_ = new QLabel(root);
             galleryActivityLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
             galleryActivityLabel_->hide();
@@ -202,6 +206,7 @@ namespace
             actionLayout->addWidget(galleryFilterCombo_);
             actionLayout->addWidget(gallerySortLabel_);
             actionLayout->addWidget(gallerySortCombo_);
+            actionLayout->addWidget(galleryCountLabel_);
             actionLayout->addWidget(galleryActivityLabel_);
             actionLayout->addWidget(viewToggleButton_);
 
@@ -309,6 +314,7 @@ namespace
                     ApplyGallerySort(
                         *proxyModel_,
                         sortMode);
+                    UpdateGalleryEntryCount();
                     statusLabel_->setText(GallerySortCompleteStatus(sortMode));
                     ClearGalleryPreviewQueue();
                     UpdateGalleryActivity();
@@ -323,9 +329,13 @@ namespace
                 {
                     proxyModel_->SetPreviewFilter(
                         CurrentGalleryPreviewFilter(*galleryFilterCombo_));
+                    UpdateGalleryEntryCount();
                     ClearGalleryPreviewQueue();
                     UpdateGalleryActivity();
-                    statusLabel_->setText(QStringLiteral("Gallery filter updated."));
+                    statusLabel_->setText(
+                        GalleryFilterUpdatedStatus(
+                            proxyModel_->rowCount(),
+                            tableModel_.rowCount()));
                     ScheduleGalleryPreviewSearch();
                 });
 
@@ -416,6 +426,7 @@ namespace
         {
             tableModel_.SetDatabase(nullptr);
             ClearPreviewUiState();
+            UpdateGalleryEntryCount();
             SetBusy(false);
             statusLabel_->setText(
                 QStringLiteral("Could not open cache: ")
@@ -427,6 +438,7 @@ namespace
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
             PopulateTable();
             ClearPreviewUiState();
+            UpdateGalleryEntryCount();
             SetBusy(false);
             ScheduleGalleryPreviewSearch();
         }
@@ -846,6 +858,7 @@ namespace
             galleryFilterCombo_->setVisible(galleryMode_);
             gallerySortLabel_->setVisible(galleryMode_);
             gallerySortCombo_->setVisible(galleryMode_);
+            galleryCountLabel_->setVisible(galleryMode_);
             proxyModel_->SetGalleryMode(galleryMode_);
             ApplyViewMode(
                 galleryMode_,
@@ -862,6 +875,7 @@ namespace
             }
             UpdateActionState();
             ShowCachedPreviewForSelection();
+            UpdateGalleryEntryCount();
             UpdateGalleryActivity();
             ScheduleGalleryPreviewSearch();
         }
@@ -973,6 +987,14 @@ namespace
                     galleryPreviewWorker_.IsActive()));
         }
 
+        void UpdateGalleryEntryCount()
+        {
+            galleryCountLabel_->setText(
+                GalleryEntryCountText(
+                    proxyModel_->rowCount(),
+                    tableModel_.rowCount()));
+        }
+
         void ExportSelected()
         {
             const CacheEntry* entry = SelectedEntry();
@@ -1015,6 +1037,7 @@ namespace
         QComboBox* galleryFilterCombo_ = nullptr;
         QLabel* gallerySortLabel_ = nullptr;
         QComboBox* gallerySortCombo_ = nullptr;
+        QLabel* galleryCountLabel_ = nullptr;
         QTableView* table_ = nullptr;
         QListView* galleryView_ = nullptr;
         QStackedWidget* viewStack_ = nullptr;

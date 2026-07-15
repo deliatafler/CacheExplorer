@@ -27,7 +27,9 @@ workers, gallery loading, export, or cache-open behavior.
    `Export PNG`, the Gallery filter/sort controls, and the `Table` toggle remain
    visible.
 10. Change the Gallery filter control and confirm the gallery shows only the
-    selected preview state. Toggle back to `Table` and confirm all rows return.
+    selected preview state, the Gallery count updates, and empty filters report
+    no matching entries in the status bar. Toggle back to `Table` and confirm
+    all rows return.
 11. Change the Gallery sort control and confirm the gallery reorders and resumes
     lazy thumbnail loading without blocking the UI. Slower sorts, especially
     UUID, should update the bottom status bar before the sort completes.
