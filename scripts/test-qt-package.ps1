@@ -55,6 +55,9 @@ if (-not (Test-Path -LiteralPath $resolvedPackageDir -PathType Container)) {
 
 $requiredFiles = @(
     "CacheExplorer.exe",
+    "Qt6Core.dll",
+    "Qt6Gui.dll",
+    "Qt6Widgets.dll",
     "PACKAGE_INFO.txt",
     "README.md",
     "RELEASE_NOTES.md",
@@ -132,6 +135,11 @@ if ($Launch) {
 
         if ($process.HasExited) {
             throw "Packaged CacheExplorer exited with code $($process.ExitCode)."
+        }
+
+        $process.Refresh()
+        if ($process.MainWindowTitle -like "*System Error*") {
+            throw "Packaged CacheExplorer opened a system error dialog: $($process.MainWindowTitle)"
         }
 
         Write-Host "Package launch smoke passed:"

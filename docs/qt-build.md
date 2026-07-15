@@ -39,7 +39,14 @@ cmake --build build-qt-prebuilt --config Release --target cachegui_qt
 
 The target remains named `cachegui_qt`, but the user-facing executable is
 `CacheExplorer.exe`. The resulting GUI launches when the prebuilt Qt `bin`
-directory is on `PATH`.
+directory is on `PATH`. Use the helper script so the raw build output starts
+with the matching Qt runtime:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/launch-qt-prebuilt.ps1 `
+  -QtDir C:\Qt\6.11.1\msvc2022_64
+```
+
 Use `docs/qt-packaging.md` when you want a repeatable shared-Qt package folder
 that can be zipped and shared for smoke testing.
 

@@ -86,6 +86,11 @@ cmake --build build-qt-prebuilt --config Release --target cachegui_qt
 The CMake target remains `cachegui_qt`; its user-facing executable name is
 `CacheExplorer.exe`.
 
+Launch raw prebuilt Qt build outputs through `scripts/launch-qt-prebuilt.ps1`
+or package them with `scripts/package-qt-shared.ps1`; otherwise Windows will
+not find Qt DLLs such as `Qt6Widgets.dll` unless the Qt `bin` directory is
+already on `PATH`.
+
 Optional Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow and it is not the primary contributor path:
 
 ```bash

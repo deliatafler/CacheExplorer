@@ -79,6 +79,13 @@ cmake --build build-qt-prebuilt --config Release --target cachegui_qt
 
 The target name is `cachegui_qt`; the built GUI executable is
 `build-qt-prebuilt/cachegui_qt/Release/CacheExplorer.exe`.
+Launch the raw prebuilt build through the helper so Windows can find the Qt
+runtime DLLs:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/launch-qt-prebuilt.ps1 `
+  -QtDir C:\Qt\6.11.1\msvc2022_64
+```
 
 See `docs/qt-build.md` for deployment details and the optional static Qt path.
 

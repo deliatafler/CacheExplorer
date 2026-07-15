@@ -5,7 +5,11 @@ workers, gallery loading, export, or cache-open behavior.
 
 ## Basic smoke test
 
-1. Launch `build-qt-prebuilt/cachegui_qt/Release/CacheExplorer.exe`.
+1. Launch the prebuilt Qt GUI with:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/launch-qt-prebuilt.ps1 `
+     -QtDir C:\Qt\6.11.1\msvc2022_64
+   ```
 2. Click `Open` with the default Firestorm texture-cache path.
 3. Confirm the table populates and the status bar reports loaded entries.
 4. Select a row and click `Preview`.

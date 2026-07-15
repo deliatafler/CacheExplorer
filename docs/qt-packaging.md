@@ -64,6 +64,10 @@ powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
   -Launch
 ```
 
+For developer builds that have not been packaged with `windeployqt`, launch
+through `scripts/launch-qt-prebuilt.ps1` so the official Qt `bin` directory is
+on `PATH`.
+
 ## Optional static release path
 
 The shared package is the current beta packaging path. Static Qt distribution
