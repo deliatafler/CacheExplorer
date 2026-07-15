@@ -57,7 +57,7 @@ Executable:
 build/cachecli/Release/cachecli.exe
 ```
 
-See `docs/qt-build.md` for detailed Qt GUI build, prebuilt-Qt, static-Qt, and deployment notes. See `docs/qt-packaging.md` for the shared-Qt package helper and smoke-test checklist.
+See `docs/qt-build.md` for detailed Qt GUI build, prebuilt-Qt, static-Qt, and deployment notes. See `docs/qt-packaging.md` for the shared-Qt package helper and smoke-test checklist. See `docs/qt-user-guide.md` for user-facing Qt GUI usage notes and `docs/beta-release-checklist.md` before tagging or sharing a beta.
 
 Primary Qt GUI build with a prebuilt shared Qt installation. This is the preferred developer path because it avoids rebuilding Qt locally:
 
@@ -362,6 +362,7 @@ Good next low-risk slices:
 * Improve Qt gallery UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
 * Improve `cachegui_qt` preview presentation and Gallery layout behavior based on real-cache validation.
 * Continue packaging/deployment work for the Qt GUI.
+* Keep `docs/qt-user-guide.md` and `docs/beta-release-checklist.md` aligned with beta behavior.
 * Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable archive.
 * Defer Win32 cleanup unless needed to keep the deprecated legacy target building.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.

@@ -31,6 +31,8 @@ those entries as ordinary no-preview cases, not application failures.
 * Show basic app, Qt, and cache diagnostics from the GUI.
 * Use the CLI for scan, list, verify, stats, and export workflows.
 
+See `docs/qt-user-guide.md` for Qt GUI usage and limitations.
+
 ## Build
 
 The project uses C++17, CMake, MSVC, and vcpkg manifest mode on Windows.
@@ -87,3 +89,4 @@ See `docs/qt-packaging.md` for package contents and smoke testing.
 
 Use `docs/qt-gui-validation.md` after GUI behavior changes. Build-only
 validation is usually enough for documentation-only and narrow helper changes.
+Use `docs/beta-release-checklist.md` before tagging or sharing a beta package.
