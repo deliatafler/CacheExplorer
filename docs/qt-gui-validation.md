@@ -37,6 +37,8 @@ workers, gallery loading, export, or cache-open behavior.
 14. Select an already-previewed item in both `Table` and `Gallery`; confirm the
     cached preview appears in the large preview panel without decoding again.
 15. If a preview is visible, resize the window and confirm the preview rescales.
+16. Click `About` and confirm the details include the app version, Qt runtime,
+    and either the open cache path or `Cache: not open`.
 
 ## Export smoke test
 

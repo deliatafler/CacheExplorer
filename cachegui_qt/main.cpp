@@ -9,6 +9,7 @@
 #include "PreviewPanel.h"
 #include "PreviewStatus.h"
 #include "PreviewWorkerState.h"
+#include "QtAboutDialog.h"
 #include "QtActionState.h"
 #include "QtFileDialogs.h"
 #include "QtGallerySort.h"
@@ -90,6 +91,7 @@ namespace
             pathEdit_ = new QLineEdit(DefaultCachePath(), root);
             browseButton_ = new QPushButton(QStringLiteral("Browse"), root);
             openButton_ = new QPushButton(QStringLiteral("Open"), root);
+            aboutButton_ = new QPushButton(QStringLiteral("About"), root);
 
             previewButton_ = new QPushButton(QStringLiteral("Preview"), root);
             tryNextButton_ = new QPushButton(QStringLiteral("Try Next Preview"), root);
@@ -188,6 +190,7 @@ namespace
             pathLayout->addWidget(pathEdit_, 0, 1);
             pathLayout->addWidget(browseButton_, 0, 2);
             pathLayout->addWidget(openButton_, 0, 3);
+            pathLayout->addWidget(aboutButton_, 0, 4);
             pathLayout->setColumnStretch(1, 1);
 
             auto* actionLayout = new QHBoxLayout();
@@ -242,6 +245,15 @@ namespace
                 [this]()
                 {
                     OpenCache();
+                });
+
+            connect(
+                aboutButton_,
+                &QPushButton::clicked,
+                this,
+                [this]()
+                {
+                    ShowAboutDialog(*this, database_);
                 });
 
             connect(
@@ -994,6 +1006,7 @@ namespace
         QLineEdit* pathEdit_ = nullptr;
         QPushButton* browseButton_ = nullptr;
         QPushButton* openButton_ = nullptr;
+        QPushButton* aboutButton_ = nullptr;
         QPushButton* previewButton_ = nullptr;
         QPushButton* tryNextButton_ = nullptr;
         QPushButton* exportButton_ = nullptr;
@@ -1032,6 +1045,7 @@ int main(int argc, char* argv[])
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("CacheExplorer"));
     QApplication::setApplicationDisplayName(QStringLiteral("Cache Explorer"));
+    QApplication::setApplicationVersion(QStringLiteral(CACHEEXPLORER_VERSION));
     QApplication::setOrganizationName(QStringLiteral("CacheExplorer"));
     MainWindow window;
     window.show();

@@ -28,6 +28,8 @@ add_executable(cachegui_qt WIN32
     PreviewStatus.h
     PreviewWorkerState.cpp
     PreviewWorkerState.h
+    QtAboutDialog.cpp
+    QtAboutDialog.h
     QtActionState.cpp
     QtActionState.h
     QtFileDialogs.cpp
@@ -56,6 +58,11 @@ set_target_properties(cachegui_qt
 target_compile_features(cachegui_qt
     PRIVATE
         cxx_std_17
+)
+
+target_compile_definitions(cachegui_qt
+    PRIVATE
+        CACHEEXPLORER_VERSION="${PROJECT_VERSION}"
 )
 
 target_link_libraries(cachegui_qt

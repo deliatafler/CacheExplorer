@@ -260,6 +260,9 @@ The first GUI cleanup step extracted standalone Win32 utility helpers into `cach
 
 The Qt 6 GUI in `cachegui_qt` is the primary GUI path. It opens a cache through `cachelib`, shows entries in a sortable model-backed table, can preview/export a selected entry as PNG through `TextureExporter`, and tracks preview status in the table.
 
+The Qt GUI has an `About` diagnostics dialog for beta/support reports. Keep it
+Qt-only; reusable cache facts should still come from `cachelib`.
+
 Use `docs/qt-gui-validation.md` for the manual Qt GUI smoke/regression checklist. Build-only validation is acceptable for narrow helper moves; run the GUI checklist after changes to async preview flow, selection behavior, gallery loading, export, cache-open behavior, or rendering.
 
 The Qt GUI also has an early Gallery/Table toggle. Gallery reuses the same sorted proxy model and preview cache as the table. Cached previews appear as icons after they have been decoded by Preview, Try Next Preview, or the gallery's lazy visible-item loader.
@@ -295,6 +298,8 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 `cachegui_qt/PreviewStatus.*` contains Qt preview cache/model notification helpers, including decoded-image-to-cached-pixmap storage.
 
 `cachegui_qt/PreviewWorkerState.*` contains async preview request state and decode-worker startup shared by manual and gallery preview workers.
+
+`cachegui_qt/QtAboutDialog.*` contains the Qt-only About/diagnostics dialog.
 
 `cachegui_qt/QtActionState.*` contains Qt button enable/disable rules for the main window.
 
