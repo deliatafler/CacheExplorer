@@ -25,14 +25,19 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
   -BuildDir build-qt-prebuilt `
   -Configuration Release `
   -QtBinDir C:\Qt\6.8.3\msvc2022_64\bin `
-  -OutputDir artifacts\cacheexplorer-qt-shared
+  -OutputDir artifacts\cacheexplorer-qt-shared `
+  -Zip
 ```
 
 If `windeployqt.exe` is already on `PATH`, omit `-QtBinDir`.
 
 The package directory contains `CacheExplorer.exe` plus the Qt DLLs and plugin
-folders copied by `windeployqt`. Zip the package directory after a smoke test if
-you want to share it.
+folders copied by `windeployqt`. With `-Zip`, the script also creates
+`artifacts/cacheexplorer-qt-shared.zip` unless `-ZipPath` is supplied.
+
+If `VCINSTALLDIR` is not set, the script warns that it is not running from a
+Visual Studio developer environment. That warning is acceptable for local smoke
+testing, but use a developer shell for packages you plan to share.
 
 ## Smoke test checklist
 

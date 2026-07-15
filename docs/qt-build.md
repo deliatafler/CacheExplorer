@@ -79,7 +79,8 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
   -BuildDir build-qt-prebuilt `
   -Configuration Release `
   -QtBinDir C:\Qt\6.8.3\msvc2022_64\bin `
-  -OutputDir artifacts\cacheexplorer-qt-shared
+  -OutputDir artifacts\cacheexplorer-qt-shared `
+  -Zip
 ```
 
 See `docs/qt-packaging.md` for package contents, smoke testing, and

@@ -3,7 +3,9 @@ param(
     [ValidateSet("Debug", "Release", "RelWithDebInfo", "MinSizeRel")]
     [string]$Configuration = "Release",
     [string]$QtBinDir = "",
-    [string]$OutputDir = "artifacts/cacheexplorer-qt-shared"
+    [string]$OutputDir = "artifacts/cacheexplorer-qt-shared",
+    [switch]$Zip,
+    [string]$ZipPath = ""
 )
 
 Set-StrictMode -Version Latest
@@ -37,6 +39,10 @@ if (-not (Test-Path -LiteralPath $builtExe -PathType Leaf)) {
     throw "Built executable not found. Build cachegui_qt first."
 }
 
+if ([string]::IsNullOrWhiteSpace($env:VCINSTALLDIR)) {
+    Write-Warning "VCINSTALLDIR is not set. For packages you plan to share, run this from a Visual Studio developer shell."
+}
+
 if ($QtBinDir.Length -gt 0) {
     $windeployqt = Join-Path (Resolve-RepoPath $QtBinDir) "windeployqt.exe"
     if (-not (Test-Path -LiteralPath $windeployqt -PathType Leaf)) {
@@ -62,3 +68,24 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Packaged Qt GUI:"
 Write-Host "  $resolvedOutputDir"
+
+if ($Zip) {
+    if ($ZipPath.Length -gt 0) {
+        $resolvedZipPath = Resolve-RepoPath $ZipPath
+    } else {
+        $resolvedZipPath = "$resolvedOutputDir.zip"
+    }
+
+    $zipParent = Split-Path -Parent $resolvedZipPath
+    if ($zipParent.Length -gt 0) {
+        New-Item -ItemType Directory -Force -Path $zipParent | Out-Null
+    }
+
+    Compress-Archive `
+        -Path (Join-Path $resolvedOutputDir "*") `
+        -DestinationPath $resolvedZipPath `
+        -Force
+
+    Write-Host "Created package archive:"
+    Write-Host "  $resolvedZipPath"
+}

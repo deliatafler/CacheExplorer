@@ -347,7 +347,7 @@ Good next low-risk slices:
 * Improve Qt gallery UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
 * Improve `cachegui_qt` preview presentation and Gallery layout behavior based on real-cache validation.
 * Continue packaging/deployment work for the Qt GUI.
-* Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds.
+* Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable archive.
 * Defer Win32 cleanup unless needed to keep the legacy target building.
 * Keep shared behavior in `cachelib`; do not move reusable export, decode, or selection logic into either GUI.
 
