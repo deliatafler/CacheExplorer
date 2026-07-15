@@ -426,6 +426,10 @@ The Qt table must stay model-backed. An earlier `QTableWidget` version locked up
 
 Qt previews should be rendered from decoded RGBA in memory, not by writing PNG and asking Qt to reload it. The static/minimal Qt build may not have the PNG image loader available even when `TextureExporter` successfully writes a valid PNG.
 
+The large preview pane keeps a selectable UUID caption for the selected entry
+and adds decoded dimensions for successful previews. Status/error messages
+remain in the main status bar and preview panel.
+
 Qt preview decode now runs off the UI thread via `std::async`, with a Qt timer polling for completion. Worker code uses `TextureRebuilder::Rebuild(cacheDirectory, entry, ...)` so it operates on copied entry data and a cache path instead of touching the live GUI-owned `TextureCacheDatabase`. Table selection previewing uses a short debounce; a finished stale request may populate the cache but must not replace the currently selected entry's panel.
 
 `Try Next Preview` should scan forward in the current visible/sorted Qt table order, not raw cache-entry order.

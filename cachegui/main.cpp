@@ -209,6 +209,14 @@ namespace
             previewLabel_->setMinimumSize(320, 320);
             previewPanel_.SetLabel(previewLabel_);
             previewPanel_.Clear();
+            previewCaption_ = new QLabel(root);
+            previewCaption_->setAlignment(Qt::AlignCenter);
+            previewCaption_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+            previewCaption_->setWordWrap(true);
+            previewCaption_->setMinimumHeight(
+                previewCaption_->fontMetrics().height() * 2);
+            previewCaption_->setStyleSheet(
+                QStringLiteral("QLabel { color: #666; }"));
 
             statusLabel_ = new QLabel(
                 QStringLiteral("Choose a Second Life viewer texture cache folder."),
@@ -306,7 +314,11 @@ namespace
 
             auto* contentLayout = new QHBoxLayout();
             contentLayout->addWidget(viewStack_, 3);
-            contentLayout->addWidget(previewLabel_, 1);
+            auto* previewLayout = new QVBoxLayout();
+            previewLayout->setContentsMargins(0, 0, 0, 0);
+            previewLayout->addWidget(previewLabel_, 1);
+            previewLayout->addWidget(previewCaption_);
+            contentLayout->addLayout(previewLayout, 1);
 
             layout->addLayout(pathLayout);
             layout->addLayout(lookupLayout);
@@ -620,6 +632,24 @@ namespace
             ClearGalleryPreviewQueue();
             ClearPreviewStatuses(previewCache_, tableModel_);
             previewPanel_.Clear();
+            previewCaption_->clear();
+        }
+
+        void UpdatePreviewCaption(
+            const CacheEntry& entry,
+            std::uint32_t width = 0,
+            std::uint32_t height = 0)
+        {
+            QString text = ToQString(entry.uuid.ToString());
+
+            if (width > 0 && height > 0)
+            {
+                text += QStringLiteral("\n%1 x %2")
+                    .arg(width)
+                    .arg(height);
+            }
+
+            previewCaption_->setText(text);
         }
 
         void PopulateTable()
@@ -932,6 +962,10 @@ namespace
             if (requestKind == PreviewRequestKind::TryNext)
             {
                 previewPanel_.SetPixmap(pixmap);
+                UpdatePreviewCaption(
+                    result.entry,
+                    result.image.width,
+                    result.image.height);
                 SelectEntry(result.entry);
                 tryNextPreview_.Stop();
                 statusLabel_->setText(
@@ -943,6 +977,10 @@ namespace
             else if (resultIsSelected)
             {
                 previewPanel_.SetPixmap(pixmap);
+                UpdatePreviewCaption(
+                    result.entry,
+                    result.image.width,
+                    result.image.height);
                 statusLabel_->setText(
                     PreviewReadyStatus(
                         result.entry.uuid.ToString(),
@@ -1067,6 +1105,10 @@ namespace
                 selectedEntry->cacheIndex == result.entry.cacheIndex)
             {
                 previewPanel_.SetPixmap(pixmap);
+                UpdatePreviewCaption(
+                    result.entry,
+                    result.image.width,
+                    result.image.height);
             }
 
             StartNextQueuedGalleryPreview();
@@ -1080,6 +1122,8 @@ namespace
             {
                 return;
             }
+
+            UpdatePreviewCaption(*entry);
 
             const CachedSelectionPreview preview =
                 CachedPreviewForSelection(*entry, previewCache_);
@@ -1106,6 +1150,14 @@ namespace
             }
 
             previewPanel_.SetPixmap(preview.pixmap);
+            const PreviewRecord* previewRecord = previewCache_.Find(*entry);
+            if (previewRecord != nullptr)
+            {
+                UpdatePreviewCaption(
+                    *entry,
+                    previewRecord->width,
+                    previewRecord->height);
+            }
             statusLabel_->setText(preview.statusText);
         }
 
@@ -1540,6 +1592,7 @@ namespace
         QStackedWidget* viewStack_ = nullptr;
         QLabel* galleryActivityLabel_ = nullptr;
         QLabel* previewLabel_ = nullptr;
+        QLabel* previewCaption_ = nullptr;
         QLabel* statusLabel_ = nullptr;
         GalleryActivityIndicator galleryActivityIndicator_;
         PreviewPanel previewPanel_;
