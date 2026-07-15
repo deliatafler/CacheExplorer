@@ -372,6 +372,9 @@ exposes the default-cache shortcut state. On Windows, the default shortcut
 chooses the first existing cache in this order: official Second Life,
 official Firestorm, then self-built Firestorm. Keep this per-user UI state
 outside the viewer cache directory.
+Opening an already open cache path intentionally rereads the cache, supporting
+testing and normal browsing while a compatible viewer is actively writing
+texture entries.
 Path probing should use non-throwing filesystem checks so odd user-selected
 directories report normal open errors instead of surfacing exceptions.
 

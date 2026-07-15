@@ -32,6 +32,9 @@ exists, and you can still edit the path box and click `Open` for unusual
 installations. If a cache opens successfully, the status bar reports the number
 of valid texture entries and the cache version.
 
+Click `Open` again for the currently displayed path to reread the cache. This is
+useful while a viewer is running and adding or replacing cached textures.
+
 ## Browse textures
 
 CacheExplorer opens in `Gallery` for normal browsing. Gallery thumbnails load lazily as you scroll.
