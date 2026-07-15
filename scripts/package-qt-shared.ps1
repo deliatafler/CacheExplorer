@@ -43,8 +43,38 @@ function Copy-PackageFile {
     Copy-Item -LiteralPath $Source -Destination $Destination -Force
 }
 
+function Get-CMakeCacheValue {
+    param(
+        [string]$BuildDirectory,
+        [string]$Name,
+        [string]$DefaultValue
+    )
+
+    $cacheFile = Join-Path $BuildDirectory "CMakeCache.txt"
+
+    if (-not (Test-Path -LiteralPath $cacheFile -PathType Leaf)) {
+        return $DefaultValue
+    }
+
+    $escapedName = [Regex]::Escape($Name)
+    $line = Select-String `
+        -LiteralPath $cacheFile `
+        -Pattern "^$escapedName(:[^=]*)?=(.*)$" `
+        -List
+
+    if ($null -eq $line) {
+        return $DefaultValue
+    }
+
+    return $line.Matches[0].Groups[2].Value
+}
+
 $resolvedBuildDir = Resolve-RepoPath $BuildDir
 $resolvedOutputDir = Resolve-RepoPath $OutputDir
+$packageVersion = Get-CMakeCacheValue `
+    -BuildDirectory $resolvedBuildDir `
+    -Name "CACHEEXPLORER_DISPLAY_VERSION" `
+    -DefaultValue "unknown"
 $builtExe = Join-Path $resolvedBuildDir "cachegui_qt/$Configuration/CacheExplorer.exe"
 
 if (-not (Test-Path -LiteralPath $builtExe -PathType Leaf)) {
@@ -102,10 +132,28 @@ Copy-PackageFile `
     -Source (Join-Path $repoRoot "docs/qt-user-guide.md") `
     -Destination (Join-Path $packageDocsDir "qt-user-guide.md")
 
+$packageInfo = @(
+    "CacheExplorer package"
+    "Version: $packageVersion"
+    "Configuration: $Configuration"
+    "Build directory: $resolvedBuildDir"
+    "Qt bin directory: $(Split-Path -Parent $windeployqt)"
+    "Packaged at: $((Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))"
+    ""
+    "Run CacheExplorer.exe to open the Qt GUI."
+    "See README.md, RELEASE_NOTES.md, and docs/qt-user-guide.md for beta notes."
+)
+
+Set-Content `
+    -LiteralPath (Join-Path $resolvedOutputDir "PACKAGE_INFO.txt") `
+    -Value $packageInfo `
+    -Encoding ASCII
+
 Write-Host "Included package notes:"
 Write-Host "  README.md"
 Write-Host "  RELEASE_NOTES.md"
 Write-Host "  docs/qt-user-guide.md"
+Write-Host "  PACKAGE_INFO.txt"
 
 if ($Zip) {
     if ($ZipPath.Length -gt 0) {
