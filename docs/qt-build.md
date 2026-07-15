@@ -19,6 +19,8 @@ cmake --build build-qt --config Release --target cachegui_qt
 ```
 
 The resulting GUI launches when the prebuilt Qt `bin` directory is on `PATH`.
+Use `docs/qt-packaging.md` when you want a repeatable shared-Qt package folder
+that can be zipped and shared for smoke testing.
 
 ### Validated prebuilt-Qt developer setup
 
@@ -56,7 +58,7 @@ first Windows static vcpkg configure can still take a long time because
 host-side Qt tools pull and build a broader dependency graph. For CI, use vcpkg
 binary caching so Qt is built once and restored afterward.
 
-## Deployment probe
+## Deployment
 
 For a shared/prebuilt Qt developer build, `windeployqt` identifies the expected
 Qt DLL/plugin deployment set:
@@ -67,3 +69,16 @@ windeployqt --dry-run --release build-qt-prebuilt/cachegui_qt/Release/cachegui_q
 
 Run `windeployqt` from a proper Visual Studio developer environment for
 packaging so `VCINSTALLDIR` is set.
+
+The repository includes a small wrapper for the common shared-Qt package flow:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
+  -BuildDir build-qt-prebuilt `
+  -Configuration Release `
+  -QtBinDir C:\Qt\6.8.3\msvc2022_64\bin `
+  -OutputDir artifacts\cacheexplorer-qt-shared
+```
+
+See `docs/qt-packaging.md` for package contents, smoke testing, and
+troubleshooting notes.

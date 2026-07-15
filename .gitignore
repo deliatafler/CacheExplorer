@@ -2,6 +2,7 @@ test-output/
 bulk-output/
 list-output/
 range-output/
+artifacts/
 .cacheexplorer-export-state.tsv
 # =========================================================================
 # Visual Studio Build Output and Intermediate Directories
