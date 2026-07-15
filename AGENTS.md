@@ -360,10 +360,14 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 
 `cachegui_qt/QtGalleryStatus.*` contains Gallery-only count/filter status text.
 
-`cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem paths, default cache path discovery, and accepting either the Firestorm profile directory or its nested `texturecache` folder.
+`cachegui_qt/QtHelpers.*` contains Qt boundary helpers for strings, filesystem
+paths, default cache path discovery, and accepting either a viewer profile
+directory or its nested `texturecache` folder.
 It also persists the last successfully opened cache path through Qt settings and
-exposes the default-cache shortcut state; keep this per-user UI state outside
-the Firestorm cache directory.
+exposes the default-cache shortcut state. On Windows, the default shortcut
+chooses the first existing cache in this order: official Second Life,
+official Firestorm, then self-built Firestorm. Keep this per-user UI state
+outside the viewer cache directory.
 Path probing should use non-throwing filesystem checks so odd user-selected
 directories report normal open errors instead of surfacing exceptions.
 

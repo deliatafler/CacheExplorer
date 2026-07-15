@@ -122,7 +122,7 @@ namespace
             defaultCacheButton_->setIcon(
                 style()->standardIcon(QStyle::SP_DirHomeIcon));
             defaultCacheButton_->setToolTip(
-                QStringLiteral("Open the default Firestorm texture cache"));
+                QStringLiteral("Open the preferred viewer texture cache"));
             defaultCacheButton_->setVisible(DefaultCachePathExists());
             browseButton_ = new QPushButton(QStringLiteral("Choose Folder..."), root);
             openButton_ = new QPushButton(QStringLiteral("Open"), root);

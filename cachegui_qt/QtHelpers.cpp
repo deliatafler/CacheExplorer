@@ -67,7 +67,18 @@ QString DefaultCachePath()
 
     if (!localAppData.isEmpty())
     {
-        return localAppData + "/FirestormOS_x64/texturecache";
+        const QString candidatePaths[] = {
+            localAppData + "/SecondLife/texturecache",
+            localAppData + "/Firestorm_x64/texturecache",
+            localAppData + "/FirestormOS_x64/texturecache"};
+
+        for (const QString& candidatePath : candidatePaths)
+        {
+            if (TextureEntriesFileExists(PathFromQString(candidatePath)))
+            {
+                return candidatePath;
+            }
+        }
     }
 #endif
 
@@ -80,14 +91,18 @@ QString PreferredCachePath()
     const QString lastOpenedPath =
         settings.value(QStringLiteral("cache/lastOpenedPath")).toString();
 
-    return lastOpenedPath.isEmpty() ? DefaultCachePath() : lastOpenedPath;
+    if (!lastOpenedPath.isEmpty() &&
+        TextureEntriesFileExists(PathFromQString(lastOpenedPath)))
+    {
+        return lastOpenedPath;
+    }
+
+    return DefaultCachePath();
 }
 
 bool DefaultCachePathExists()
 {
-    const QString defaultPath = DefaultCachePath();
-    return !defaultPath.isEmpty() &&
-        TextureEntriesFileExists(PathFromQString(defaultPath));
+    return !DefaultCachePath().isEmpty();
 }
 
 void RememberOpenedCachePath(const QString& cachePath)
