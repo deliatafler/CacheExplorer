@@ -20,7 +20,8 @@ workers, gallery loading, export, or cache-open behavior.
 8. Toggle `Gallery`, scroll several pages, and confirm placeholders/previews load
    without blocking the UI. The activity label may briefly report visible
    thumbnail loading or refreshing. Placeholder labels for waiting, loading,
-   no-preview, and error states should be readable.
+   no-preview, and error states should be readable. Newly visible tiles should
+   begin loading before far-off lookahead tiles.
 9. Confirm `Preview` and `Try Next Preview` are hidden in `Gallery`, while
    `Export PNG`, the Gallery sort control, and the `Table` toggle remain visible.
 10. Change the Gallery sort control and confirm the gallery reorders and resumes

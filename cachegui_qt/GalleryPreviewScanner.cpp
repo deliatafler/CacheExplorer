@@ -4,7 +4,9 @@
 #include "PreviewCache.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstddef>
+#include <vector>
 
 #include <QListView>
 #include <QModelIndex>
@@ -54,6 +56,42 @@ namespace
 
         return 0;
     }
+
+    struct GalleryCandidate
+    {
+        int proxyRow = 0;
+        int distanceFromCenter = 0;
+    };
+
+    int DistanceFromViewportCenter(
+        const QRect& itemRect,
+        const QRect& viewportRect)
+    {
+        return std::abs(itemRect.center().y() - viewportRect.center().y());
+    }
+
+    void AddAttemptableEntry(
+        std::deque<CacheEntry>& entries,
+        int proxyRow,
+        const QSortFilterProxyModel& proxyModel,
+        const CacheEntryTableModel& tableModel,
+        const PreviewCache& previewCache)
+    {
+        const QModelIndex proxyIndex = proxyModel.index(proxyRow, 0);
+
+        if (!proxyIndex.isValid())
+        {
+            return;
+        }
+
+        const QModelIndex sourceIndex = proxyModel.mapToSource(proxyIndex);
+        const CacheEntry* entry = tableModel.EntryAt(sourceIndex.row());
+
+        if (entry != nullptr && previewCache.ShouldAttemptPreview(*entry))
+        {
+            entries.push_back(*entry);
+        }
+    }
 }
 
 std::deque<CacheEntry> BuildVisibleGalleryPreviewQueue(
@@ -71,34 +109,94 @@ std::deque<CacheEntry> BuildVisibleGalleryPreviewQueue(
         return entries;
     }
 
-    const int firstRow = FirstVisibleGalleryProxyRow(galleryView, rowCount);
+    const int firstVisibleRow = FirstVisibleGalleryProxyRow(galleryView, rowCount);
 
-    constexpr int MaximumRowsToScan = 240;
+    constexpr int MaximumRowsToScan = 260;
     constexpr std::size_t MaximumQueueSize = 48;
-    const int finalRow = std::min(rowCount, firstRow + MaximumRowsToScan);
-    const QRect visibleArea = galleryView.viewport()->rect().adjusted(0, -170, 0, 170);
+    constexpr std::size_t MaximumCandidates = MaximumQueueSize * 3;
+    const int finalRow =
+        std::min(rowCount, firstVisibleRow + MaximumRowsToScan);
+    const QRect viewportRect = galleryView.viewport()->rect();
+    const QRect nearbyArea = viewportRect.adjusted(0, -220, 0, 220);
+    std::vector<GalleryCandidate> visibleCandidates;
+    std::vector<int> lookaheadRows;
 
-    for (int proxyRow = firstRow; proxyRow < finalRow; ++proxyRow)
+    for (int proxyRow = firstVisibleRow; proxyRow < finalRow; ++proxyRow)
     {
         const QModelIndex proxyIndex = proxyModel.index(proxyRow, 0);
 
-        if (!proxyIndex.isValid() ||
-            !galleryView.visualRect(proxyIndex).intersects(visibleArea))
+        if (!proxyIndex.isValid())
         {
             continue;
         }
 
-        const QModelIndex sourceIndex = proxyModel.mapToSource(proxyIndex);
-        const CacheEntry* entry = tableModel.EntryAt(sourceIndex.row());
+        const QRect itemRect = galleryView.visualRect(proxyIndex);
 
-        if (entry != nullptr && previewCache.ShouldAttemptPreview(*entry))
+        if (!itemRect.intersects(nearbyArea))
         {
-            entries.push_back(*entry);
+            continue;
+        }
 
-            if (entries.size() >= MaximumQueueSize)
+        if (itemRect.intersects(viewportRect))
+        {
+            visibleCandidates.push_back(
+                GalleryCandidate{
+                    proxyRow,
+                    DistanceFromViewportCenter(itemRect, viewportRect)});
+            if (visibleCandidates.size() >= MaximumCandidates)
             {
                 break;
             }
+            continue;
+        }
+
+        lookaheadRows.push_back(proxyRow);
+        if (visibleCandidates.size() + lookaheadRows.size() >= MaximumCandidates)
+        {
+            break;
+        }
+    }
+
+    std::sort(
+        visibleCandidates.begin(),
+        visibleCandidates.end(),
+        [](const GalleryCandidate& left, const GalleryCandidate& right)
+        {
+            if (left.distanceFromCenter != right.distanceFromCenter)
+            {
+                return left.distanceFromCenter < right.distanceFromCenter;
+            }
+
+            return left.proxyRow < right.proxyRow;
+        });
+
+    for (const GalleryCandidate& candidate : visibleCandidates)
+    {
+        AddAttemptableEntry(
+            entries,
+            candidate.proxyRow,
+            proxyModel,
+            tableModel,
+            previewCache);
+
+        if (entries.size() >= MaximumQueueSize)
+        {
+            return entries;
+        }
+    }
+
+    for (const int proxyRow : lookaheadRows)
+    {
+        AddAttemptableEntry(
+            entries,
+            proxyRow,
+            proxyModel,
+            tableModel,
+            previewCache);
+
+        if (entries.size() >= MaximumQueueSize)
+        {
+            return entries;
         }
     }
 

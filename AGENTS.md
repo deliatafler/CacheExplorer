@@ -263,7 +263,7 @@ The Qt GUI also has an early Gallery/Table toggle. Gallery reuses the same sorte
 
 Gallery mode hides the manual `Preview` and `Try Next Preview` actions because thumbnails load lazily in the gallery itself. It shows a Gallery-only sort combo for common orders such as newest, largest body, largest image, cache index, and UUID.
 
-Gallery lazy loading uses a separate async thumbnail worker from manual Preview/Try Next. It builds a bounded queue from the visible gallery neighborhood, attempts unknown entries one at a time, caches successful thumbnails, and marks incomplete/undecodable entries without selecting them.
+Gallery lazy loading uses a separate async thumbnail worker from manual Preview/Try Next. It builds a bounded queue from the visible gallery neighborhood, prioritizes visible tiles near the viewport center before nearby lookahead rows, attempts unknown entries one at a time, caches successful thumbnails, and marks incomplete/undecodable entries without selecting them.
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
 
@@ -275,7 +275,7 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui_qt/GalleryPreviewQueue.*` contains gallery thumbnail queue bookkeeping and progress counters. It should stay UI-adjacent and must not start worker threads or inspect widgets directly.
 
-`cachegui_qt/GalleryPreviewScanner.*` contains Qt gallery visible-row scanning and queue candidate selection. It may inspect Qt view/model geometry, but should not own async worker state.
+`cachegui_qt/GalleryPreviewScanner.*` contains Qt gallery visible-row scanning and queue candidate prioritization. It may inspect Qt view/model geometry, but should not own async worker state.
 
 `cachegui_qt/PreviewCache.*` contains Qt GUI preview state and cached pixmaps. It is intentionally GUI-owned because it stores `QPixmap`; reusable decode/export logic must remain in `cachelib`.
 
