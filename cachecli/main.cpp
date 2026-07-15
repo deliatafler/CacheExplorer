@@ -21,6 +21,10 @@
 
 namespace fs = std::filesystem;
 
+#ifndef CACHEEXPLORER_VERSION
+#define CACHEEXPLORER_VERSION "unknown"
+#endif
+
 namespace
 {
 	struct VerificationResults
@@ -205,7 +209,7 @@ std::uint64_t CachedEntrySize(
     constexpr const char* ProgramName =
         "Firestorm Cache Explorer";
 
-    constexpr const char* ProgramVersion = "0.1.0";
+    constexpr const char* ProgramVersion = CACHEEXPLORER_VERSION;
 
     void PrintUsage()
     {

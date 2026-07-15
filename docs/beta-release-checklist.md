@@ -5,6 +5,7 @@ Use this checklist before tagging or sharing a beta package.
 ## Version and scope
 
 * Confirm `CMakeLists.txt` has the intended beta version.
+* Confirm the CLI usage output and Qt `About` dialog show that same version.
 * Confirm the Qt GUI is the beta-facing UI and the Win32 GUI remains documented
   as deprecated legacy.
 * Confirm known limitations are documented in `README.md` and
