@@ -1,13 +1,16 @@
 #include "Structures.h"
 #include "TextureCacheDatabase.h"
+#include "TextureRebuilder.h"
 #include "TextureSelection.h"
 #include "UUID.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -94,6 +97,49 @@ namespace
         }
 
         Expect(file.good(), "write synthetic texture.entries");
+    }
+
+    void WriteBytes(
+        const fs::path& filename,
+        const std::vector<std::uint8_t>& bytes)
+    {
+        const fs::path parent = filename.parent_path();
+
+        if (!parent.empty())
+        {
+            std::error_code error;
+            fs::create_directories(parent, error);
+            Expect(!error, "create parent directory for binary fixture");
+        }
+
+        std::ofstream file(filename, std::ios::binary);
+        Expect(file.good(), "open binary fixture for writing");
+
+        if (!bytes.empty())
+        {
+            file.write(
+                reinterpret_cast<const char*>(bytes.data()),
+                static_cast<std::streamsize>(bytes.size()));
+        }
+
+        Expect(file.good(), "write binary fixture");
+    }
+
+    void WriteTextureCache(
+        const fs::path& cacheDirectory,
+        const std::vector<std::uint8_t>& bytes)
+    {
+        WriteBytes(cacheDirectory / "texture.cache", bytes);
+    }
+
+    void WriteBodyFile(
+        const fs::path& cacheDirectory,
+        const CacheEntry& entry,
+        const std::vector<std::uint8_t>& bytes)
+    {
+        WriteBytes(
+            TextureRebuilder::BodyFilePath(cacheDirectory, entry),
+            bytes);
     }
 
     Entry MakeEntry(
@@ -266,12 +312,176 @@ namespace
         fs::remove_all(directory, removeError);
         Expect(!removeError, "remove selection test directory");
     }
+
+    void TestTextureRebuilderUsesRawCacheIndexAndExactBodySize()
+    {
+        const UUID uuid =
+            MakeUuid("2aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+
+        CacheEntry entry{};
+        entry.uuid = uuid;
+        entry.cacheIndex = 2;
+        entry.imageSize = 605;
+        entry.bodySize = 5;
+        entry.timestamp = 3000;
+
+        const fs::path directory = MakeTempDirectory();
+
+        std::vector<std::uint8_t> textureCache(
+            TextureRebuilder::HeaderBlockSize * 3,
+            0);
+
+        for (std::uint32_t block = 0; block < 3; ++block)
+        {
+            const std::uint8_t value =
+                static_cast<std::uint8_t>(0x10 + block);
+
+            const std::size_t offset =
+                static_cast<std::size_t>(block) *
+                TextureRebuilder::HeaderBlockSize;
+
+            std::fill(
+                textureCache.begin() + offset,
+                textureCache.begin() + offset +
+                    TextureRebuilder::HeaderBlockSize,
+                value);
+        }
+
+        WriteTextureCache(directory, textureCache);
+        WriteBodyFile(
+            directory,
+            entry,
+            {0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xff, 0xff});
+
+        TextureRebuilder rebuilder;
+        std::vector<std::uint8_t> rebuilt;
+
+        const RebuildError error =
+            rebuilder.Rebuild(directory, entry, rebuilt);
+
+        Expect(
+            error == RebuildError::None,
+            "rebuild entry with body");
+        Expect(
+            rebuilt.size() == 605,
+            "rebuilt data uses header bytes plus exact bodySize");
+
+        if (rebuilt.size() == 605)
+        {
+            const bool headerIsRawCacheIndexBlock =
+                std::all_of(
+                    rebuilt.begin(),
+                    rebuilt.begin() +
+                        TextureRebuilder::HeaderBlockSize,
+                    [](std::uint8_t byte)
+                    {
+                        return byte == 0x12;
+                    });
+
+            Expect(
+                headerIsRawCacheIndexBlock,
+                "rebuild reads header from raw cacheIndex block");
+
+            const std::vector<std::uint8_t> body(
+                rebuilt.begin() +
+                    TextureRebuilder::HeaderBlockSize,
+                rebuilt.end());
+
+            Expect(
+                body == std::vector<std::uint8_t>(
+                    {0xa0, 0xa1, 0xa2, 0xa3, 0xa4}),
+                "rebuild copies exactly bodySize bytes");
+        }
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove rebuild test directory");
+    }
+
+    void TestTextureRebuilderTrimsSmallHeaderOnlyTexture()
+    {
+        CacheEntry entry{};
+        entry.uuid = MakeUuid("3aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        entry.cacheIndex = 0;
+        entry.imageSize = 4;
+        entry.bodySize = 0;
+        entry.timestamp = 4000;
+
+        const fs::path directory = MakeTempDirectory();
+
+        std::vector<std::uint8_t> textureCache(
+            TextureRebuilder::HeaderBlockSize,
+            0xee);
+
+        textureCache[0] = 1;
+        textureCache[1] = 2;
+        textureCache[2] = 3;
+        textureCache[3] = 4;
+
+        WriteTextureCache(directory, textureCache);
+
+        TextureRebuilder rebuilder;
+        std::vector<std::uint8_t> rebuilt;
+
+        const RebuildError error =
+            rebuilder.Rebuild(directory, entry, rebuilt);
+
+        Expect(
+            error == RebuildError::None,
+            "rebuild small header-only entry");
+        Expect(
+            rebuilt == std::vector<std::uint8_t>({1, 2, 3, 4}),
+            "small header-only rebuild trims padded header block");
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove header-only rebuild test directory");
+    }
+
+    void TestTextureRebuilderRejectsUndersizedBodyFile()
+    {
+        CacheEntry entry{};
+        entry.uuid = MakeUuid("4aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        entry.cacheIndex = 0;
+        entry.imageSize = 603;
+        entry.bodySize = 3;
+        entry.timestamp = 5000;
+
+        const fs::path directory = MakeTempDirectory();
+
+        WriteTextureCache(
+            directory,
+            std::vector<std::uint8_t>(
+                TextureRebuilder::HeaderBlockSize,
+                0x55));
+        WriteBodyFile(directory, entry, {0x01, 0x02});
+
+        TextureRebuilder rebuilder;
+        std::vector<std::uint8_t> rebuilt;
+
+        const RebuildError error =
+            rebuilder.Rebuild(directory, entry, rebuilt);
+
+        Expect(
+            error == RebuildError::BodyReadError,
+            "undersized body file is an error");
+        Expect(
+            rebuilt.empty(),
+            "failed rebuild clears output data");
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove undersized-body test directory");
+    }
 }
 
 int main()
 {
     TestDatabaseFiltersEntriesAndPreservesCacheIndex();
     TestTextureSelectionUsesFilteredDatabaseOrder();
+    TestTextureRebuilderUsesRawCacheIndexAndExactBodySize();
+    TestTextureRebuilderTrimsSmallHeaderOnlyTexture();
+    TestTextureRebuilderRejectsUndersizedBodyFile();
 
     if (gFailures != 0)
     {

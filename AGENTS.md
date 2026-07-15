@@ -345,7 +345,10 @@ Gallery mode shows a lightweight activity label while it is scanning visible ite
 `tests/cachelib_tests.cpp` contains the initial CTest-backed cachelib regression
 coverage. It uses synthetic `texture.entries` data to verify usable-entry
 filtering, raw `cacheIndex` preservation, UUID lookup behavior, and
-`TextureSelection` ordering/clamping.
+`TextureSelection` ordering/clamping. It also uses synthetic `texture.cache` and
+body files to verify `TextureRebuilder` reads headers from `cacheIndex * 600`,
+uses exactly `bodySize` body bytes, trims padded header-only entries, and treats
+undersized body files as errors.
 
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 
