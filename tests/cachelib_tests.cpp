@@ -1,5 +1,6 @@
 #include "Structures.h"
 #include "TextureCacheDatabase.h"
+#include "TextureExportState.h"
 #include "TextureRebuilder.h"
 #include "TextureSelection.h"
 #include "UUID.h"
@@ -473,6 +474,96 @@ namespace
         fs::remove_all(directory, removeError);
         Expect(!removeError, "remove undersized-body test directory");
     }
+
+    void TestTextureExportStatePersistsIncompleteEntries()
+    {
+        CacheEntry entry{};
+        entry.uuid = MakeUuid("5aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        entry.cacheIndex = 7;
+        entry.imageSize = 4096;
+        entry.bodySize = 512;
+        entry.timestamp = 6000;
+
+        const fs::path directory = MakeTempDirectory();
+        const fs::path stateFile = directory / "state" / "export.tsv";
+
+        TextureExportState state;
+        state.MarkIncomplete(
+            entry,
+            "missing\tpacket\ntry later\\soon");
+
+        Expect(
+            state.EntryCount() == 1,
+            "incomplete export state stores one record");
+        Expect(
+            state.IsKnownIncomplete(entry),
+            "marked entry is known incomplete");
+
+        std::string errorMessage;
+        Expect(
+            state.Save(stateFile, errorMessage),
+            "save export state");
+        Expect(
+            errorMessage.empty(),
+            "save export state leaves no error message");
+
+        TextureExportState loaded;
+        Expect(
+            loaded.Load(stateFile, errorMessage),
+            "load export state");
+        Expect(
+            errorMessage.empty(),
+            "load export state leaves no error message");
+        Expect(
+            loaded.EntryCount() == 1,
+            "loaded export state has one record");
+        Expect(
+            loaded.IsKnownIncomplete(entry),
+            "loaded state recognizes unchanged incomplete entry");
+
+        CacheEntry changedMetadata = entry;
+        changedMetadata.bodySize += 1;
+
+        Expect(
+            !loaded.IsKnownIncomplete(changedMetadata),
+            "known incomplete entry is invalidated by metadata change");
+
+        loaded.MarkSucceeded(entry);
+
+        Expect(
+            loaded.EntryCount() == 0,
+            "successful export removes incomplete state record");
+        Expect(
+            !loaded.IsKnownIncomplete(entry),
+            "succeeded entry is no longer known incomplete");
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove export state test directory");
+    }
+
+    void TestTextureExportStateLoadHandlesMissingFile()
+    {
+        const fs::path directory = MakeTempDirectory();
+        const fs::path stateFile = directory / "missing.tsv";
+
+        TextureExportState state;
+        std::string errorMessage;
+
+        Expect(
+            state.Load(stateFile, errorMessage),
+            "missing export state file is not an error");
+        Expect(
+            errorMessage.empty(),
+            "missing export state leaves no error message");
+        Expect(
+            state.EntryCount() == 0,
+            "missing export state loads no records");
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove missing-state test directory");
+    }
 }
 
 int main()
@@ -482,6 +573,8 @@ int main()
     TestTextureRebuilderUsesRawCacheIndexAndExactBodySize();
     TestTextureRebuilderTrimsSmallHeaderOnlyTexture();
     TestTextureRebuilderRejectsUndersizedBodyFile();
+    TestTextureExportStatePersistsIncompleteEntries();
+    TestTextureExportStateLoadHandlesMissingFile();
 
     if (gFailures != 0)
     {

@@ -348,7 +348,9 @@ filtering, raw `cacheIndex` preservation, UUID lookup behavior, and
 `TextureSelection` ordering/clamping. It also uses synthetic `texture.cache` and
 body files to verify `TextureRebuilder` reads headers from `cacheIndex * 600`,
 uses exactly `bodySize` body bytes, trims padded header-only entries, and treats
-undersized body files as errors.
+undersized body files as errors. It also checks `TextureExportState`
+load/save behavior for incomplete entries, metadata invalidation, succeeded
+entries, and missing state files.
 
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 
