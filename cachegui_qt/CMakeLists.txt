@@ -64,7 +64,7 @@ target_compile_features(cachegui_qt
 
 target_compile_definitions(cachegui_qt
     PRIVATE
-        CACHEEXPLORER_VERSION="${PROJECT_VERSION}"
+        CACHEEXPLORER_VERSION="${CACHEEXPLORER_DISPLAY_VERSION}"
 )
 
 target_link_libraries(cachegui_qt

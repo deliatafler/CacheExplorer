@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.22)
 
 project(CacheExplorer VERSION 0.1.0 LANGUAGES CXX)
 
+set(CACHEEXPLORER_DISPLAY_VERSION
+    "0.1.0-beta"
+    CACHE STRING
+    "User-facing CacheExplorer version string")
+
 option(CACHEEXPLORER_BUILD_QT_GUI
     "Build the primary Qt 6 cross-platform GUI"
     OFF)
