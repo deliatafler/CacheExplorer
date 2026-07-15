@@ -50,14 +50,15 @@ powershell -ExecutionPolicy Bypass -File scripts/launch-qt-prebuilt.ps1 `
 Use `docs/qt-packaging.md` when you want a repeatable shared-Qt package folder
 that can be zipped and shared for smoke testing.
 
-To build and run the focused Qt helper tests, make the SDK runtime available to
-CTest:
+To build and run the focused Qt helper tests:
 
 ```powershell
 cmake --build build-qt-prebuilt --config Release --target cachegui_tests cachelib_tests
-$env:PATH = "C:\Qt\6.11.1\msvc2022_64\bin;$env:PATH"
 ctest --test-dir build-qt-prebuilt -C Release --output-on-failure
 ```
+
+The `cachegui_tests` CTest registration adds the prebuilt Qt runtime directory
+automatically, so this command does not require a manual `PATH` change.
 
 ## GitHub Actions CI
 

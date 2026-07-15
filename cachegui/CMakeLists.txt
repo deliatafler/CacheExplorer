@@ -135,4 +135,12 @@ if(CACHEEXPLORER_BUILD_TESTS)
         NAME cachegui_tests
         COMMAND cachegui_tests
     )
+
+    # Prebuilt Qt uses shared runtime DLLs. Let CTest locate Qt6Core.dll
+    # without requiring callers to amend PATH before running this target.
+    set_tests_properties(cachegui_tests
+        PROPERTIES
+            ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
 endif()
