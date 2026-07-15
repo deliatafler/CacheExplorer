@@ -20,7 +20,7 @@ installations, or accepts `-QtDir` explicitly:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/configure-qt-prebuilt.ps1 `
-  -QtDir C:\Qt\6.8.3\msvc2022_64 `
+  -QtDir C:\Qt\6.11.1\msvc2022_64 `
   -Build
 ```
 
@@ -30,7 +30,7 @@ Equivalent CMake command:
 cmake -S . -B build-qt-prebuilt -A x64 \
   -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
   -DVCPKG_TARGET_TRIPLET=x64-windows-static-md \
-  -DCMAKE_PREFIX_PATH="C:/Qt/6.8.3/msvc2022_64" \
+  -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/msvc2022_64" \
   -DCACHEEXPLORER_BUILD_QT_GUI=ON \
   -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
 
@@ -45,8 +45,8 @@ that can be zipped and shared for smoke testing.
 
 ### Validated prebuilt-Qt developer setup
 
-* Qt 6.8.3 `win64_msvc2022_64` installed with `aqtinstall` into
-  `.qt-prebuilt-test/Qt/6.8.3/msvc2022_64`.
+* Qt 6.11.1 `msvc2022_64` installed into
+  `C:/Qt/6.11.1/msvc2022_64`.
 * Fresh configure used `build-qt-prebuilt`, `CMAKE_PREFIX_PATH` pointing at
   that Qt tree, `x64-windows-static-md`, and no `qt-gui` vcpkg manifest feature.
   vcpkg restored only OpenJPEG/libpng/zlib from binary cache.
@@ -95,7 +95,7 @@ The repository includes a small wrapper for the common shared-Qt package flow:
 powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
   -BuildDir build-qt-prebuilt `
   -Configuration Release `
-  -QtBinDir C:\Qt\6.8.3\msvc2022_64\bin `
+  -QtBinDir C:\Qt\6.11.1\msvc2022_64\bin `
   -OutputDir artifacts\cacheexplorer-qt-shared `
   -Zip
 ```

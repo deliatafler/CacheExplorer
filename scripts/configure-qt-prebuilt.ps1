@@ -3,6 +3,7 @@ param(
     [string]$QtDir = "",
     [string]$VcpkgRoot = $env:VCPKG_ROOT,
     [string]$Triplet = "x64-windows-static-md",
+    [switch]$KeepCache,
     [switch]$Build
 )
 
@@ -46,11 +47,29 @@ function Resolve-QtDir {
     throw "Qt was not found. Install the official Qt 6 MSVC 2022 64-bit SDK, then pass -QtDir C:\Qt\<version>\msvc2022_64 or set QT_DIR."
 }
 
-if (-not $VcpkgRoot -or $VcpkgRoot.Length -eq 0) {
-    throw "VCPKG_ROOT is not set. Set it to your vcpkg checkout before running this script."
+function Resolve-VcpkgRoot {
+    param([string]$RequestedVcpkgRoot)
+
+    if ($RequestedVcpkgRoot -and $RequestedVcpkgRoot.Length -gt 0) {
+        return (Resolve-Path -LiteralPath $RequestedVcpkgRoot).Path
+    }
+
+    $candidates = @(
+        "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\vcpkg",
+        "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\vcpkg",
+        "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\vcpkg"
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath (Join-Path $candidate "scripts\buildsystems\vcpkg.cmake") -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
+
+    throw "vcpkg was not found. Set VCPKG_ROOT, pass -VcpkgRoot C:\Path\To\vcpkg, or install the Visual Studio bundled vcpkg component."
 }
 
-$resolvedVcpkgRoot = (Resolve-Path -LiteralPath $VcpkgRoot).Path
+$resolvedVcpkgRoot = Resolve-VcpkgRoot $VcpkgRoot
 $toolchain = Join-Path $resolvedVcpkgRoot "scripts\buildsystems\vcpkg.cmake"
 if (-not (Test-Path -LiteralPath $toolchain -PathType Leaf)) {
     throw "vcpkg CMake toolchain not found at: $toolchain"
@@ -63,7 +82,12 @@ Write-Host "  Build directory: $BuildDir"
 Write-Host "  Qt SDK:          $resolvedQtDir"
 Write-Host "  vcpkg triplet:   $Triplet"
 
-cmake -S . -B $BuildDir -A x64 `
+$freshArgs = @()
+if (-not $KeepCache) {
+    $freshArgs += "--fresh"
+}
+
+cmake -S . -B $BuildDir @freshArgs -A x64 `
     "-DCMAKE_TOOLCHAIN_FILE=$toolchain" `
     "-DVCPKG_TARGET_TRIPLET=$Triplet" `
     "-DCMAKE_PREFIX_PATH=$resolvedQtDir" `

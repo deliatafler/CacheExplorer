@@ -32,7 +32,7 @@ From a Visual Studio developer shell, create the shared-Qt package:
 powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
   -BuildDir build-qt-prebuilt `
   -Configuration Release `
-  -QtBinDir C:\Qt\6.8.3\msvc2022_64\bin `
+  -QtBinDir C:\Qt\6.11.1\msvc2022_64\bin `
   -OutputDir artifacts\cacheexplorer-qt-shared `
   -Zip
 ```

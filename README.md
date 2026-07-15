@@ -60,7 +60,7 @@ match the official Qt SDK.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/configure-qt-prebuilt.ps1 `
-  -QtDir C:\Qt\6.8.3\msvc2022_64 `
+  -QtDir C:\Qt\6.11.1\msvc2022_64 `
   -Build
 ```
 
@@ -70,7 +70,7 @@ Equivalent CMake command:
 cmake -S . -B build-qt-prebuilt -A x64 \
   -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
   -DVCPKG_TARGET_TRIPLET=x64-windows-static-md \
-  -DCMAKE_PREFIX_PATH="C:/Qt/6.8.3/msvc2022_64" \
+  -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/msvc2022_64" \
   -DCACHEEXPLORER_BUILD_QT_GUI=ON \
   -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
 
@@ -90,7 +90,7 @@ For a shared-Qt test package:
 powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
   -BuildDir build-qt-prebuilt `
   -Configuration Release `
-  -QtBinDir C:\Qt\6.8.3\msvc2022_64\bin `
+  -QtBinDir C:\Qt\6.11.1\msvc2022_64\bin `
   -OutputDir artifacts\cacheexplorer-qt-shared `
   -Zip
 ```
