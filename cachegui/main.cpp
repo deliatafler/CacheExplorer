@@ -120,6 +120,8 @@ namespace
             {
                 previewPanel_.Refresh();
             }
+
+            ScheduleGalleryPreviewSearch();
         }
 
     private:

@@ -301,6 +301,8 @@ the same sorted proxy model and preview cache as the table. Cached previews
 appear as icons after they have been decoded by Table selection, Try Next
 Preview, or the gallery's lazy visible-item loader.
 Gallery tiles flow left to right and wrap to use the available browsing width.
+Resizing the Gallery schedules the same visible-thumbnail search used after
+scrolling, so newly exposed tiles load without requiring a scroll event.
 
 The Qt GUI provides a `Find UUID` control that looks up an in-world texture UUID
 through `TextureCacheDatabase::Find`, selects the matching entry in either view,
