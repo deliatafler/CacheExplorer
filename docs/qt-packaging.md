@@ -31,8 +31,9 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
 
 If `windeployqt.exe` is already on `PATH`, omit `-QtBinDir`.
 
-The package directory contains `CacheExplorer.exe` plus the Qt DLLs and plugin
-folders copied by `windeployqt`. With `-Zip`, the script also creates
+The package directory contains `CacheExplorer.exe`, Qt DLLs and plugin folders
+copied by `windeployqt`, `README.md`, `RELEASE_NOTES.md`, and
+`docs/qt-user-guide.md`. With `-Zip`, the script also creates
 `artifacts/cacheexplorer-qt-shared.zip` unless `-ZipPath` is supplied. It also
 writes a `.sha256` checksum file next to the zip unless `-NoChecksum` is used.
 

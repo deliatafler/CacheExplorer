@@ -46,9 +46,9 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
   -Zip
 ```
 
-The package archive should contain `CacheExplorer.exe`, Qt DLLs, and Qt plugin
-folders. The package script should also create a `.sha256` checksum next to the
-zip.
+The package archive should contain `CacheExplorer.exe`, Qt DLLs, Qt plugin
+folders, `README.md`, `RELEASE_NOTES.md`, and `docs/qt-user-guide.md`. The
+package script should also create a `.sha256` checksum next to the zip.
 
 ## GUI smoke test
 

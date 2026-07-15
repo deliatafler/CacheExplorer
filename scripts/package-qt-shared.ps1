@@ -25,6 +25,24 @@ function Resolve-RepoPath {
     return [System.IO.Path]::GetFullPath((Join-Path $repoRoot $Path))
 }
 
+function Copy-PackageFile {
+    param(
+        [string]$Source,
+        [string]$Destination
+    )
+
+    if (-not (Test-Path -LiteralPath $Source -PathType Leaf)) {
+        throw "Package source file not found: $Source"
+    }
+
+    $destinationParent = Split-Path -Parent $Destination
+    if ($destinationParent.Length -gt 0) {
+        New-Item -ItemType Directory -Force -Path $destinationParent | Out-Null
+    }
+
+    Copy-Item -LiteralPath $Source -Destination $Destination -Force
+}
+
 $resolvedBuildDir = Resolve-RepoPath $BuildDir
 $resolvedOutputDir = Resolve-RepoPath $OutputDir
 $builtExe = Join-Path $resolvedBuildDir "cachegui_qt/$Configuration/CacheExplorer.exe"
@@ -69,6 +87,25 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Packaged Qt GUI:"
 Write-Host "  $resolvedOutputDir"
+
+$packageDocsDir = Join-Path $resolvedOutputDir "docs"
+
+Copy-PackageFile `
+    -Source (Join-Path $repoRoot "README.md") `
+    -Destination (Join-Path $resolvedOutputDir "README.md")
+
+Copy-PackageFile `
+    -Source (Join-Path $repoRoot "RELEASE_NOTES.md") `
+    -Destination (Join-Path $resolvedOutputDir "RELEASE_NOTES.md")
+
+Copy-PackageFile `
+    -Source (Join-Path $repoRoot "docs/qt-user-guide.md") `
+    -Destination (Join-Path $packageDocsDir "qt-user-guide.md")
+
+Write-Host "Included package notes:"
+Write-Host "  README.md"
+Write-Host "  RELEASE_NOTES.md"
+Write-Host "  docs/qt-user-guide.md"
 
 if ($Zip) {
     if ($ZipPath.Length -gt 0) {

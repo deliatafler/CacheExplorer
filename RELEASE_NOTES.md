@@ -32,6 +32,7 @@ The beta package should include:
 
 * `CacheExplorer.exe`
 * Qt runtime DLLs and plugin folders from `windeployqt`
+* `README.md`, `RELEASE_NOTES.md`, and `docs/qt-user-guide.md`
 * a `.zip` archive
 * a `.sha256` checksum file for the archive
 
