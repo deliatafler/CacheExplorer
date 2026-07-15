@@ -61,8 +61,13 @@ For a repeatable package-content, checksum, and launch smoke test:
 powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
   -PackageDir artifacts\cacheexplorer-qt-shared `
   -ZipPath artifacts\cacheexplorer-qt-shared.zip `
-  -Launch
+  -ExtractAndLaunch
 ```
+
+`-ExtractAndLaunch` expands the ZIP into a newly created temporary directory,
+checks the deployed files again, launches the extracted executable briefly, and
+removes that temporary directory. It is the preferred beta-release smoke check
+because it avoids relying on the build tree or local Qt installation.
 
 For developer builds that have not been packaged with `windeployqt`, launch
 through `scripts/launch-qt-prebuilt.ps1` so the official Qt `bin` directory is

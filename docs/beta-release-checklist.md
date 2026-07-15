@@ -48,7 +48,7 @@ Run the package smoke script:
 powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
   -PackageDir artifacts\cacheexplorer-qt-shared `
   -ZipPath artifacts\cacheexplorer-qt-shared.zip `
-  -Launch
+  -ExtractAndLaunch
 ```
 
 ## GUI smoke test

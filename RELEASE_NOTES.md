@@ -38,9 +38,6 @@ The beta package should include:
 Generate the shared Qt package from a Visual Studio developer shell using
 `scripts/package-qt-shared.ps1 -Zip`.
 
-Current validated beta candidate:
-
-```text
-cacheexplorer-0.1.0-beta.zip
-cbe8eade55a8ddabc5ad2f6a9255ff4a8074998ce80261e6066d921e8fb8be00
-```
+Each beta archive has a matching `.sha256` file generated alongside it. Publish
+that checksum with the exact archive being shared; it is intentionally not
+embedded here so these notes remain valid for rebuilt beta candidates.

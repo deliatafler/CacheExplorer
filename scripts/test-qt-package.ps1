@@ -3,6 +3,7 @@ param(
     [string]$ZipPath = "",
     [string]$ChecksumPath = "",
     [switch]$Launch,
+    [switch]$ExtractAndLaunch,
     [int]$LaunchSeconds = 5
 )
 
@@ -117,20 +118,51 @@ if ($ZipPath.Length -gt 0) {
     Write-Host "  $expectedHash"
 }
 
-if ($Launch) {
+$launchPackageDir = $resolvedPackageDir
+$extractionDirectory = ""
+
+if ($ExtractAndLaunch) {
+    if ($ZipPath.Length -eq 0) {
+        throw "-ExtractAndLaunch requires -ZipPath."
+    }
+
+    $extractionDirectory = Join-Path `
+        ([System.IO.Path]::GetTempPath()) `
+        ("CacheExplorer-package-smoke-" + [System.Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $extractionDirectory | Out-Null
+    try {
+        Expand-Archive -LiteralPath $resolvedZipPath -DestinationPath $extractionDirectory
+
+        foreach ($file in $requiredFiles) {
+            Assert-FileExists (Join-Path $extractionDirectory $file)
+        }
+    }
+    catch {
+        Remove-Item -LiteralPath $extractionDirectory -Recurse -Force
+        throw
+    }
+
+    $launchPackageDir = $extractionDirectory
+    Write-Host "Package archive extracted for clean launch smoke:"
+    Write-Host "  $extractionDirectory"
+}
+
+if ($Launch -or $ExtractAndLaunch) {
     if ($LaunchSeconds -lt 1) {
         throw "LaunchSeconds must be at least 1."
     }
 
-    $exePath = Join-Path $resolvedPackageDir "CacheExplorer.exe"
+    $exePath = Join-Path $launchPackageDir "CacheExplorer.exe"
 
-    $process = Start-Process `
-        -FilePath $exePath `
-        -WorkingDirectory $resolvedPackageDir `
-        -WindowStyle Hidden `
-        -PassThru
+    $process = $null
 
     try {
+        $process = Start-Process `
+            -FilePath $exePath `
+            -WorkingDirectory $launchPackageDir `
+            -WindowStyle Hidden `
+            -PassThru
+
         Start-Sleep -Seconds $LaunchSeconds
 
         if ($process.HasExited) {
@@ -146,8 +178,13 @@ if ($Launch) {
         Write-Host "  Process $($process.Id) stayed running for $LaunchSeconds second(s)."
     }
     finally {
-        if (-not $process.HasExited) {
+        if ($null -ne $process -and -not $process.HasExited) {
             Stop-Process -Id $process.Id -Force
+        }
+
+        if ($extractionDirectory.Length -gt 0 -and
+            (Test-Path -LiteralPath $extractionDirectory -PathType Container)) {
+            Remove-Item -LiteralPath $extractionDirectory -Recurse -Force
         }
     }
 }
