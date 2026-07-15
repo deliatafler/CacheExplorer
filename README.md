@@ -45,10 +45,12 @@ cmake -S . -B build -A x64 \
   -DVCPKG_TARGET_TRIPLET=x64-windows-static
 
 cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-This default build currently also builds the deprecated Win32 GUI. To build only
-the core CLI/library path, add `-DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=OFF`.
+This default build currently also builds the deprecated Win32 GUI and the
+cachelib regression tests. To build only the core CLI/library path, add
+`-DCACHEEXPLORER_BUILD_LEGACY_WIN32_GUI=OFF`.
 
 ### Qt GUI with prebuilt shared Qt
 
@@ -83,7 +85,9 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
   -Zip
 ```
 
-See `docs/qt-packaging.md` for package contents and smoke testing.
+The package includes `CacheExplorer.exe`, Qt runtime files, the README, release
+notes, Qt user guide, and `PACKAGE_INFO.txt` with version/build details. See
+`docs/qt-packaging.md` for package contents and smoke testing.
 
 ## Validation
 
