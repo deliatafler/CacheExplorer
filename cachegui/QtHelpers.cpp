@@ -70,6 +70,25 @@ std::filesystem::path ResolveTextureCacheDirectory(
     return suppliedPath;
 }
 
+bool IsSameCachePath(
+    const std::filesystem::path& left,
+    const std::filesystem::path& right)
+{
+    if (left.empty() || right.empty())
+    {
+        return false;
+    }
+
+    const QString normalizedLeft =
+        PathToQString(left.lexically_normal());
+    const QString normalizedRight =
+        PathToQString(right.lexically_normal());
+
+    return normalizedLeft.compare(
+        normalizedRight,
+        CachePathCaseSensitivity()) == 0;
+}
+
 QString DefaultCachePath()
 {
 #ifdef _WIN32

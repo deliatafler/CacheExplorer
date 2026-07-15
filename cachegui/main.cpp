@@ -350,6 +350,15 @@ namespace
                 });
 
             connect(
+                pathEdit_,
+                &QLineEdit::textChanged,
+                this,
+                [this](const QString&)
+                {
+                    UpdateOpenButtonText();
+                });
+
+            connect(
                 aboutButton_,
                 &QPushButton::clicked,
                 this,
@@ -568,6 +577,7 @@ namespace
             ClearPreviewUiState();
             UpdateGalleryEntryCount();
             SetBusy(false);
+            UpdateOpenButtonText();
             statusLabel_->setText(
                 QStringLiteral("Could not open cache: ")
                 + QString::fromUtf8(CacheErrorMessage(result)));
@@ -583,7 +593,22 @@ namespace
             LoadPersistentPreviewState();
             UpdateGalleryEntryCount();
             SetBusy(false);
+            UpdateOpenButtonText();
             ScheduleGalleryPreviewSearch();
+        }
+
+        void UpdateOpenButtonText()
+        {
+            const fs::path suppliedPath =
+                ResolveTextureCacheDirectory(PathFromQString(pathEdit_->text()));
+            const bool reopeningCurrentCache =
+                database_.IsOpen() &&
+                IsSameCachePath(suppliedPath, database_.CacheDirectory());
+
+            openButton_->setText(
+                reopeningCurrentCache
+                    ? QStringLiteral("Refresh")
+                    : QStringLiteral("Open"));
         }
 
         void ClearPreviewUiState()

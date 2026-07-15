@@ -29,10 +29,11 @@ default cache in this order: official Second Life, official Firestorm, then a
 self-built Firestorm cache. It is hidden when none of those caches exist.
 CacheExplorer remembers the last successfully opened cache path while it still
 exists, and you can still edit the path box and click `Open` for unusual
-installations. If a cache opens successfully, the status bar reports the number
+installations. Once the path matches the currently open cache, `Open` changes
+to `Refresh`. If a cache opens successfully, the status bar reports the number
 of valid texture entries and the cache version.
 
-Click `Open` again for the currently displayed path to reread the cache. This is
+Click `Refresh` for the currently displayed path to reread the cache. This is
 useful while a viewer is running and adding or replacing cached textures.
 
 After you open more than one cache, the `Recent` menu beside the path field

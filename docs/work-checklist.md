@@ -21,7 +21,7 @@ roadmap rather than letting this become a changelog.
   default-cache shortcut, and remembered last successful location.
 - [x] Export multiple selected textures to a chosen folder without overwriting
   existing PNGs.
-- [ ] Add a small recent-cache picker if users commonly switch among multiple
+- [x] Add a small recent-cache picker if users commonly switch among multiple
   Firestorm profiles.
 - [ ] Refine Gallery tile layout and preview-panel presentation from beta
   feedback.

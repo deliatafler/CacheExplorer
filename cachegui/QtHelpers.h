@@ -20,6 +20,10 @@ std::filesystem::path PathFromQString(const QString& value);
 std::filesystem::path ResolveTextureCacheDirectory(
     const std::filesystem::path& suppliedPath);
 
+bool IsSameCachePath(
+    const std::filesystem::path& left,
+    const std::filesystem::path& right);
+
 QString DefaultCachePath();
 
 QString PreferredCachePath();
