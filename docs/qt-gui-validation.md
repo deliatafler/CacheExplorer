@@ -34,7 +34,7 @@ workers, gallery loading, export, or cache-open behavior.
     lazy thumbnail loading without blocking the UI. Slower sorts, especially
     UUID, should update the bottom status bar before the sort completes.
 12. Click a Gallery item marked `No preview` or `Load failed` and confirm the
-    bottom status bar reports that state.
+    bottom status bar and large preview panel report that state.
 13. Toggle back to `Table` and confirm columns render normally.
 14. Select an already-previewed item in both `Table` and `Gallery`; confirm the
     cached preview appears in the large preview panel without decoding again.

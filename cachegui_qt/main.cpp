@@ -766,6 +766,11 @@ namespace
 
             if (!preview.available)
             {
+                if (!preview.panelMessage.isEmpty())
+                {
+                    previewPanel_.SetMessage(preview.panelMessage);
+                }
+
                 if (!preview.statusText.isEmpty())
                 {
                     statusLabel_->setText(preview.statusText);

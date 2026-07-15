@@ -17,6 +17,7 @@ struct CachedSelectionPreview
     bool available = false;
     QPixmap pixmap;
     QString statusText;
+    QString panelMessage;
 };
 
 QModelIndex SelectedProxyIndex(

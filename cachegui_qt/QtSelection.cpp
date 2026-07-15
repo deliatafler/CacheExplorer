@@ -123,7 +123,13 @@ CachedSelectionPreview CachedPreviewForSelection(
     if (record == nullptr ||
         record->state == PreviewState::Unknown)
     {
-        return {};
+        CachedSelectionPreview preview;
+        preview.statusText =
+            QStringLiteral("Preview not loaded yet: ")
+            + ToQString(entry.uuid.ToString());
+        preview.panelMessage =
+            QStringLiteral("Preview not loaded yet.");
+        return preview;
     }
 
     if (record->state == PreviewState::Checking)
@@ -132,6 +138,8 @@ CachedSelectionPreview CachedPreviewForSelection(
         preview.statusText =
             QStringLiteral("Checking preview: ")
             + ToQString(entry.uuid.ToString());
+        preview.panelMessage =
+            QStringLiteral("Checking preview...");
         return preview;
     }
 
@@ -141,6 +149,8 @@ CachedSelectionPreview CachedPreviewForSelection(
         preview.statusText =
             QStringLiteral("No preview available: ")
             + ToQString(entry.uuid.ToString());
+        preview.panelMessage =
+            QStringLiteral("No preview available.");
         return preview;
     }
 
@@ -150,12 +160,20 @@ CachedSelectionPreview CachedPreviewForSelection(
         preview.statusText =
             QStringLiteral("Preview file could not be loaded: ")
             + ToQString(entry.uuid.ToString());
+        preview.panelMessage =
+            QStringLiteral("Preview could not be loaded.");
         return preview;
     }
 
     if (record->pixmap.isNull())
     {
-        return {};
+        CachedSelectionPreview preview;
+        preview.statusText =
+            QStringLiteral("Preview not loaded yet: ")
+            + ToQString(entry.uuid.ToString());
+        preview.panelMessage =
+            QStringLiteral("Preview not loaded yet.");
+        return preview;
     }
 
     CachedSelectionPreview preview;
