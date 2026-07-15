@@ -5,7 +5,7 @@ workers, gallery loading, export, or cache-open behavior.
 
 ## Basic smoke test
 
-1. Launch `build-qt/cachegui_qt/Release/CacheExplorer.exe`.
+1. Launch `build-qt-prebuilt/cachegui_qt/Release/CacheExplorer.exe`.
 2. Click `Open` with the default Firestorm texture-cache path.
 3. Confirm the table populates and the status bar reports loaded entries.
 4. Select a row and click `Preview`.

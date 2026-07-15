@@ -15,13 +15,18 @@ option(CACHEEXPLORER_BUILD_TESTS
     "Build CacheExplorer regression tests"
     ON)
 
+option(CACHEEXPLORER_STATIC_MSVC_RUNTIME
+    "Use the static MSVC runtime (/MT). Turn this off for official prebuilt Qt SDKs."
+    ON)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Statically link the Microsoft C/C++ runtime.
-# Release uses /MT; Debug uses /MTd.
-if(MSVC)
+# Statically link the Microsoft C/C++ runtime by default.
+# Release uses /MT; Debug uses /MTd. Official shared Qt SDKs use /MD, so the
+# prebuilt-Qt helper disables this option for that build path.
+if(MSVC AND CACHEEXPLORER_STATIC_MSVC_RUNTIME)
     set(CMAKE_MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -31,8 +36,8 @@ add_subdirectory(cachecli)
 
 if(CACHEEXPLORER_BUILD_QT_GUI)
     message(STATUS
-        "Primary Qt GUI enabled. Use CMAKE_PREFIX_PATH or Qt6_DIR for a prebuilt Qt developer build; "
-        "use the vcpkg qt-gui feature for a static/reproducible Qt build.")
+        "Primary Qt GUI enabled. Prefer an official/prebuilt Qt SDK via CMAKE_PREFIX_PATH or Qt6_DIR; "
+        "use the vcpkg qt-gui feature only for optional static/reproducible Qt experiments.")
     add_subdirectory(cachegui_qt)
 endif()
 

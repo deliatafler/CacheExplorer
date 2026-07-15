@@ -7,7 +7,7 @@
   ],
   "features": {
     "qt-gui": {
-      "description": "Build the experimental Qt 6 cross-platform GUI",
+      "description": "Optional static Qt 6 GUI build for release engineering experiments",
       "dependencies": [
         {
           "name": "qtbase",

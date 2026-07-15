@@ -32,6 +32,8 @@ See `docs/qt-user-guide.md` for Qt GUI usage and limitations.
 ## Build
 
 The project uses C++17, CMake, MSVC, and vcpkg manifest mode on Windows.
+For the Qt GUI, the intended contributor path is an official/prebuilt Qt SDK;
+contributors should not need to build Qt from source.
 
 ### Core CLI
 
@@ -52,20 +54,33 @@ tests.
 This is the supported beta GUI path. It is also the preferred developer path
 because it avoids rebuilding Qt locally.
 
-```bash
-cmake -S . -B build-qt -A x64 \
-  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-  -DVCPKG_TARGET_TRIPLET=x64-windows-static \
-  -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/msvc2022_64" \
-  -DCACHEEXPLORER_BUILD_QT_GUI=ON
+The helper script configures the recommended build: official/prebuilt Qt,
+static vcpkg libraries for OpenJPEG/libpng, and the dynamic MSVC runtime to
+match the official Qt SDK.
 
-cmake --build build-qt --config Release --target cachegui_qt
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/configure-qt-prebuilt.ps1 `
+  -QtDir C:\Qt\6.8.3\msvc2022_64 `
+  -Build
+```
+
+Equivalent CMake command:
+
+```bash
+cmake -S . -B build-qt-prebuilt -A x64 \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static-md \
+  -DCMAKE_PREFIX_PATH="C:/Qt/6.8.3/msvc2022_64" \
+  -DCACHEEXPLORER_BUILD_QT_GUI=ON \
+  -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
+
+cmake --build build-qt-prebuilt --config Release --target cachegui_qt
 ```
 
 The target name is `cachegui_qt`; the built GUI executable is
-`build-qt/cachegui_qt/Release/CacheExplorer.exe`.
+`build-qt-prebuilt/cachegui_qt/Release/CacheExplorer.exe`.
 
-See `docs/qt-build.md` for static Qt and deployment details.
+See `docs/qt-build.md` for deployment details and the optional static Qt path.
 
 ## Packaging
 

@@ -1,18 +1,18 @@
 # Qt GUI packaging notes
 
-The preferred fast packaging path for day-to-day testing is a shared-Qt folder
-created from a prebuilt Qt installation. This produces a directory that can be
-zipped and shared for smoke testing without rebuilding Qt locally.
+The preferred packaging path for day-to-day testing is a shared-Qt folder
+created from an official/prebuilt Qt installation. This produces a directory
+that can be zipped and shared for smoke testing without rebuilding Qt locally.
 
-For a single static binary or a more reproducible release experiment, keep using
-the vcpkg static Qt path described in `docs/qt-build.md`.
+For a single static binary or a more reproducible release experiment later, keep
+the optional vcpkg static Qt path described in `docs/qt-build.md`.
 
 ## Shared Qt package
 
 Prerequisites:
 
 * A Release `cachegui_qt` build configured against a prebuilt shared Qt
-  installation.
+  installation. Prefer `scripts/configure-qt-prebuilt.ps1` for this configure.
 * `windeployqt.exe` from that same Qt installation, either on `PATH` or supplied
   with `-QtBinDir`.
 * A Visual Studio developer environment when producing a package for sharing, so
@@ -64,11 +64,11 @@ powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
   -Launch
 ```
 
-## Static release path
+## Optional static release path
 
-The shared package is convenient for development and test sharing, but it is not
-the final static-binary story. Static Qt distribution experiments should use the
-vcpkg `qt-gui` feature and `x64-windows-static` triplet from `docs/qt-build.md`.
+The shared package is the current beta packaging path. Static Qt distribution
+experiments can use the vcpkg `qt-gui` feature and `x64-windows-static` triplet
+from `docs/qt-build.md`, but contributors should not need to build Qt this way.
 
 Do not mix a dynamic official Qt runtime with a static-vcpkg dependency graph
 for a final release package unless the runtime model is deliberately made

@@ -32,8 +32,10 @@ Primary platform:
 * CMake
 * Git Bash
 * vcpkg manifest mode
-* static MSVC runtime
-* `x64-windows-static` vcpkg triplet
+* official/prebuilt Qt SDK for the Qt GUI
+* `x64-windows-static` vcpkg triplet for the core CLI/library path
+* `x64-windows-static-md` vcpkg triplet plus dynamic MSVC runtime for the
+  preferred prebuilt-Qt GUI path
 
 Dependencies:
 
@@ -60,22 +62,31 @@ build/cachecli/Release/cachecli.exe
 
 See `docs/qt-build.md` for detailed Qt GUI build, prebuilt-Qt, static-Qt, and deployment notes. See `docs/qt-packaging.md` for the shared-Qt package helper and smoke-test checklist. See `docs/qt-user-guide.md` for user-facing Qt GUI usage notes, `docs/beta-release-checklist.md` before tagging or sharing a beta, and `RELEASE_NOTES.md` for draft release notes.
 
-Primary Qt GUI build with a prebuilt shared Qt installation. This is the preferred developer path because it avoids rebuilding Qt locally:
+Primary Qt GUI build with a prebuilt shared Qt installation. This is the preferred developer path because it avoids rebuilding Qt locally and matches the official Qt SDK runtime model:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/configure-qt-prebuilt.ps1 `
+  -QtDir C:\Qt\6.8.3\msvc2022_64 `
+  -Build
+```
+
+Equivalent CMake command:
 
 ```bash
-cmake -S . -B build-qt -A x64 \
+cmake -S . -B build-qt-prebuilt -A x64 \
   -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-  -DVCPKG_TARGET_TRIPLET=x64-windows-static \
-  -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/msvc2022_64" \
-  -DCACHEEXPLORER_BUILD_QT_GUI=ON
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static-md \
+  -DCMAKE_PREFIX_PATH="C:/Qt/6.8.3/msvc2022_64" \
+  -DCACHEEXPLORER_BUILD_QT_GUI=ON \
+  -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
 
-cmake --build build-qt --config Release --target cachegui_qt
+cmake --build build-qt-prebuilt --config Release --target cachegui_qt
 ```
 
 The CMake target remains `cachegui_qt`; its user-facing executable name is
 `CacheExplorer.exe`.
 
-Primary Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow:
+Optional Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow and it is not the primary contributor path:
 
 ```bash
 cmake -S . -B build-qt -A x64 \
@@ -365,8 +376,8 @@ duplication.
 
 Good next low-risk slices:
 
-* Prefer prebuilt shared Qt for fast local development.
-* Keep the vcpkg static Qt path available for reproducible/distribution builds, ideally with binary caching in CI.
+* Prefer official/prebuilt shared Qt for normal local development and contributor builds.
+* Keep the vcpkg static Qt path available only for reproducible/distribution experiments, ideally with binary caching in CI.
 * Improve Qt gallery UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
 * Improve `cachegui_qt` preview presentation and Gallery layout behavior based on real-cache validation.
 * Continue packaging/deployment work for the Qt GUI.
