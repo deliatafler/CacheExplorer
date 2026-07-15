@@ -1,7 +1,23 @@
 #include "QtHelpers.h"
 
+#include <system_error>
+
 #include <QByteArray>
 #include <QStandardPaths>
+
+namespace
+{
+    bool TextureEntriesFileExists(const std::filesystem::path& directory)
+    {
+        std::error_code error;
+        const bool exists =
+            std::filesystem::exists(
+                directory / "texture.entries",
+                error);
+
+        return exists && !error;
+    }
+}
 
 QString ToQString(const std::string& value)
 {
@@ -26,7 +42,7 @@ std::filesystem::path PathFromQString(const QString& value)
 std::filesystem::path ResolveTextureCacheDirectory(
     const std::filesystem::path& suppliedPath)
 {
-    if (std::filesystem::exists(suppliedPath / "texture.entries"))
+    if (TextureEntriesFileExists(suppliedPath))
     {
         return suppliedPath;
     }
@@ -34,7 +50,7 @@ std::filesystem::path ResolveTextureCacheDirectory(
     const std::filesystem::path childTextureCache =
         suppliedPath / "texturecache";
 
-    if (std::filesystem::exists(childTextureCache / "texture.entries"))
+    if (TextureEntriesFileExists(childTextureCache))
     {
         return childTextureCache;
     }

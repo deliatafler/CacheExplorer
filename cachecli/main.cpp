@@ -17,6 +17,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <system_error>
 
 namespace fs = std::filesystem;
 
@@ -261,13 +262,20 @@ std::uint64_t CachedEntrySize(
     fs::path ResolveTextureCacheDirectory(
         const fs::path& suppliedPath)
     {
-        if (fs::exists(suppliedPath / "texture.entries"))
+        std::error_code existsError;
+        if (fs::exists(
+                suppliedPath / "texture.entries",
+                existsError) &&
+            !existsError)
         {
             return suppliedPath;
         }
 
+        existsError.clear();
         if (fs::exists(
-                suppliedPath / "texturecache" / "texture.entries"))
+                suppliedPath / "texturecache" / "texture.entries",
+                existsError) &&
+            !existsError)
         {
             return suppliedPath / "texturecache";
         }
