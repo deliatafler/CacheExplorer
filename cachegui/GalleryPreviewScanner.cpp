@@ -112,7 +112,9 @@ std::deque<CacheEntry> BuildVisibleGalleryPreviewQueue(
     const int firstVisibleRow = FirstVisibleGalleryProxyRow(galleryView, rowCount);
 
     constexpr int MaximumRowsToScan = 160;
-    constexpr std::size_t MaximumQueueSize = 24;
+    // A large desktop Gallery viewport can expose more than 24 tiles at once.
+    // Keep enough room for every visible candidate before adding lookahead work.
+    constexpr std::size_t MaximumQueueSize = 64;
     constexpr std::size_t MaximumCandidates = MaximumQueueSize * 3;
     const int finalRow =
         std::min(rowCount, firstVisibleRow + MaximumRowsToScan);

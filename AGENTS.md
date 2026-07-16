@@ -321,7 +321,8 @@ session.
 Gallery lazy loading uses a separate async thumbnail worker from Table selection
 previewing and Try Next. It builds a bounded queue from the visible gallery
 neighborhood, prioritizes visible tiles near the viewport center before nearby
-lookahead rows, attempts unknown entries one at a time, caches successful
+lookahead rows, and keeps enough queue capacity for a large desktop viewport
+before adding lookahead work. It attempts unknown entries one at a time, caches successful
 thumbnails, and marks incomplete/undecodable entries without selecting them.
 
 Gallery item selection uses a small `QListView` subclass so clicks on either the UUID/text area or the thumbnail area select the item.
