@@ -30,6 +30,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes ninja-build qt6-base-dev
 
+      - name: Create vcpkg binary cache directory
+        run: mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
+
       - name: Restore vcpkg binary cache
         uses: actions/cache@v4
         with:
