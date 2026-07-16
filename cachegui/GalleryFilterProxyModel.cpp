@@ -18,15 +18,12 @@ namespace
     {
         switch (static_cast<GalleryPreviewFilter>(value))
         {
-            case GalleryPreviewFilter::All:
-            case GalleryPreviewFilter::CachedComplete:
-            case GalleryPreviewFilter::Unknown:
-            case GalleryPreviewFilter::NoPreview:
-            case GalleryPreviewFilter::LoadFailed:
+            case GalleryPreviewFilter::Everything:
+            case GalleryPreviewFilter::ImagesOnly:
                 return static_cast<GalleryPreviewFilter>(value);
         }
 
-        return GalleryPreviewFilter::All;
+        return GalleryPreviewFilter::Everything;
     }
 }
 
@@ -59,6 +56,18 @@ void GalleryFilterProxyModel::SetPreviewFilter(GalleryPreviewFilter filter)
     EndFilterUpdate();
 }
 
+bool GalleryFilterProxyModel::RefreshForPreviewStateChange()
+{
+    if (!galleryMode_ || filter_ != GalleryPreviewFilter::ImagesOnly)
+    {
+        return false;
+    }
+
+    BeginFilterUpdate();
+    EndFilterUpdate();
+    return true;
+}
+
 void GalleryFilterProxyModel::BeginFilterUpdate()
 {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
@@ -79,7 +88,7 @@ bool GalleryFilterProxyModel::filterAcceptsRow(
     int sourceRow,
     const QModelIndex& sourceParent) const
 {
-    if (!galleryMode_ || filter_ == GalleryPreviewFilter::All)
+    if (!galleryMode_ || filter_ == GalleryPreviewFilter::Everything)
     {
         return true;
     }
@@ -98,23 +107,13 @@ bool GalleryFilterProxyModel::filterAcceptsRow(
 
     switch (filter_)
     {
-        case GalleryPreviewFilter::All:
+        case GalleryPreviewFilter::Everything:
             return true;
 
-        case GalleryPreviewFilter::CachedComplete:
-            return sourceIndex
-                .data(CacheEntryTableModel::CachedCompleteRole)
-                .toBool();
-
-        case GalleryPreviewFilter::Unknown:
+        case GalleryPreviewFilter::ImagesOnly:
             return previewState == PreviewState::Unknown ||
-                previewState == PreviewState::Checking;
-
-        case GalleryPreviewFilter::NoPreview:
-            return previewState == PreviewState::Unavailable;
-
-        case GalleryPreviewFilter::LoadFailed:
-            return previewState == PreviewState::LoadFailed;
+                previewState == PreviewState::Checking ||
+                previewState == PreviewState::Previewable;
     }
 
     return true;
@@ -123,20 +122,11 @@ bool GalleryFilterProxyModel::filterAcceptsRow(
 void ConfigureGalleryPreviewFilterControl(QComboBox& comboBox)
 {
     comboBox.addItem(
-        QStringLiteral("All"),
-        ToComboValue(GalleryPreviewFilter::All));
+        QStringLiteral("Everything"),
+        ToComboValue(GalleryPreviewFilter::Everything));
     comboBox.addItem(
-        QStringLiteral("Cached complete"),
-        ToComboValue(GalleryPreviewFilter::CachedComplete));
-    comboBox.addItem(
-        QStringLiteral("Not checked"),
-        ToComboValue(GalleryPreviewFilter::Unknown));
-    comboBox.addItem(
-        QStringLiteral("No preview"),
-        ToComboValue(GalleryPreviewFilter::NoPreview));
-    comboBox.addItem(
-        QStringLiteral("Load failed"),
-        ToComboValue(GalleryPreviewFilter::LoadFailed));
+        QStringLiteral("Images only"),
+        ToComboValue(GalleryPreviewFilter::ImagesOnly));
 }
 
 GalleryPreviewFilter CurrentGalleryPreviewFilter(const QComboBox& comboBox)

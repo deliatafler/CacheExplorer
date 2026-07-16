@@ -18,11 +18,13 @@ Completed slices:
 * The Qt GUI persists terminal no-preview/load-failed states across runs, keyed
   by cache path plus UUID/cacheIndex/image/body metadata, so Gallery can skip
   rechecking entries already known to be incomplete or undecodable.
-* The Gallery `Show` filter includes `Cached complete`, a cached-byte-size
-  filter for debugging and for users who want to bias Gallery toward entries
-  more likely to preview.
+* The Gallery `Show` control offers a demand-driven `Images only` mode that
+  keeps successful thumbnails and removes unavailable visible entries without
+  scanning the full cache up front.
 
 Possible follow-up:
 
 * Persist successful thumbnail images or previewable metadata separately if
   Gallery startup throughput becomes a problem.
+* Batch or debounce `Images only` removals if large Gallery viewports still
+  reflow too often during beta use.

@@ -6,11 +6,8 @@ class QComboBox;
 
 enum class GalleryPreviewFilter
 {
-    All,
-    CachedComplete,
-    Unknown,
-    NoPreview,
-    LoadFailed
+    Everything,
+    ImagesOnly
 };
 
 void ConfigureGalleryPreviewFilterControl(QComboBox& comboBox);
@@ -23,6 +20,7 @@ public:
 
     void SetGalleryMode(bool galleryMode);
     void SetPreviewFilter(GalleryPreviewFilter filter);
+    bool RefreshForPreviewStateChange();
 
 protected:
     bool filterAcceptsRow(
@@ -34,5 +32,5 @@ private:
     void EndFilterUpdate();
 
     bool galleryMode_ = true;
-    GalleryPreviewFilter filter_ = GalleryPreviewFilter::All;
+    GalleryPreviewFilter filter_ = GalleryPreviewFilter::Everything;
 };

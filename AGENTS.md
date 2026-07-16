@@ -315,14 +315,13 @@ through `TextureCacheDatabase::Find`, selects the matching entry in either view,
 and clears a Gallery-only filter only when that filter hides the result.
 
 Gallery mode hides the Table-only `Try Next Preview` action because thumbnails
-load lazily in the gallery itself. It shows Gallery-only filter and sort combos
-for not-checked/no-preview/load-failed states, cached-complete entries, and orders
-such as newest, largest body, largest image, cache index, and UUID. `Cached
-complete` means the meaningful header bytes plus body bytes cover the advertised
-image size; it can include header-only entries with body size `0` and is not a
-decode guarantee. Do not expose a Gallery `Previewable` filter unless it has a
-clearer workflow than merely showing entries already decoded during this
-session.
+load lazily in the gallery itself. Its `Show` control offers `Everything` and
+`Images only`; sort options include newest, largest body, largest image, cache
+index, and UUID. `Images only` keeps unknown/checking entries visible as quiet
+placeholders while the existing lazy worker attempts them, retains successful
+thumbnails, and removes terminal no-preview/load-failed entries. Each removal
+refreshes the visible queue so newly exposed entries are attempted without
+scanning the entire cache up front. Table mode continues to show all entries.
 
 Gallery lazy loading uses a separate async thumbnail worker from Table selection
 previewing and Try Next. It builds a bounded queue from the visible gallery
@@ -335,7 +334,10 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui/GalleryActivityIndicator.*` contains Qt gallery thumbnail activity label state and text.
 
-`cachegui/GalleryFilterProxyModel.*` contains the Gallery-only preview-state filtering proxy. Table mode should show all entries even when a Gallery filter is selected.
+`cachegui/GalleryFilterProxyModel.*` contains the Gallery-only preview-state
+filtering proxy. Table mode should show all entries even when `Images only` is
+selected. Keep preview-state refiltering explicit so thumbnail updates do not
+cause an expensive dynamic re-sort of the full model.
 
 `cachegui/GalleryListView.*` contains the gallery hit-testing view subclass. Keep this kind of Qt-only UI behavior out of `cachelib`.
 

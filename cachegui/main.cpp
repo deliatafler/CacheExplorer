@@ -829,12 +829,12 @@ namespace
 
             if (!SelectEntry(*entry) && galleryMode_)
             {
-                const int allFilterIndex = galleryFilterCombo_->findData(
-                    static_cast<int>(GalleryPreviewFilter::All));
+                const int everythingFilterIndex = galleryFilterCombo_->findData(
+                    static_cast<int>(GalleryPreviewFilter::Everything));
 
-                if (allFilterIndex >= 0)
+                if (everythingFilterIndex >= 0)
                 {
-                    galleryFilterCombo_->setCurrentIndex(allFilterIndex);
+                    galleryFilterCombo_->setCurrentIndex(everythingFilterIndex);
                     filterCleared = true;
                 }
 
@@ -1085,7 +1085,7 @@ namespace
                     result.entry,
                     ToQString(result.message));
                 SavePersistentPreviewState();
-                StartNextQueuedGalleryPreview();
+                ContinueAfterUnavailableGalleryPreview();
                 return;
             }
 
@@ -1101,7 +1101,7 @@ namespace
                     imageError))
             {
                 SavePersistentPreviewState();
-                StartNextQueuedGalleryPreview();
+                ContinueAfterUnavailableGalleryPreview();
                 return;
             }
 
@@ -1116,6 +1116,18 @@ namespace
                     result.entry,
                     result.image.width,
                     result.image.height);
+            }
+
+            StartNextQueuedGalleryPreview();
+        }
+
+        void ContinueAfterUnavailableGalleryPreview()
+        {
+            if (proxyModel_->RefreshForPreviewStateChange())
+            {
+                UpdateGalleryEntryCount();
+                galleryPreviewController_.RequestRefresh();
+                UpdateGalleryActivity();
             }
 
             StartNextQueuedGalleryPreview();

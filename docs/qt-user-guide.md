@@ -51,11 +51,12 @@ CacheExplorer remembers terminal `No preview` and `Load failed` states for a
 cache between runs, while still checking the entry metadata before reusing that
 state.
 
-The Gallery `Show` filter includes `Cached complete`, which shows entries whose
-stored header and body bytes cover the advertised image size. This can include
-small header-only entries with body size `0`; it is a useful browsing/debugging
-hint, not a guarantee that the JPEG2000 decoder will accept every entry. The
-other filters focus on unknown, no-preview, and load-failed entries.
+The Gallery `Show` control offers `Everything` and `Images only`. In `Images
+only`, unchecked visible entries briefly remain as quiet placeholders while
+CacheExplorer attempts their thumbnails. Successful images stay in the Gallery;
+entries that cannot produce a thumbnail are removed, and newly exposed entries
+are checked until the visible area is filled or the end of the cache is reached.
+This work remains demand-driven rather than scanning the entire cache up front.
 
 Use `Table` for debugging and inspection. The table shows UUID, image size, body
 size, raw cache index, timestamp, and preview status. Table sorting is useful
@@ -69,8 +70,8 @@ still the one shown in the large preview panel.
 
 Enter an in-world texture UUID in `Find UUID` and click `Find` to select its
 cache entry. The lookup accepts the standard hyphenated UUID form or 32
-hexadecimal digits. If a Gallery-only filter hides the matching entry,
-CacheExplorer changes that filter to `All` so the result can be shown.
+hexadecimal digits. If `Images only` hides the matching entry, CacheExplorer
+changes the Gallery to `Everything` so the result can be shown.
 
 ## Preview and export
 

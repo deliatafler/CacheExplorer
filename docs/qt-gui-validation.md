@@ -47,16 +47,17 @@ export checks below.
 9. Confirm `Try Next Preview` is hidden in `Gallery`, while
    `Export PNG`, the Gallery filter/sort controls, and the `Table` toggle remain
    visible.
-10. Change the Gallery filter control and confirm the gallery shows the
-    selected cache/preview state, the Gallery count updates, and empty filters
-    report no matching entries in the status bar. Confirm `Cached complete`
-    includes entries whose cached header/body bytes cover the advertised image
-    size. Toggle back to `Table` and confirm all rows return.
+10. Change `Show` from `Everything` to `Images only`. Confirm unchecked visible
+    entries are attempted, successful thumbnails remain, unavailable entries
+    disappear, and newly exposed entries are checked until the visible area is
+    filled or the cache ends. The Gallery count should update as entries are
+    removed. Toggle back to `Everything` and confirm all entries return.
 11. Change the Gallery sort control and confirm the gallery reorders and resumes
     lazy thumbnail loading without blocking the UI. Slower sorts, especially
     UUID, should update the bottom status bar before the sort completes.
-12. Click a Gallery item marked `No preview` or `Load failed` and confirm the
-    bottom status bar and large preview panel report that state.
+12. With `Everything` selected, click a Gallery item marked `No preview` or
+    `Load failed` and confirm the bottom status bar and large preview panel
+    report that state.
 13. Toggle back to `Table` and confirm columns render normally.
 14. Select an already-previewed item in both `Table` and `Gallery`; confirm the
     cached preview appears in the large preview panel without decoding again.

@@ -1,6 +1,7 @@
 #include "CacheEntryTableModel.h"
 #include "GalleryFilterProxyModel.h"
 #include "GalleryPreviewQueue.h"
+#include "PreviewCache.h"
 #include "QtGalleryStatus.h"
 #include "TryNextPreviewState.h"
 
@@ -108,28 +109,48 @@ namespace
 
     void TestInitialGalleryFilter()
     {
-        QStandardItemModel sourceModel(2, 1);
-        sourceModel.setData(
-            sourceModel.index(0, 0),
-            true,
-            CacheEntryTableModel::CachedCompleteRole);
-        sourceModel.setData(
-            sourceModel.index(1, 0),
-            false,
-            CacheEntryTableModel::CachedCompleteRole);
+        QStandardItemModel sourceModel(5, 1);
+        const PreviewState states[] = {
+            PreviewState::Unknown,
+            PreviewState::Checking,
+            PreviewState::Previewable,
+            PreviewState::Unavailable,
+            PreviewState::LoadFailed};
+
+        for (int row = 0; row < sourceModel.rowCount(); ++row)
+        {
+            sourceModel.setData(
+                sourceModel.index(row, 0),
+                static_cast<int>(states[row]),
+                CacheEntryTableModel::PreviewStateRole);
+        }
 
         GalleryFilterProxyModel proxyModel;
         proxyModel.setSourceModel(&sourceModel);
-        proxyModel.SetPreviewFilter(GalleryPreviewFilter::CachedComplete);
+        proxyModel.SetPreviewFilter(GalleryPreviewFilter::ImagesOnly);
 
         Expect(
-            proxyModel.rowCount() == 1,
-            "gallery filter applies before the first view toggle");
+            proxyModel.rowCount() == 3,
+            "images-only filter keeps pending and previewable rows");
+
+        sourceModel.setData(
+            sourceModel.index(0, 0),
+            static_cast<int>(PreviewState::Unavailable),
+            CacheEntryTableModel::PreviewStateRole);
+        Expect(
+            proxyModel.RefreshForPreviewStateChange(),
+            "images-only filter refreshes after a preview state change");
+        Expect(
+            proxyModel.rowCount() == 2,
+            "images-only filter removes a newly unavailable row");
 
         proxyModel.SetGalleryMode(false);
         Expect(
-            proxyModel.rowCount() == 2,
+            proxyModel.rowCount() == 5,
             "table mode ignores the gallery-only filter");
+        Expect(
+            !proxyModel.RefreshForPreviewStateChange(),
+            "table mode does not refilter for Gallery preview changes");
     }
 }
 
