@@ -3,6 +3,7 @@
 #include "QtHelpers.h"
 #include "TextureCacheDatabase.h"
 
+#include <QApplication>
 #include <QString>
 #include <QtGlobal>
 #include <QMessageBox>
@@ -57,12 +58,13 @@ void ShowAboutDialog(
 {
     QMessageBox aboutBox(&parent);
     aboutBox.setWindowTitle(QStringLiteral("About Cache Explorer"));
-    aboutBox.setIcon(QMessageBox::Information);
+    aboutBox.setIconPixmap(QApplication::windowIcon().pixmap(64, 64));
     aboutBox.setText(QStringLiteral("Cache Explorer"));
     aboutBox.setInformativeText(
         QStringLiteral(
             "Standalone Second Life viewer texture-cache browser and PNG exporter.\n"
-            "Verified with the official Second Life viewer and Firestorm."));
+            "Verified with the official Second Life viewer and Firestorm.\n\n"
+            "Open-source software licensed under the MIT License."));
     aboutBox.setDetailedText(BuildDiagnosticText(database));
     aboutBox.exec();
 }

@@ -40,6 +40,7 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QIcon>
 #include <QItemSelectionModel>
 #include <QLabel>
 #include <QLineEdit>
@@ -1646,6 +1647,8 @@ int main(int argc, char* argv[])
     QApplication::setApplicationDisplayName(QStringLiteral("Cache Explorer"));
     QApplication::setApplicationVersion(QStringLiteral(CACHEEXPLORER_VERSION));
     QApplication::setOrganizationName(QStringLiteral("CacheExplorer"));
+    QApplication::setWindowIcon(
+        QIcon(QStringLiteral(":/resources/cacheexplorer.png")));
 
     QCommandLineParser commandLine;
     const QCommandLineOption smokeOpenOption(

@@ -126,6 +126,8 @@ $requiredFiles = @(
     "PACKAGE_INFO.txt",
     "README.md",
     "RELEASE_NOTES.md",
+    "LICENSE",
+    "cachegui/resources/cacheexplorer.png",
     "docs/qt-user-guide.md",
     "platforms/qwindows.dll"
 )

@@ -201,6 +201,14 @@ Copy-PackageFile `
     -Destination (Join-Path $resolvedOutputDir "RELEASE_NOTES.md")
 
 Copy-PackageFile `
+    -Source (Join-Path $repoRoot "LICENSE") `
+    -Destination (Join-Path $resolvedOutputDir "LICENSE")
+
+Copy-PackageFile `
+    -Source (Join-Path $repoRoot "cachegui/resources/cacheexplorer.png") `
+    -Destination (Join-Path $resolvedOutputDir "cachegui/resources/cacheexplorer.png")
+
+Copy-PackageFile `
     -Source (Join-Path $repoRoot "docs/qt-user-guide.md") `
     -Destination (Join-Path $packageDocsDir "qt-user-guide.md")
 
@@ -214,7 +222,7 @@ $packageInfo = @(
     "Packaged at: $((Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))"
     ""
     "Run CacheExplorer.exe to open the Qt GUI."
-    "See README.md, RELEASE_NOTES.md, and docs/qt-user-guide.md for beta notes."
+    "See README.md, RELEASE_NOTES.md, LICENSE, and docs/qt-user-guide.md for beta notes."
 )
 
 Set-Content `
@@ -225,6 +233,8 @@ Set-Content `
 Write-Host "Included package notes:"
 Write-Host "  README.md"
 Write-Host "  RELEASE_NOTES.md"
+Write-Host "  LICENSE"
+Write-Host "  cachegui/resources/cacheexplorer.png"
 Write-Host "  docs/qt-user-guide.md"
 Write-Host "  PACKAGE_INFO.txt"
 

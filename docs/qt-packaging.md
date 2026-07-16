@@ -34,7 +34,8 @@ If `windeployqt.exe` is already on `PATH`, omit `-QtBinDir`.
 
 The package directory contains `CacheExplorer.exe`, Qt DLLs and plugin folders
 copied by `windeployqt`, app-local Visual C++ runtime DLLs, `README.md`,
-`RELEASE_NOTES.md`, and `docs/qt-user-guide.md`. It also writes
+`RELEASE_NOTES.md`, `LICENSE`, the CacheExplorer icon used by the packaged
+README, and `docs/qt-user-guide.md`. It also writes
 `PACKAGE_INFO.txt` with the package version and build/deployment details for
 beta support reports. With `-Zip`, the
 script also creates

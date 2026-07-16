@@ -6,6 +6,7 @@ roadmap rather than letting this become a changelog.
 
 ## Before a public beta
 
+- [x] Add an open-source license and application icon.
 - [ ] Run the packaged GUI through the full real-cache checklist on a release
   candidate.
 - [x] Test the shared Qt ZIP on a Windows machine without the developer Qt SDK.

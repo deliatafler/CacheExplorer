@@ -368,6 +368,12 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 
 `cachegui/QtAboutDialog.*` contains the Qt-only About/diagnostics dialog.
 
+`cachegui/resources/cacheexplorer.png` is the transparent cross-platform Qt
+application icon and README artwork. The multi-resolution
+`cachegui/resources/cacheexplorer.ico` is embedded into the Windows executable
+through `cacheexplorer.rc`. Keep the packaged README icon and MIT `LICENSE` in
+the shared Qt archive.
+
 `cachegui/QtActionState.*` contains Qt button enable/disable rules for the main window.
 
 `cachegui/QtFileDialogs.*` contains Qt file/folder dialog helpers for browse/export commands.

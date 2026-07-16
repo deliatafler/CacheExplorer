@@ -54,6 +54,19 @@ add_executable(cachegui WIN32
     TryNextPreviewState.h
 )
 
+if(WIN32)
+    target_sources(cachegui
+        PRIVATE
+            resources/cacheexplorer.rc
+    )
+endif()
+
+qt_add_resources(cachegui "cacheexplorer_resources"
+    PREFIX "/"
+    FILES
+        resources/cacheexplorer.png
+)
+
 set_target_properties(cachegui
     PROPERTIES
         OUTPUT_NAME CacheExplorer

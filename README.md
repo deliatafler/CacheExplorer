@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="cachegui/resources/cacheexplorer.png" alt="CacheExplorer icon" width="144">
+</p>
+
 # CacheExplorer
 
 CacheExplorer is a standalone browser and PNG exporter for Second Life viewer
@@ -120,3 +124,7 @@ Use `docs/qt-gui-validation.md` after GUI behavior changes. Build-only
 validation is usually enough for documentation-only and narrow helper changes.
 Use `docs/beta-release-checklist.md` before tagging or sharing a beta package.
 See `RELEASE_NOTES.md` for draft beta release notes.
+
+## License
+
+CacheExplorer is available under the [MIT License](LICENSE).
