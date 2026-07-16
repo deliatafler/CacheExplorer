@@ -303,6 +303,8 @@ Preview, or the gallery's lazy visible-item loader.
 Gallery tiles flow left to right and wrap to use the available browsing width.
 Resizing the Gallery schedules the same visible-thumbnail search used after
 scrolling, so newly exposed tiles load without requiring a scroll event.
+Selected Gallery tiles use a clear blue outline and light blue fill so single
+and extended selections remain visible against the normal white background.
 
 The Qt GUI provides a `Find UUID` control that looks up an in-world texture UUID
 through `TextureCacheDatabase::Find`, selects the matching entry in either view,

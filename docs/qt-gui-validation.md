@@ -68,7 +68,8 @@ export checks below.
     and either the open cache path or `Cache: not open`.
 17. Ctrl-click or Shift-click multiple entries in both views, switch views, and
     confirm the selection remains. Confirm the current item still drives the
-    large preview panel.
+    large preview panel. In `Gallery`, selected tiles should have a clearly
+    visible blue outline and fill.
 
 ## Export smoke test
 

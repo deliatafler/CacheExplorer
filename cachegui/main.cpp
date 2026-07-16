@@ -268,6 +268,13 @@ namespace
             galleryView_->setUniformItemSizes(true);
             galleryView_->setWordWrap(false);
             galleryView_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+            galleryView_->setStyleSheet(
+                QStringLiteral(
+                    "QListView::item:selected { "
+                    "background: #dbeafe; "
+                    "border: 2px solid #2563eb; "
+                    "color: #172554; "
+                    "}"));
         }
 
         void ConfigureSelectionModels()
