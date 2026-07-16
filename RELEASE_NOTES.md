@@ -25,6 +25,10 @@ CacheExplorer 0.1.0-beta is the first public test build candidate of the Qt GUI.
   viewer cache.
 * CacheExplorer is standalone and does not depend on or link against Firestorm.
 
+Report beta problems through
+[GitHub Issues](https://github.com/deliatafler/CacheExplorer/issues). Include
+the GUI's `About` diagnostics when possible.
+
 ### Packaging
 
 The beta package should include:

@@ -18,6 +18,10 @@ Many real cache entries are expected to be incomplete or undecodable because
 viewers use progressive JPEG2000 texture caching. CacheExplorer treats those
 entries as ordinary no-preview cases, not application failures.
 
+Beta feedback and bug reports are collected through
+[GitHub Issues](https://github.com/deliatafler/CacheExplorer/issues). For GUI
+problems, include the diagnostics shown by `About` when possible.
+
 ## Features
 
 * Open a compatible viewer `texturecache` folder directly.

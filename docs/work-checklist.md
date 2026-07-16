@@ -11,7 +11,8 @@ roadmap rather than letting this become a changelog.
 - [ ] Test the shared Qt ZIP on a Windows machine without the developer Qt SDK.
 - [ ] Confirm the package version, release notes, and generated checksum match
   the archive being shared.
-- [ ] Decide where beta feedback and issue reports should be collected.
+- [x] Collect beta feedback and issue reports through GitHub Issues, with the
+  GUI's About diagnostics included when possible.
 
 ## Near-term UX
 
