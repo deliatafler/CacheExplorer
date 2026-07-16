@@ -80,6 +80,12 @@ through the non-authenticated aqt repository used by GitHub Actions. Both use
 the same supported compiler family and the GUI's Qt Widgets API surface; CI does
 not require contributors to replace their local SDK.
 
+`.github/workflows/linux-ci.yml` provides early cross-platform coverage on an
+Ubuntu hosted runner. It installs the native Qt 6 Widgets development package,
+uses vcpkg only for OpenJPEG/libpng, then builds the CLI and Qt GUI and runs
+CTest. It is build/test coverage only; Linux packaging and real-cache GUI
+validation remain future work.
+
 ### Validated prebuilt-Qt developer setup
 
 * Qt 6.11.1 `msvc2022_64` installed into

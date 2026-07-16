@@ -1,0 +1,56 @@
+name: Linux CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test Qt GUI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-binary-cache
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Qt and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ninja-build qt6-base-dev
+
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-linux-x64-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-linux-x64-
+
+      - name: Set up vcpkg at the manifest baseline
+        run: |
+          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout f87344cac03158cbf1467264565f1fd36b382a24
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+
+      - name: Configure, build, and test
+        run: |
+          cmake -S . -B build-linux -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DCACHEEXPLORER_BUILD_QT_GUI=ON \
+            -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
+          cmake --build build-linux
+          ctest --test-dir build-linux --output-on-failure
