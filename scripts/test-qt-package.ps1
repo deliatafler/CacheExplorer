@@ -49,6 +49,66 @@ function Test-ZipEntry {
     return $false
 }
 
+function Start-IsolatedPackageProcess {
+    param(
+        [string]$ExePath,
+        [string]$WorkingDirectory,
+        [string[]]$ArgumentList = @()
+    )
+
+    $environmentNames = @(
+        "PATH",
+        "QT_PLUGIN_PATH",
+        "QT_QPA_PLATFORM_PLUGIN_PATH",
+        "QML_IMPORT_PATH",
+        "QML2_IMPORT_PATH"
+    )
+    $savedEnvironment = @{}
+
+    foreach ($name in $environmentNames) {
+        $savedEnvironment[$name] =
+            [Environment]::GetEnvironmentVariable($name, "Process")
+    }
+
+    $isolatedPath = @(
+        $WorkingDirectory,
+        (Join-Path $env:SystemRoot "System32"),
+        $env:SystemRoot
+    ) -join ";"
+
+    try {
+        [Environment]::SetEnvironmentVariable(
+            "PATH",
+            $isolatedPath,
+            "Process")
+
+        foreach ($name in $environmentNames | Where-Object { $_ -ne "PATH" }) {
+            [Environment]::SetEnvironmentVariable($name, $null, "Process")
+        }
+
+        $startParameters = @{
+            FilePath = $ExePath
+            WorkingDirectory = $WorkingDirectory
+            WindowStyle = "Hidden"
+            PassThru = $true
+        }
+
+        if ($ArgumentList.Count -gt 0) {
+            $startParameters.ArgumentList = $ArgumentList
+        }
+
+        return Start-Process @startParameters
+    }
+    finally {
+        foreach ($name in $environmentNames) {
+            [Environment]::SetEnvironmentVariable(
+                $name,
+                $savedEnvironment[$name],
+                "Process")
+        }
+    }
+}
+
 $resolvedPackageDir = Resolve-RepoPath $PackageDir
 
 if (-not (Test-Path -LiteralPath $resolvedPackageDir -PathType Container)) {
@@ -162,20 +222,18 @@ if ($Launch -or $ExtractAndLaunch) {
 
     try {
         if ($SmokeOpenCache.Length -gt 0) {
-            $process = Start-Process `
-                -FilePath $exePath `
+            $process = Start-IsolatedPackageProcess `
+                -ExePath $exePath `
                 -WorkingDirectory $launchPackageDir `
-                -WindowStyle Hidden `
-                -ArgumentList @("--smoke-open", $SmokeOpenCache) `
-                -PassThru
+                -ArgumentList @("--smoke-open", $SmokeOpenCache)
         }
         else {
-            $process = Start-Process `
-                -FilePath $exePath `
-                -WorkingDirectory $launchPackageDir `
-                -WindowStyle Hidden `
-                -PassThru
+            $process = Start-IsolatedPackageProcess `
+                -ExePath $exePath `
+                -WorkingDirectory $launchPackageDir
         }
+
+        Write-Host "Package process started with isolated runtime paths."
 
         if ($SmokeOpenCache.Length -gt 0) {
             if (-not $process.WaitForExit($LaunchSeconds * 1000)) {

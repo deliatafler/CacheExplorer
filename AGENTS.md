@@ -464,7 +464,9 @@ Good next low-risk slices:
 * Keep `docs/qt-user-guide.md` and `docs/beta-release-checklist.md` aligned with beta behavior.
 * Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable archive.
 * Use `scripts/test-qt-package.ps1` to verify shared-Qt package contents,
-  archive contents, checksum, and optional short launch smoke.
+  archive contents, checksum, and optional short launch smoke. Its child process
+  uses isolated runtime/plugin paths so an installed Qt SDK cannot mask missing
+  app-local package files.
 * `CacheExplorer.exe --smoke-open <cache-folder>` opens a cache through the
   normal Qt main-window path, verifies the entry model was populated, and exits
   with a success/failure code. `scripts/test-qt-package.ps1 -ExtractAndLaunch

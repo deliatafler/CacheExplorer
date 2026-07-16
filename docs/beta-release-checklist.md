@@ -52,6 +52,10 @@ powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
   -SmokeOpenCache C:\Path\To\texturecache
 ```
 
+The smoke script isolates the packaged process from developer Qt runtime and
+plugin paths. This complements, but does not replace, one launch on a separate
+Windows machine without the Qt SDK before public distribution.
+
 ## GUI smoke test
 
 Run the packaged `CacheExplorer.exe`, then complete

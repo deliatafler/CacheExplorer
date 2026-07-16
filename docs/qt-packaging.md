@@ -65,7 +65,10 @@ powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
 `-ExtractAndLaunch` expands the ZIP into a newly created temporary directory,
 checks the deployed files again, launches the extracted executable briefly, and
 removes that temporary directory. It is the preferred beta-release smoke check
-because it avoids relying on the build tree or local Qt installation.
+because it avoids relying on the build tree or local Qt installation. The child
+process receives an isolated `PATH` containing only the extracted package and
+Windows system directories, with Qt plugin/import overrides cleared, so an
+installed Qt SDK cannot satisfy missing package runtime files accidentally.
 
 To also exercise the packaged GUI's cache-open/model-population path against a
 real cache, add `-SmokeOpenCache` with the cache directory:
@@ -80,6 +83,8 @@ powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
 
 This uses the GUI-only `--smoke-open` switch, which opens the cache through the
 normal main-window path, verifies the entry model was populated, and exits.
+The isolated launch is strong automated deployment coverage, but the final beta
+check on a separate Windows machine without a developer Qt SDK is still useful.
 
 For developer builds that have not been packaged with `windeployqt`, launch
 through `scripts/launch-qt-prebuilt.ps1` so the official Qt `bin` directory is
