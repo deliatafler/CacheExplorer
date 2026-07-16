@@ -89,11 +89,18 @@ function Resolve-VCRedistDir {
     }
 
     foreach ($programFiles in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
-        if ($programFiles -and $programFiles.Length -gt 0) {
-            foreach ($edition in @("Community", "Professional", "Enterprise", "BuildTools")) {
-                $redistRoots += Join-Path `
-                    $programFiles `
-                    "Microsoft Visual Studio\2022\$edition\VC\Redist\MSVC"
+        if (-not $programFiles -or $programFiles.Length -eq 0) {
+            continue
+        }
+
+        $visualStudioRoot = Join-Path $programFiles "Microsoft Visual Studio"
+        if (-not (Test-Path -LiteralPath $visualStudioRoot -PathType Container)) {
+            continue
+        }
+
+        foreach ($versionDirectory in Get-ChildItem -LiteralPath $visualStudioRoot -Directory) {
+            foreach ($editionDirectory in Get-ChildItem -LiteralPath $versionDirectory.FullName -Directory) {
+                $redistRoots += Join-Path $editionDirectory.FullName "VC\Redist\MSVC"
             }
         }
     }

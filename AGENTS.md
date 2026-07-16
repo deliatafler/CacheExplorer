@@ -96,6 +96,8 @@ not find Qt DLLs such as `Qt6Widgets.dll` unless the Qt `bin` directory is
 already on `PATH`.
 The package helper also copies the x64 Visual C++ runtime DLLs app-locally so
 the shared ZIP can launch on Windows systems without Visual Studio installed.
+Its redistributable lookup must not assume a particular Visual Studio release
+directory because hosted CI images may use newer toolsets.
 
 Optional Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow and it is not the primary contributor path:
 

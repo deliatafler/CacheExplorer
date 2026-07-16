@@ -16,8 +16,8 @@ Prerequisites:
 * `windeployqt.exe` from that same Qt installation, either on `PATH` or supplied
   with `-QtBinDir`.
 * The x64 Visual C++ redistributable installed with Visual Studio or the C++
-  Build Tools. The script locates it automatically; use `-VCRedistDir` only
-  when it lives in an unusual location.
+  Build Tools. The script discovers installed Visual Studio versions
+  automatically; use `-VCRedistDir` only when it lives in an unusual location.
 
 Example from PowerShell:
 
