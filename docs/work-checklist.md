@@ -8,7 +8,7 @@ roadmap rather than letting this become a changelog.
 
 - [ ] Run the packaged GUI through the full real-cache checklist on a release
   candidate.
-- [ ] Test the shared Qt ZIP on a Windows machine without the developer Qt SDK.
+- [x] Test the shared Qt ZIP on a Windows machine without the developer Qt SDK.
 - [ ] Confirm the package version, release notes, and generated checksum match
   the archive being shared.
 - [x] Collect beta feedback and issue reports through GitHub Issues, with the
