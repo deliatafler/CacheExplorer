@@ -15,8 +15,9 @@ Prerequisites:
   installation. Prefer `scripts/configure-qt-prebuilt.ps1` for this configure.
 * `windeployqt.exe` from that same Qt installation, either on `PATH` or supplied
   with `-QtBinDir`.
-* A Visual Studio developer environment when producing a package for sharing, so
-  Qt deployment can locate the expected MSVC runtime context.
+* The x64 Visual C++ redistributable installed with Visual Studio or the C++
+  Build Tools. The script locates it automatically; use `-VCRedistDir` only
+  when it lives in an unusual location.
 
 Example from PowerShell:
 
@@ -32,16 +33,13 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
 If `windeployqt.exe` is already on `PATH`, omit `-QtBinDir`.
 
 The package directory contains `CacheExplorer.exe`, Qt DLLs and plugin folders
-copied by `windeployqt`, `README.md`, `RELEASE_NOTES.md`, and
-`docs/qt-user-guide.md`. It also writes `PACKAGE_INFO.txt` with the package
-version and build/deployment details for beta support reports. With `-Zip`, the
+copied by `windeployqt`, app-local Visual C++ runtime DLLs, `README.md`,
+`RELEASE_NOTES.md`, and `docs/qt-user-guide.md`. It also writes
+`PACKAGE_INFO.txt` with the package version and build/deployment details for
+beta support reports. With `-Zip`, the
 script also creates
 `artifacts/cacheexplorer-qt-shared.zip` unless `-ZipPath` is supplied. It also
 writes a `.sha256` checksum file next to the zip unless `-NoChecksum` is used.
-
-If `VCINSTALLDIR` is not set, the script warns that it is not running from a
-Visual Studio developer environment. That warning is acceptable for local smoke
-testing, but use a developer shell for packages you plan to share.
 
 ## Smoke test checklist
 
@@ -102,8 +100,9 @@ consistent.
 If the app reports a missing Qt platform plugin, rerun `windeployqt` from the Qt
 installation used during CMake configure.
 
-If the package launches only on the build machine, produce it from a Visual
-Studio developer environment and verify the MSVC runtime deployment choice.
+If the package launches only on the build machine, confirm that the package
+contains the Visual C++ runtime DLLs and that `PACKAGE_INFO.txt` identifies the
+expected runtime directory.
 
 If the wrong Qt version is deployed, inspect `CMAKE_PREFIX_PATH` or `Qt6_DIR` in
 the CMake cache for the build directory being packaged.

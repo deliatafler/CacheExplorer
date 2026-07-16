@@ -3,6 +3,7 @@ param(
     [ValidateSet("Debug", "Release", "RelWithDebInfo", "MinSizeRel")]
     [string]$Configuration = "Release",
     [string]$QtBinDir = "",
+    [string]$VCRedistDir = "",
     [string]$OutputDir = "artifacts/cacheexplorer-qt-shared",
     [switch]$Zip,
     [string]$ZipPath = "",
@@ -69,6 +70,66 @@ function Get-CMakeCacheValue {
     return $line.Matches[0].Groups[2].Value
 }
 
+function Resolve-VCRedistDir {
+    param([string]$RequestedVCRedistDir)
+
+    if ($RequestedVCRedistDir.Length -gt 0) {
+        $resolved = (Resolve-Path -LiteralPath $RequestedVCRedistDir).Path
+        if (Test-Path -LiteralPath (Join-Path $resolved "vcruntime140.dll") -PathType Leaf) {
+            return $resolved
+        }
+
+        throw "vcruntime140.dll was not found in -VCRedistDir $resolved."
+    }
+
+    $redistRoots = @()
+
+    if ($env:VCINSTALLDIR -and $env:VCINSTALLDIR.Length -gt 0) {
+        $redistRoots += Join-Path $env:VCINSTALLDIR "Redist\MSVC"
+    }
+
+    foreach ($programFiles in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        if ($programFiles -and $programFiles.Length -gt 0) {
+            foreach ($edition in @("Community", "Professional", "Enterprise", "BuildTools")) {
+                $redistRoots += Join-Path `
+                    $programFiles `
+                    "Microsoft Visual Studio\2022\$edition\VC\Redist\MSVC"
+            }
+        }
+    }
+
+    foreach ($redistRoot in $redistRoots) {
+        if (-not (Test-Path -LiteralPath $redistRoot -PathType Container)) {
+            continue
+        }
+
+        $versions = Get-ChildItem -LiteralPath $redistRoot -Directory |
+            Sort-Object Name -Descending
+
+        foreach ($version in $versions) {
+            $x64Root = Join-Path $version.FullName "x64"
+
+            if (-not (Test-Path -LiteralPath $x64Root -PathType Container)) {
+                continue
+            }
+
+            $runtimeDirectories = Get-ChildItem -LiteralPath $x64Root -Directory |
+                Where-Object { $_.Name -like "Microsoft.VC*.CRT" } |
+                Sort-Object Name -Descending
+
+            foreach ($runtimeDirectory in $runtimeDirectories) {
+                if (Test-Path `
+                        -LiteralPath (Join-Path $runtimeDirectory.FullName "vcruntime140.dll") `
+                        -PathType Leaf) {
+                    return $runtimeDirectory.FullName
+                }
+            }
+        }
+    }
+
+    throw "The x64 Visual C++ redistributable DLLs were not found. Install the Visual Studio C++ build tools or pass -VCRedistDir C:\Path\To\Microsoft.VC*.CRT."
+}
+
 $resolvedBuildDir = Resolve-RepoPath $BuildDir
 $resolvedOutputDir = Resolve-RepoPath $OutputDir
 $packageVersion = Get-CMakeCacheValue `
@@ -86,10 +147,6 @@ if (-not (Test-Path -LiteralPath $builtExe -PathType Leaf)) {
 
 if (-not (Test-Path -LiteralPath $builtExe -PathType Leaf)) {
     throw "Built executable not found. Build cachegui first."
-}
-
-if ([string]::IsNullOrWhiteSpace($env:VCINSTALLDIR)) {
-    Write-Warning "VCINSTALLDIR is not set. For packages you plan to share, run this from a Visual Studio developer shell."
 }
 
 if ($QtBinDir.Length -gt 0) {
@@ -115,8 +172,16 @@ if ($LASTEXITCODE -ne 0) {
     throw "windeployqt failed with exit code $LASTEXITCODE"
 }
 
+$resolvedVCRedistDir = Resolve-VCRedistDir $VCRedistDir
+Get-ChildItem -LiteralPath $resolvedVCRedistDir -Filter "*.dll" -File |
+    ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $resolvedOutputDir -Force
+    }
+
 Write-Host "Packaged Qt GUI:"
 Write-Host "  $resolvedOutputDir"
+Write-Host "Included Visual C++ runtime:"
+Write-Host "  $resolvedVCRedistDir"
 
 $packageDocsDir = Join-Path $resolvedOutputDir "docs"
 
@@ -138,6 +203,7 @@ $packageInfo = @(
     "Configuration: $Configuration"
     "Build directory: $resolvedBuildDir"
     "Qt bin directory: $(Split-Path -Parent $windeployqt)"
+    "Visual C++ runtime directory: $resolvedVCRedistDir"
     "Packaged at: $((Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))"
     ""
     "Run CacheExplorer.exe to open the Qt GUI."
