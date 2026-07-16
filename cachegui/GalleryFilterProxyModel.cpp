@@ -129,7 +129,7 @@ void ConfigureGalleryPreviewFilterControl(QComboBox& comboBox)
         QStringLiteral("Cached complete"),
         ToComboValue(GalleryPreviewFilter::CachedComplete));
     comboBox.addItem(
-        QStringLiteral("Unknown"),
+        QStringLiteral("Not checked"),
         ToComboValue(GalleryPreviewFilter::Unknown));
     comboBox.addItem(
         QStringLiteral("No preview"),

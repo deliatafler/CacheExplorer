@@ -316,7 +316,7 @@ and clears a Gallery-only filter only when that filter hides the result.
 
 Gallery mode hides the Table-only `Try Next Preview` action because thumbnails
 load lazily in the gallery itself. It shows Gallery-only filter and sort combos
-for unknown/no-preview/load-failed states, cached-complete entries, and orders
+for not-checked/no-preview/load-failed states, cached-complete entries, and orders
 such as newest, largest body, largest image, cache index, and UUID. `Cached
 complete` means the meaningful header bytes plus body bytes cover the advertised
 image size; it can include header-only entries with body size `0` and is not a
@@ -425,9 +425,10 @@ undersized body files as errors. It also checks `TextureExportState`
 load/save behavior for incomplete entries, metadata invalidation, succeeded
 entries, and missing state files.
 
-`cachegui/cachegui_tests.cpp` provides focused CTest coverage for GUI-facing
-pure helpers: gallery queue accounting, bounded Try Next traversal, and gallery
-status text. It is built only when the Qt GUI and project tests are enabled.
+`tests/cachegui_tests.cpp` provides focused CTest coverage for GUI-facing
+helpers: initial Gallery filtering, gallery queue accounting, bounded Try Next
+traversal, and gallery status text. It is built only when the Qt GUI and project
+tests are enabled.
 
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 

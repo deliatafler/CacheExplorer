@@ -1,7 +1,10 @@
+#include "CacheEntryTableModel.h"
+#include "GalleryFilterProxyModel.h"
 #include "GalleryPreviewQueue.h"
 #include "QtGalleryStatus.h"
 #include "TryNextPreviewState.h"
 
+#include <QStandardItemModel>
 #include <QString>
 
 #include <iostream>
@@ -102,6 +105,32 @@ namespace
                 QStringLiteral("Gallery filter updated: showing 12 of 48 entries."),
             "filter result uses gallery count text");
     }
+
+    void TestInitialGalleryFilter()
+    {
+        QStandardItemModel sourceModel(2, 1);
+        sourceModel.setData(
+            sourceModel.index(0, 0),
+            true,
+            CacheEntryTableModel::CachedCompleteRole);
+        sourceModel.setData(
+            sourceModel.index(1, 0),
+            false,
+            CacheEntryTableModel::CachedCompleteRole);
+
+        GalleryFilterProxyModel proxyModel;
+        proxyModel.setSourceModel(&sourceModel);
+        proxyModel.SetPreviewFilter(GalleryPreviewFilter::CachedComplete);
+
+        Expect(
+            proxyModel.rowCount() == 1,
+            "gallery filter applies before the first view toggle");
+
+        proxyModel.SetGalleryMode(false);
+        Expect(
+            proxyModel.rowCount() == 2,
+            "table mode ignores the gallery-only filter");
+    }
 }
 
 int main()
@@ -109,6 +138,7 @@ int main()
     TestGalleryPreviewQueue();
     TestTryNextPreviewState();
     TestGalleryStatusText();
+    TestInitialGalleryFilter();
 
     if (gFailures != 0)
     {

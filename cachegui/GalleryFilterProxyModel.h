@@ -33,6 +33,6 @@ private:
     void BeginFilterUpdate();
     void EndFilterUpdate();
 
-    bool galleryMode_ = false;
+    bool galleryMode_ = true;
     GalleryPreviewFilter filter_ = GalleryPreviewFilter::All;
 };
