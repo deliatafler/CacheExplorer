@@ -175,6 +175,23 @@ QString PreferredCachePath()
     return DefaultCachePath();
 }
 
+QString CacheFolderDialogStartPath(const QString& currentPath)
+{
+    if (!currentPath.isEmpty())
+    {
+        return currentPath;
+    }
+
+    const QString localDataPath =
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    if (!localDataPath.isEmpty())
+    {
+        return localDataPath;
+    }
+
+    return QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+}
+
 bool DefaultCachePathExists()
 {
     return !DefaultCachePath().isEmpty();

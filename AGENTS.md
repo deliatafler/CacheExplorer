@@ -395,6 +395,9 @@ menu; missing folders are omitted and users can clear the menu from the UI.
 Remembered paths are lexically normalized, displayed with platform-native path
 separators, and compared by normalized generic path so legacy slash variants
 are migrated and deduplicated when settings are read.
+When no remembered or discovered cache path exists, the first folder chooser
+starts in the platform's local application-data directory rather than the
+CacheExplorer executable directory.
 Opening an already open cache path intentionally rereads the cache, supporting
 testing and normal browsing while a compatible viewer is actively writing
 texture entries.
@@ -474,10 +477,10 @@ Good next low-risk slices:
   Qt GUI, deploying its app-local Qt frameworks, validating an unsigned CPack
   DMG, and uploading that DMG as a short-lived test artifact. Signing,
   notarization, and physical-Mac validation remain release follow-ups.
-* Keep `.github/workflows/macos-ci.yml` building the CLI and Qt GUI on the
-  Apple Silicon `macos-15` hosted runner against prebuilt Qt 6 plus vcpkg
-  OpenJPEG/libpng. It is build/test coverage, not a signed or packaged macOS
-  release claim.
+* Keep the platform CI workflows reusable through `workflow_call`.
+  `.github/workflows/draft-release.yml` manually assembles their four packages
+  and unified checksums without publishing; a pushed `v*` tag may create a
+  draft GitHub Release, but never publish it automatically.
 * Improve Qt gallery UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
 * Improve `cachegui` preview presentation and Gallery layout behavior based on real-cache validation.
 * Continue packaging/deployment work for the Qt GUI.

@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QFile>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QString>
 #include <QTemporaryDir>
 
@@ -262,6 +263,24 @@ namespace
                 == nativePath,
             "migrated last-opened path is persisted");
     }
+
+    void TestCacheFolderDialogStartPath()
+    {
+        const QString explicitPath = QStringLiteral("/chosen/cache/path");
+        Expect(
+            CacheFolderDialogStartPath(explicitPath) == explicitPath,
+            "cache folder picker preserves a current path");
+
+        const QString localDataPath =
+            QStandardPaths::writableLocation(
+                QStandardPaths::GenericDataLocation);
+        const QString expectedFallback = localDataPath.isEmpty()
+            ? QStandardPaths::writableLocation(QStandardPaths::HomeLocation)
+            : localDataPath;
+        Expect(
+            CacheFolderDialogStartPath({}) == expectedFallback,
+            "first cache folder picker starts in platform-local app data");
+    }
 }
 
 int main(int argc, char* argv[])
@@ -274,6 +293,7 @@ int main(int argc, char* argv[])
     TestInitialGalleryFilter();
     TestCachePathNormalization();
     TestRecentCachePathMigration();
+    TestCacheFolderDialogStartPath();
 
     if (gFailures != 0)
     {

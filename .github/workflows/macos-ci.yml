@@ -2,8 +2,11 @@ name: macOS CI
 
 on:
   push:
+    branches:
+      - "**"
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -81,11 +84,16 @@ jobs:
           bash scripts/test-qt-macos-package.sh \
             artifacts/CacheExplorer-0.1.0-beta-macOS-arm64.dmg \
             0.1.0
+          shasum -a 256 \
+            artifacts/CacheExplorer-0.1.0-beta-macOS-arm64.dmg \
+            > artifacts/CacheExplorer-0.1.0-beta-macOS-arm64.dmg.sha256
 
       - name: Upload unsigned macOS package
         uses: actions/upload-artifact@v7
         with:
           name: CacheExplorer-macOS-arm64
-          path: artifacts/CacheExplorer-0.1.0-beta-macOS-arm64.dmg
+          path: |
+            artifacts/CacheExplorer-0.1.0-beta-macOS-arm64.dmg
+            artifacts/CacheExplorer-0.1.0-beta-macOS-arm64.dmg.sha256
           if-no-files-found: error
           retention-days: 14

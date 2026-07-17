@@ -28,6 +28,8 @@ QString DefaultCachePath();
 
 QString PreferredCachePath();
 
+QString CacheFolderDialogStartPath(const QString& currentPath);
+
 bool DefaultCachePathExists();
 
 void RememberOpenedCachePath(const QString& cachePath);

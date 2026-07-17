@@ -21,12 +21,27 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build-qt-prebuilt --config Release --target cachegui
 ```
 
-The beta GUI package should be built from the prebuilt-Qt configuration. The
-static vcpkg Qt build is optional release engineering coverage, not a beta gate.
+The beta GUI packages should be built against prebuilt or distribution-native
+Qt. The static vcpkg Qt build is optional release engineering coverage, not a
+beta gate.
 
-## Package
+## Packages
 
-From a Visual Studio developer shell, create the shared-Qt package:
+Run the `Assemble Draft Release` workflow manually before tagging. It reuses
+the Windows, macOS, and Ubuntu CI workflows, verifies all package jobs, gathers
+the four platform packages, and creates a unified `SHA256SUMS.txt` without
+publishing a GitHub Release.
+
+The assembled assets must contain:
+
+* Windows x64 portable ZIP.
+* Apple Silicon macOS DMG.
+* Ubuntu 24.04 x86-64 Debian package.
+* Ubuntu 26.04 x86-64 Debian package.
+* `SHA256SUMS.txt` covering those exact four files.
+
+For a local Windows package check, create the shared-Qt package from a Visual
+Studio developer shell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
@@ -37,11 +52,11 @@ powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
   -Zip
 ```
 
-The package archive should contain `CacheExplorer.exe`, Qt DLLs, the required
-Visual C++ runtime DLLs, Qt plugin folders, `README.md`, `RELEASE_NOTES.md`,
-`LICENSE`, the README icon, and `docs/qt-user-guide.md`. The package script
-should also include
-`PACKAGE_INFO.txt` and create a `.sha256` checksum next to the zip.
+The Windows package archive should contain `CacheExplorer.exe`, Qt DLLs, the
+required Visual C++ runtime DLLs, Qt plugin folders, `README.md`,
+`RELEASE_NOTES.md`, `LICENSE`, the README icon, and `docs/qt-user-guide.md`.
+The package script should also include `PACKAGE_INFO.txt` and create a
+`.sha256` checksum next to the zip.
 
 Run the package smoke script:
 
@@ -59,8 +74,10 @@ Windows machine without the Qt SDK before public distribution.
 
 ## GUI smoke test
 
-Run the packaged `CacheExplorer.exe`, then complete
-`docs/qt-gui-validation.md`.
+Run each packaged GUI on its target platform, then complete
+`docs/qt-gui-validation.md`. At minimum, complete the full checklist on the
+primary Windows package and the core open/browse/preview/export flow on macOS
+and Ubuntu.
 
 Minimum beta acceptance:
 
@@ -80,4 +97,12 @@ Before publishing, write short notes that include:
 * The Qt GUI is the only GUI target.
 * Many viewer cache entries may not preview because they are incomplete.
 * The app is standalone and does not depend on Firestorm.
-* The package checksum.
+* The unified package checksum file.
+
+## Draft release
+
+After the manual assembly run and platform smoke tests pass, push the intended
+`v*` version tag. The tag-triggered workflow builds the packages again and
+creates a draft GitHub Release using `RELEASE_NOTES.md`; it does not publish the
+release automatically. Confirm the tag, displayed application version, asset
+filenames, and `SHA256SUMS.txt` before publishing the draft.

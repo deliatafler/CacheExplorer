@@ -25,7 +25,7 @@ roadmap rather than letting this become a changelog.
   existing PNGs.
 - [x] Add a small recent-cache picker if users commonly switch among multiple
   Firestorm profiles.
-- [ ] Start the first-run cache folder picker in the platform's local
+- [x] Start the first-run cache folder picker in the platform's local
   application-data directory (`%LOCALAPPDATA%` on Windows) when no remembered
   or discovered cache path is available.
 - [ ] Refine Gallery tile layout and preview-panel presentation from beta
@@ -56,6 +56,10 @@ roadmap rather than letting this become a changelog.
   x86-64 `.deb` artifacts in GitHub Actions.
 - [x] Validate the Ubuntu 26.04 package and all GUI features against a real
   cache in an Ubuntu desktop VM.
+- [ ] Assemble all four platform packages and unified checksums through a
+  manual release-workflow validation run.
+- [ ] Create draft GitHub Releases from explicit `v*` tags after all platform
+  validation passes.
 - [ ] Evaluate installers while retaining the portable ZIP: compare CPack
   native packages (Windows NSIS/WiX, macOS disk image, Linux DEB/RPM) with
   CPack IFW/Qt Installer Framework for a consistent cross-platform installer.

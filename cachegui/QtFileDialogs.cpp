@@ -1,5 +1,7 @@
 #include "QtFileDialogs.h"
 
+#include "QtHelpers.h"
+
 #include <QFileDialog>
 #include <QWidget>
 
@@ -10,7 +12,7 @@ QString ChooseCacheDirectory(
     return QFileDialog::getExistingDirectory(
         &parent,
         QStringLiteral("Choose Second Life viewer texture cache folder"),
-        currentPath);
+        CacheFolderDialogStartPath(currentPath));
 }
 
 QString ChoosePngOutputFile(

@@ -24,9 +24,11 @@ f/
 ```
 
 Click `Choose Folder...` to select either folder; the app opens the selected
-cache immediately. The home button beside the path box opens the first existing
-default cache in this order: official Second Life, official Firestorm, then a
-self-built Firestorm cache. It is hidden when none of those caches exist.
+cache immediately. On first use, when no remembered or automatically discovered
+cache path is available, the folder chooser starts in the platform's local
+application-data directory. The home button beside the path box opens the first
+existing default cache in this order: official Second Life, official Firestorm,
+then a self-built Firestorm cache. It is hidden when none of those caches exist.
 CacheExplorer remembers the last successfully opened cache path while it still
 exists, and you can still edit the path box and click `Open` for unusual
 installations. Once the path matches the currently open cache, `Open` changes

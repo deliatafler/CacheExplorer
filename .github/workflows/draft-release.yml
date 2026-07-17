@@ -1,0 +1,98 @@
+name: Assemble Draft Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: draft-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Build Windows package
+    uses: ./.github/workflows/windows-ci.yml
+
+  macos:
+    name: Build macOS package
+    uses: ./.github/workflows/macos-ci.yml
+
+  linux:
+    name: Build Ubuntu packages
+    uses: ./.github/workflows/linux-ci.yml
+
+  assemble:
+    name: Assemble release assets
+    needs:
+      - windows
+      - macos
+      - linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out release notes
+        uses: actions/checkout@v7
+
+      - name: Download platform packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: CacheExplorer-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verify and checksum release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_assets=(
+            cacheexplorer-qt-shared.zip
+            CacheExplorer-0.1.0-beta-macOS-arm64.dmg
+            CacheExplorer-0.1.0-beta-Ubuntu-24.04-x86_64.deb
+            CacheExplorer-0.1.0-beta-Ubuntu-26.04-x86_64.deb
+          )
+
+          for asset in "${expected_assets[@]}"; do
+            test -f "release-assets/$asset"
+          done
+
+          find release-assets -maxdepth 1 -type f -name '*.sha256' -delete
+          (
+            cd release-assets
+            sha256sum \
+              cacheexplorer-qt-shared.zip \
+              CacheExplorer-0.1.0-beta-macOS-arm64.dmg \
+              CacheExplorer-0.1.0-beta-Ubuntu-24.04-x86_64.deb \
+              CacheExplorer-0.1.0-beta-Ubuntu-26.04-x86_64.deb \
+              > SHA256SUMS.txt
+            sha256sum --check SHA256SUMS.txt
+          )
+
+      - name: Upload assembled release assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: CacheExplorer-release-assets
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Create draft GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          gh release create "$RELEASE_TAG" \
+            release-assets/* \
+            --draft \
+            --verify-tag \
+            --title "CacheExplorer ${RELEASE_TAG#v}" \
+            --notes-file RELEASE_NOTES.md

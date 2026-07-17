@@ -98,7 +98,21 @@ powershell -ExecutionPolicy Bypass -File scripts/launch-qt-prebuilt.ps1 `
 
 See `docs/qt-build.md` for deployment details and the optional static Qt path.
 
-## Packaging
+## Packages
+
+Cross-platform beta candidates are produced by GitHub Actions:
+
+* Windows x64 portable ZIP with app-local Qt and Visual C++ runtime files.
+* Apple Silicon macOS DMG with a native application bundle and app-local Qt
+  frameworks. The current test package is unsigned and unnotarized.
+* Ubuntu 24.04 and 26.04 x86-64 Debian packages using each release's native Qt
+  runtime dependencies.
+
+Version tags assemble these platform packages and a unified checksum file into
+a draft GitHub Release. See `docs/qt-packaging.md` for package-specific build,
+installation, and smoke-test details.
+
+### Windows shared-Qt package
 
 For a shared-Qt test package:
 
