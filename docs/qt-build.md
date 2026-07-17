@@ -89,10 +89,16 @@ validation remain future work.
 `.github/workflows/macos-ci.yml` provides the corresponding early macOS
 coverage on GitHub's Apple Silicon `macos-15` runner. It installs the prebuilt
 Qt 6.8.3 macOS SDK, uses the vcpkg `arm64-osx` triplet for OpenJPEG/libpng,
-builds the CLI and Qt GUI, runs CTest, and verifies that the GUI executable is
-ARM64. It does not yet create a `.app` bundle, sign or notarize the program, or
-produce a DMG; those remain separate packaging milestones after real Mac GUI
-validation.
+builds the CLI and Qt GUI as an ARM64 `.app` bundle, and runs CTest. It then
+uses Qt's deployment support and CPack to produce and inspect an unsigned DMG,
+which is uploaded as a short-lived workflow artifact. Signing, notarization,
+and real-cache GUI validation on physical Mac hardware remain separate release
+milestones.
+
+The generated DMG is suitable for development testing, but macOS Gatekeeper
+may require an explicit right-click and Open because it is not signed or
+notarized. See `docs/qt-packaging.md` for local package commands and package
+contents.
 
 ### Validated prebuilt-Qt developer setup
 

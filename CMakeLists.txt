@@ -48,3 +48,23 @@ endif()
 if(CACHEEXPLORER_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
+
+if(APPLE AND CACHEEXPLORER_BUILD_QT_GUI)
+    set(cacheexplorer_macos_package_arch "${CMAKE_OSX_ARCHITECTURES}")
+    if(NOT cacheexplorer_macos_package_arch)
+        set(cacheexplorer_macos_package_arch "${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+    string(REPLACE ";" "-" cacheexplorer_macos_package_arch
+        "${cacheexplorer_macos_package_arch}")
+
+    set(CPACK_GENERATOR "DragNDrop")
+    set(CPACK_PACKAGE_NAME "CacheExplorer")
+    set(CPACK_PACKAGE_VENDOR "CacheExplorer contributors")
+    set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+    set(CPACK_PACKAGE_FILE_NAME
+        "CacheExplorer-${CACHEEXPLORER_DISPLAY_VERSION}-macOS-${cacheexplorer_macos_package_arch}")
+    set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+    set(CPACK_DMG_VOLUME_NAME "CacheExplorer ${CACHEEXPLORER_DISPLAY_VERSION}")
+    set(CPACK_DMG_FORMAT "UDZO")
+    include(CPack)
+endif()

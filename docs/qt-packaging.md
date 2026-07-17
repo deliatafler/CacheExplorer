@@ -7,6 +7,53 @@ that can be zipped and shared for smoke testing without rebuilding Qt locally.
 For a single static binary or a more reproducible release experiment later, keep
 the optional vcpkg static Qt path described in `docs/qt-build.md`.
 
+## macOS application and DMG
+
+macOS builds produce a native `CacheExplorer.app` bundle. The repository keeps
+the approved 1024-pixel PNG as the portable icon source and generates the
+platform-specific `.icns` file on macOS before CMake configure:
+
+```bash
+bash scripts/generate-macos-icon.sh
+```
+
+Configure against a prebuilt Qt SDK and vcpkg's native Apple Silicon triplet,
+then build and test:
+
+```bash
+cmake -S . -B build-macos \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=arm64-osx \
+  -DCACHEEXPLORER_BUILD_QT_GUI=ON \
+  -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
+
+cmake --build build-macos --parallel 3
+ctest --test-dir build-macos --output-on-failure
+```
+
+Create and validate the disk image:
+
+```bash
+cpack --config build-macos/CPackConfig.cmake -G DragNDrop -B artifacts
+bash scripts/test-qt-macos-package.sh \
+  artifacts/CacheExplorer-0.1.0-beta-macOS-arm64.dmg
+```
+
+The DMG contains `CacheExplorer.app`, its app-local Qt frameworks and Cocoa
+platform plugin, plus `README.md`, `RELEASE_NOTES.md`, `LICENSE`, and the Qt
+user guide. The package test mounts the image read-only, verifies those files,
+checks bundle metadata and ARM64 architecture, confirms the executable resolves
+Qt through bundled `@rpath` frameworks, and rejects an unexpected Qt Network
+framework.
+
+The current DMG is deliberately unsigned and unnotarized. It is a CI and
+physical-Mac test artifact, not yet a polished public macOS release. Developer
+ID signing and Apple notarization require project-owned Apple credentials and
+should be added as a separate protected release workflow step.
+
 ## Shared Qt package
 
 Prerequisites:

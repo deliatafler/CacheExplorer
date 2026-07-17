@@ -65,4 +65,5 @@ obj/
 vcpkg_installed/
 .qt-prebuilt-test/
 aqtinstall.log
+cachegui/resources/cacheexplorer.icns
 

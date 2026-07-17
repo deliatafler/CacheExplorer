@@ -31,6 +31,9 @@ jobs:
           version: 6.8.3
           cache: true
 
+      - name: Generate macOS application icon
+        run: bash scripts/generate-macos-icon.sh
+
       - name: Create vcpkg binary cache directory
         run: mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
 
@@ -61,8 +64,28 @@ jobs:
           cmake --build build-macos --parallel 3
           ctest --test-dir build-macos --output-on-failure
 
-      - name: Verify Apple Silicon GUI binary
+      - name: Verify Apple Silicon application bundle
         run: |
-          test -x build-macos/cachegui/CacheExplorer
-          file build-macos/cachegui/CacheExplorer | tee cacheexplorer-file.txt
+          test -x build-macos/cachegui/CacheExplorer.app/Contents/MacOS/CacheExplorer
+          file build-macos/cachegui/CacheExplorer.app/Contents/MacOS/CacheExplorer | tee cacheexplorer-file.txt
           grep -q "arm64" cacheexplorer-file.txt
+
+      - name: Package unsigned macOS DMG
+        run: |
+          cpack --config build-macos/CPackConfig.cmake \
+            -G DragNDrop \
+            -B artifacts
+
+      - name: Test macOS DMG
+        run: |
+          bash scripts/test-qt-macos-package.sh \
+            artifacts/CacheExplorer-0.1.0-beta-macOS-arm64.dmg \
+            0.1.0
+
+      - name: Upload unsigned macOS package
+        uses: actions/upload-artifact@v7
+        with:
+          name: CacheExplorer-macOS-arm64
+          path: artifacts/CacheExplorer-0.1.0-beta-macOS-arm64.dmg
+          if-no-files-found: error
+          retention-days: 14
