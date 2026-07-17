@@ -48,9 +48,10 @@ roadmap rather than letting this become a changelog.
   Windows hosted runner.
 - [x] Produce a repeatable beta ZIP and checksum in GitHub Actions, with a
   fresh-extraction package smoke test.
-- [ ] Produce and inspect an unsigned Apple Silicon `.app`/DMG artifact in
-  GitHub Actions, then validate it against a real cache on physical Mac
-  hardware.
+- [x] Produce and inspect an unsigned Apple Silicon `.app`/DMG artifact in
+  GitHub Actions.
+- [ ] Validate the unsigned Apple Silicon package against a real cache on
+  physical Mac hardware.
 - [ ] Evaluate installers while retaining the portable ZIP: compare CPack
   native packages (Windows NSIS/WiX, macOS disk image, Linux DEB/RPM) with
   CPack IFW/Qt Installer Framework for a consistent cross-platform installer.
