@@ -7,6 +7,11 @@ set(CACHEEXPLORER_DISPLAY_VERSION
     CACHE STRING
     "User-facing CacheExplorer version string")
 
+set(CACHEEXPLORER_LINUX_PACKAGE_TAG
+    "Linux"
+    CACHE STRING
+    "Distribution label used in Linux package filenames")
+
 option(CACHEEXPLORER_BUILD_QT_GUI
     "Build the primary Qt 6 cross-platform GUI"
     OFF)
@@ -66,7 +71,7 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
     elseif(UNIX)
         set(CPACK_GENERATOR "DEB")
         set(CPACK_PACKAGE_FILE_NAME
-            "CacheExplorer-${CACHEEXPLORER_DISPLAY_VERSION}-Linux-${CMAKE_SYSTEM_PROCESSOR}")
+            "CacheExplorer-${CACHEEXPLORER_DISPLAY_VERSION}-${CACHEEXPLORER_LINUX_PACKAGE_TAG}-${CMAKE_SYSTEM_PROCESSOR}")
         set(CPACK_DEBIAN_PACKAGE_NAME "cacheexplorer")
         set(CPACK_DEBIAN_PACKAGE_MAINTAINER "CacheExplorer contributors")
         set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")

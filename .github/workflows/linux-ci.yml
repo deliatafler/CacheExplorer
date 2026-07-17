@@ -14,12 +14,21 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: Build and test Qt GUI
-    runs-on: ubuntu-latest
+    name: Build, test, and package (${{ matrix.package_tag }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            package_tag: Ubuntu-24.04
+          - runner: ubuntu-26.04
+            package_tag: Ubuntu-26.04
     env:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-binary-cache
+      PACKAGE_BASENAME: CacheExplorer-0.1.0-beta-${{ matrix.package_tag }}-x86_64
 
     steps:
       - name: Check out source
@@ -37,9 +46,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: vcpkg-linux-x64-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-${{ matrix.package_tag }}-x64-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
-            vcpkg-linux-x64-
+            vcpkg-${{ matrix.package_tag }}-x64-
 
       - name: Set up vcpkg at the manifest baseline
         run: |
@@ -54,7 +63,8 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_TARGET_TRIPLET=x64-linux \
             -DCACHEEXPLORER_BUILD_QT_GUI=ON \
-            -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
+            -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF \
+            -DCACHEEXPLORER_LINUX_PACKAGE_TAG="${{ matrix.package_tag }}"
           cmake --build build-linux
           ctest --test-dir build-linux --output-on-failure
 
@@ -63,18 +73,18 @@ jobs:
           cpack --config build-linux/CPackConfig.cmake \
             -G DEB \
             -B artifacts
-          sha256sum artifacts/CacheExplorer-0.1.0-beta-Linux-x86_64.deb \
-            > artifacts/CacheExplorer-0.1.0-beta-Linux-x86_64.deb.sha256
+          sha256sum "artifacts/$PACKAGE_BASENAME.deb" \
+            > "artifacts/$PACKAGE_BASENAME.deb.sha256"
 
       - name: Test Ubuntu package
         run: |
           bash scripts/test-qt-linux-package.sh \
-            artifacts/CacheExplorer-0.1.0-beta-Linux-x86_64.deb
+            "artifacts/$PACKAGE_BASENAME.deb"
           sha256sum --check \
-            artifacts/CacheExplorer-0.1.0-beta-Linux-x86_64.deb.sha256
+            "artifacts/$PACKAGE_BASENAME.deb.sha256"
 
           sudo apt-get install --yes \
-            ./artifacts/CacheExplorer-0.1.0-beta-Linux-x86_64.deb
+            "./artifacts/$PACKAGE_BASENAME.deb"
           version_output="$(QT_QPA_PLATFORM=offscreen CacheExplorer --version)"
           echo "$version_output"
           grep -q "0.1.0-beta" <<<"$version_output"
@@ -82,9 +92,9 @@ jobs:
       - name: Upload Ubuntu package
         uses: actions/upload-artifact@v7
         with:
-          name: CacheExplorer-Ubuntu-x86_64
+          name: CacheExplorer-${{ matrix.package_tag }}-x86_64
           path: |
-            artifacts/CacheExplorer-0.1.0-beta-Linux-x86_64.deb
-            artifacts/CacheExplorer-0.1.0-beta-Linux-x86_64.deb.sha256
+            artifacts/${{ env.PACKAGE_BASENAME }}.deb
+            artifacts/${{ env.PACKAGE_BASENAME }}.deb.sha256
           if-no-files-found: error
           retention-days: 14

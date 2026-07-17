@@ -52,8 +52,8 @@ roadmap rather than letting this become a changelog.
   GitHub Actions.
 - [ ] Validate the unsigned Apple Silicon package against a real cache on
   physical Mac hardware.
-- [x] Produce, install, and inspect an x86-64 Ubuntu `.deb` artifact in GitHub
-  Actions.
+- [ ] Produce, install, and inspect release-specific Ubuntu 24.04 and 26.04
+  x86-64 `.deb` artifacts in GitHub Actions.
 - [ ] Validate the Ubuntu package against a real cache in an Ubuntu desktop VM.
 - [ ] Evaluate installers while retaining the portable ZIP: compare CPack
   native packages (Windows NSIS/WiX, macOS disk image, Linux DEB/RPM) with
