@@ -1,8 +1,9 @@
 # CacheExplorer Release Notes
 
-## 0.1.0-beta
+## 0.1.0-beta.1
 
-CacheExplorer 0.1.0-beta is the first public test build candidate of the Qt GUI.
+CacheExplorer 0.1.0-beta.1 is the first cross-platform test build candidate of
+the Qt GUI.
 
 ### Highlights
 
@@ -25,6 +26,8 @@ CacheExplorer 0.1.0-beta is the first public test build candidate of the Qt GUI.
   uses a DMG containing a native application bundle.
 * The current macOS package is unsigned and unnotarized, so Gatekeeper may
   require an explicit right-click and Open during beta testing.
+* The macOS DMG passes automated bundle and deployment checks, but physical-Mac
+  validation is deferred and is not a beta.1 release gate.
 * Static/single-file distribution remains future work.
 * CacheExplorer reads and exports cache data; it does not repair or modify the
   viewer cache.

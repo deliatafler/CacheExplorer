@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 project(CacheExplorer VERSION 0.1.0 LANGUAGES CXX)
 
 set(CACHEEXPLORER_DISPLAY_VERSION
-    "0.1.0-beta"
+    "0.1.0-beta.1"
     CACHE STRING
     "User-facing CacheExplorer version string")
 
@@ -73,6 +73,10 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
         set(CPACK_PACKAGE_FILE_NAME
             "CacheExplorer-${CACHEEXPLORER_DISPLAY_VERSION}-${CACHEEXPLORER_LINUX_PACKAGE_TAG}-${CMAKE_SYSTEM_PROCESSOR}")
         set(CPACK_DEBIAN_PACKAGE_NAME "cacheexplorer")
+        string(REPLACE "-" "~" cacheexplorer_debian_package_version
+            "${CACHEEXPLORER_DISPLAY_VERSION}")
+        set(CPACK_DEBIAN_PACKAGE_VERSION
+            "${cacheexplorer_debian_package_version}")
         set(CPACK_DEBIAN_PACKAGE_MAINTAINER "CacheExplorer contributors")
         set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
         set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)

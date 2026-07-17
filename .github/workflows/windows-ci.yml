@@ -85,6 +85,7 @@ jobs:
             -Configuration Release `
             -QtBinDir "$env:QT_ROOT_DIR\bin" `
             -OutputDir artifacts\cacheexplorer-qt-shared `
+            -ZipPath artifacts\CacheExplorer-0.1.0-beta.1-Windows-x64.zip `
             -Zip
 
       - name: Smoke-test packaged GUI
@@ -92,7 +93,7 @@ jobs:
         run: |
           powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
             -PackageDir artifacts\cacheexplorer-qt-shared `
-            -ZipPath artifacts\cacheexplorer-qt-shared.zip `
+            -ZipPath artifacts\CacheExplorer-0.1.0-beta.1-Windows-x64.zip `
             -ExtractAndLaunch `
             -LaunchSeconds 10
 
@@ -101,7 +102,7 @@ jobs:
         with:
           name: CacheExplorer-Windows-x64
           path: |
-            artifacts/cacheexplorer-qt-shared.zip
-            artifacts/cacheexplorer-qt-shared.zip.sha256
+            artifacts/CacheExplorer-0.1.0-beta.1-Windows-x64.zip
+            artifacts/CacheExplorer-0.1.0-beta.1-Windows-x64.zip.sha256
           if-no-files-found: error
           retention-days: 14
