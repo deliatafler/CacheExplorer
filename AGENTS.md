@@ -392,6 +392,9 @@ official Firestorm, then self-built Firestorm. Keep this per-user UI state
 outside the viewer cache directory.
 It retains up to eight valid recently opened cache paths for the GUI's `Recent`
 menu; missing folders are omitted and users can clear the menu from the UI.
+Remembered paths are lexically normalized, displayed with platform-native path
+separators, and compared by normalized generic path so legacy slash variants
+are migrated and deduplicated when settings are read.
 Opening an already open cache path intentionally rereads the cache, supporting
 testing and normal browsing while a compatible viewer is actively writing
 texture entries.

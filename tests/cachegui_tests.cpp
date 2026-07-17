@@ -3,10 +3,16 @@
 #include "GalleryPreviewQueue.h"
 #include "PreviewCache.h"
 #include "QtGalleryStatus.h"
+#include "QtHelpers.h"
 #include "TryNextPreviewState.h"
 
 #include <QStandardItemModel>
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QSettings>
 #include <QString>
+#include <QTemporaryDir>
 
 #include <iostream>
 #include <string>
@@ -152,14 +158,122 @@ namespace
             !proxyModel.RefreshForPreviewStateChange(),
             "table mode does not refilter for Gallery preview changes");
     }
+
+    void TestCachePathNormalization()
+    {
+#ifdef _WIN32
+        const QString alternatePath = QStringLiteral(
+            "C:/Users/test/AppData/Local/SecondLife/texturecache");
+        const QString nativePath = QStringLiteral(
+            "C:\\Users\\test\\AppData\\Local\\SecondLife\\texturecache");
+
+        Expect(
+            PathToQString(PathFromQString(alternatePath)) == nativePath,
+            "cache paths use native Windows separators for display");
+        Expect(
+            IsSameCachePath(
+                PathFromQString(alternatePath),
+                PathFromQString(nativePath)),
+            "cache path comparison ignores Windows separator spelling");
+        Expect(
+            IsSameCachePath(
+                PathFromQString(nativePath.toUpper()),
+                PathFromQString(nativePath.toLower())),
+            "cache path comparison remains case-insensitive on Windows");
+#else
+        const QString unnormalizedPath =
+            QStringLiteral("/home/test/cache/../texturecache");
+        const QString normalizedPath = QStringLiteral("/home/test/texturecache");
+
+        Expect(
+            PathToQString(
+                PathFromQString(unnormalizedPath).lexically_normal()) ==
+                normalizedPath,
+            "cache paths use normalized native separators for display");
+#endif
+    }
+
+    void TestRecentCachePathMigration()
+    {
+        QTemporaryDir settingsDirectory;
+        QTemporaryDir cacheParent;
+        Expect(
+            settingsDirectory.isValid() && cacheParent.isValid(),
+            "temporary path-migration directories are available");
+        if (!settingsDirectory.isValid() || !cacheParent.isValid())
+        {
+            return;
+        }
+
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(
+            QSettings::IniFormat,
+            QSettings::UserScope,
+            settingsDirectory.path());
+        QCoreApplication::setOrganizationName(
+            QStringLiteral("CacheExplorerTests"));
+        QCoreApplication::setApplicationName(
+            QStringLiteral("CachePathMigration"));
+
+        const QString cacheDirectory = cacheParent.path() + "/texturecache";
+        Expect(
+            QDir().mkpath(cacheDirectory),
+            "synthetic cache directory is created");
+        QFile entriesFile(cacheDirectory + "/texture.entries");
+        Expect(
+            entriesFile.open(QIODevice::WriteOnly),
+            "synthetic texture.entries is created");
+        entriesFile.close();
+
+        const QString nativePath = PathToQString(
+            PathFromQString(cacheDirectory).lexically_normal());
+        QString alternatePath = nativePath;
+#ifdef _WIN32
+        alternatePath.replace('\\', '/');
+#else
+        alternatePath += QStringLiteral("/../texturecache");
+#endif
+
+        QSettings settings;
+        settings.clear();
+        settings.setValue(
+            QStringLiteral("cache/lastOpenedPath"),
+            alternatePath);
+        settings.setValue(
+            QStringLiteral("cache/recentPaths"),
+            QStringList{alternatePath, nativePath});
+        settings.sync();
+
+        const QStringList recentPaths = RecentCachePaths();
+        Expect(
+            recentPaths == QStringList{nativePath},
+            "legacy recent path variants migrate to one native path");
+        Expect(
+            PreferredCachePath() == nativePath,
+            "legacy last-opened path migrates to native form");
+
+        settings.sync();
+        Expect(
+            settings.value(QStringLiteral("cache/recentPaths")).toStringList()
+                == QStringList{nativePath},
+            "migrated recent paths are persisted");
+        Expect(
+            settings.value(QStringLiteral("cache/lastOpenedPath")).toString()
+                == nativePath,
+            "migrated last-opened path is persisted");
+    }
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    QCoreApplication app(argc, argv);
+
     TestGalleryPreviewQueue();
     TestTryNextPreviewState();
     TestGalleryStatusText();
     TestInitialGalleryFilter();
+    TestCachePathNormalization();
+    TestRecentCachePathMigration();
 
     if (gFailures != 0)
     {

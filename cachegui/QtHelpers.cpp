@@ -29,6 +29,40 @@ namespace
         return Qt::CaseSensitive;
 #endif
     }
+
+    QString ComparableCachePath(const std::filesystem::path& path)
+    {
+        const std::string normalized =
+            path.lexically_normal().generic_u8string();
+        return QString::fromUtf8(
+            normalized.data(),
+            static_cast<int>(normalized.size()));
+    }
+
+    QString NormalizeCachePath(const QString& path)
+    {
+        if (path.isEmpty())
+        {
+            return {};
+        }
+
+        return PathToQString(PathFromQString(path).lexically_normal());
+    }
+
+    bool ContainsCachePath(
+        const QStringList& paths,
+        const std::filesystem::path& candidate)
+    {
+        for (const QString& path : paths)
+        {
+            if (IsSameCachePath(PathFromQString(path), candidate))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 QString ToQString(const std::string& value)
@@ -38,10 +72,13 @@ QString ToQString(const std::string& value)
 
 QString PathToQString(const std::filesystem::path& path)
 {
+    std::filesystem::path preferredPath = path;
+    preferredPath.make_preferred();
+
 #ifdef _WIN32
-    return QString::fromStdWString(path.wstring());
+    return QString::fromStdWString(preferredPath.wstring());
 #else
-    return QString::fromUtf8(path.u8string().c_str());
+    return QString::fromUtf8(preferredPath.u8string().c_str());
 #endif
 }
 
@@ -79,10 +116,8 @@ bool IsSameCachePath(
         return false;
     }
 
-    const QString normalizedLeft =
-        PathToQString(left.lexically_normal());
-    const QString normalizedRight =
-        PathToQString(right.lexically_normal());
+    const QString normalizedLeft = ComparableCachePath(left);
+    const QString normalizedRight = ComparableCachePath(right);
 
     return normalizedLeft.compare(
         normalizedRight,
@@ -97,16 +132,18 @@ QString DefaultCachePath()
 
     if (!localAppData.isEmpty())
     {
-        const QString candidatePaths[] = {
-            localAppData + "/SecondLife/texturecache",
-            localAppData + "/Firestorm_x64/texturecache",
-            localAppData + "/FirestormOS_x64/texturecache"};
+        const std::filesystem::path localAppDataPath =
+            PathFromQString(localAppData);
+        const std::filesystem::path candidatePaths[] = {
+            localAppDataPath / "SecondLife" / "texturecache",
+            localAppDataPath / "Firestorm_x64" / "texturecache",
+            localAppDataPath / "FirestormOS_x64" / "texturecache"};
 
-        for (const QString& candidatePath : candidatePaths)
+        for (const std::filesystem::path& candidatePath : candidatePaths)
         {
-            if (TextureEntriesFileExists(PathFromQString(candidatePath)))
+            if (TextureEntriesFileExists(candidatePath))
             {
-                return candidatePath;
+                return PathToQString(candidatePath);
             }
         }
     }
@@ -118,8 +155,16 @@ QString DefaultCachePath()
 QString PreferredCachePath()
 {
     QSettings settings;
-    const QString lastOpenedPath =
+    const QString storedPath =
         settings.value(QStringLiteral("cache/lastOpenedPath")).toString();
+    const QString lastOpenedPath = NormalizeCachePath(storedPath);
+
+    if (!lastOpenedPath.isEmpty() && lastOpenedPath != storedPath)
+    {
+        settings.setValue(
+            QStringLiteral("cache/lastOpenedPath"),
+            lastOpenedPath);
+    }
 
     if (!lastOpenedPath.isEmpty() &&
         TextureEntriesFileExists(PathFromQString(lastOpenedPath)))
@@ -137,15 +182,25 @@ bool DefaultCachePathExists()
 
 void RememberOpenedCachePath(const QString& cachePath)
 {
+    const QString normalizedCachePath = NormalizeCachePath(cachePath);
+    if (normalizedCachePath.isEmpty())
+    {
+        return;
+    }
+
     QSettings settings;
-    settings.setValue(QStringLiteral("cache/lastOpenedPath"), cachePath);
+    settings.setValue(
+        QStringLiteral("cache/lastOpenedPath"),
+        normalizedCachePath);
 
     QStringList recentPaths;
-    recentPaths.append(cachePath);
+    recentPaths.append(normalizedCachePath);
 
     for (const QString& recentPath : RecentCachePaths())
     {
-        if (recentPath.compare(cachePath, CachePathCaseSensitivity()) != 0)
+        if (!IsSameCachePath(
+                PathFromQString(recentPath),
+                PathFromQString(normalizedCachePath)))
         {
             recentPaths.append(recentPath);
         }
@@ -168,12 +223,26 @@ QStringList RecentCachePaths()
 
     for (const QString& storedPath : storedPaths)
     {
-        if (!storedPath.isEmpty() &&
-            TextureEntriesFileExists(PathFromQString(storedPath)) &&
-            !validPaths.contains(storedPath, CachePathCaseSensitivity()))
+        const QString normalizedPath = NormalizeCachePath(storedPath);
+        const std::filesystem::path filesystemPath =
+            PathFromQString(normalizedPath);
+
+        if (!normalizedPath.isEmpty() &&
+            TextureEntriesFileExists(filesystemPath) &&
+            !ContainsCachePath(validPaths, filesystemPath))
         {
-            validPaths.append(storedPath);
+            validPaths.append(normalizedPath);
         }
+    }
+
+    while (validPaths.size() > RecentCacheLimit)
+    {
+        validPaths.removeLast();
+    }
+
+    if (validPaths != storedPaths)
+    {
+        settings.setValue(QStringLiteral("cache/recentPaths"), validPaths);
     }
 
     return validPaths;
