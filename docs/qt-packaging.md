@@ -195,6 +195,29 @@ consistent.
 
 ## Troubleshooting
 
+### Ubuntu local-package notice
+
+APT may finish a successful local `.deb` installation with a notice like:
+
+```text
+Download is performed unsandboxed as root ... couldn't be accessed by user '_apt'.
+```
+
+This happens when the `_apt` sandbox user cannot traverse a private home or
+Downloads directory. APT falls back to reading that already-local package as
+root; it does not indicate a broken CacheExplorer package, failed dependency
+check, or incomplete installation. To avoid the notice without relaxing home
+directory permissions, copy the package to `/tmp` first:
+
+```bash
+cp ~/Downloads/CacheExplorer-0.1.0-beta-Ubuntu-26.04-x86_64.deb \
+  /tmp/cacheexplorer.deb
+sudo apt install /tmp/cacheexplorer.deb
+rm /tmp/cacheexplorer.deb
+```
+
+### Windows deployment
+
 If the app reports a missing Qt platform plugin, rerun `windeployqt` from the Qt
 installation used during CMake configure.
 

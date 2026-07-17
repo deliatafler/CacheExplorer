@@ -468,8 +468,8 @@ Good next low-risk slices:
   native Linux Qt 6 plus vcpkg OpenJPEG/libpng on Ubuntu 24.04 and 26.04. Each
   matrix job validates, installs, and uploads a release-specific unsigned
   x86-64 CPack `.deb` plus checksum so distribution package-name transitions
-  do not break installation. Real-cache Linux GUI validation remains a
-  physical/VM release follow-up.
+  do not break installation. The Ubuntu 26.04 package has passed full GUI
+  validation against a real cache in a desktop VM.
 * Keep `.github/workflows/macos-ci.yml` building and testing the Apple Silicon
   Qt GUI, deploying its app-local Qt frameworks, validating an unsigned CPack
   DMG, and uploading that DMG as a short-lived test artifact. Signing,

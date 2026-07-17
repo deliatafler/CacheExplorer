@@ -42,7 +42,7 @@ roadmap rather than letting this become a changelog.
 
 ## Cross-platform and distribution
 
-- [ ] Validate the prebuilt-Qt CMake path on macOS and Linux with their native
+- [x] Validate the prebuilt-Qt CMake path on macOS and Linux with their native
   Qt SDKs and document any platform-specific prerequisites.
 - [x] Build the core and prebuilt-Qt GUI configurations on the GitHub Actions
   Windows hosted runner.
@@ -54,7 +54,8 @@ roadmap rather than letting this become a changelog.
   physical Mac hardware.
 - [x] Produce, install, and inspect release-specific Ubuntu 24.04 and 26.04
   x86-64 `.deb` artifacts in GitHub Actions.
-- [ ] Validate the Ubuntu package against a real cache in an Ubuntu desktop VM.
+- [x] Validate the Ubuntu 26.04 package and all GUI features against a real
+  cache in an Ubuntu desktop VM.
 - [ ] Evaluate installers while retaining the portable ZIP: compare CPack
   native packages (Windows NSIS/WiX, macOS disk image, Linux DEB/RPM) with
   CPack IFW/Qt Installer Framework for a consistent cross-platform installer.
