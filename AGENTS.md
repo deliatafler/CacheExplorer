@@ -467,6 +467,10 @@ Good next low-risk slices:
 * Keep `.github/workflows/linux-ci.yml` building the CLI and Qt GUI against
   native Linux Qt 6 plus vcpkg OpenJPEG/libpng; it is early portability coverage,
   not a Linux packaging/release claim.
+* Keep `.github/workflows/macos-ci.yml` building the CLI and Qt GUI on the
+  Apple Silicon `macos-15` hosted runner against prebuilt Qt 6 plus vcpkg
+  OpenJPEG/libpng. It is build/test coverage, not a signed or packaged macOS
+  release claim.
 * Improve Qt gallery UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
 * Improve `cachegui` preview presentation and Gallery layout behavior based on real-cache validation.
 * Continue packaging/deployment work for the Qt GUI.

@@ -1,0 +1,68 @@
+name: macOS CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test Qt GUI (Apple Silicon)
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-binary-cache
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.8.3
+          cache: true
+
+      - name: Create vcpkg binary cache directory
+        run: mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
+
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-macos-arm64-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-macos-arm64-
+
+      - name: Set up vcpkg at the manifest baseline
+        run: |
+          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout f87344cac03158cbf1467264565f1fd36b382a24
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+
+      - name: Configure, build, and test
+        run: |
+          cmake -S . -B build-macos \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=arm64-osx \
+            -DCACHEEXPLORER_BUILD_QT_GUI=ON \
+            -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
+          cmake --build build-macos --parallel 3
+          ctest --test-dir build-macos --output-on-failure
+
+      - name: Verify Apple Silicon GUI binary
+        run: |
+          test -x build-macos/cachegui/CacheExplorer
+          file build-macos/cachegui/CacheExplorer | tee cacheexplorer-file.txt
+          grep -q "arm64" cacheexplorer-file.txt
