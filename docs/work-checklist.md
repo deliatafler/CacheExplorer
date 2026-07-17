@@ -56,7 +56,7 @@ roadmap rather than letting this become a changelog.
   x86-64 `.deb` artifacts in GitHub Actions.
 - [x] Validate the Ubuntu 26.04 package and all GUI features against a real
   cache in an Ubuntu desktop VM.
-- [ ] Assemble all five platform packages and unified checksums through a
+- [x] Assemble all five platform packages and unified checksums through a
   manual release-workflow validation run.
 - [x] Create draft GitHub Releases from explicit `v*` tags after all platform
   validation passes.
