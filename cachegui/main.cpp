@@ -18,6 +18,7 @@
 #include "QtPreviewStateStore.h"
 #include "QtSelection.h"
 #include "QtTextureExport.h"
+#include "QtTextureDetails.h"
 #include "QtTryNextPreview.h"
 #include "QtViewMode.h"
 #include "TextureCacheDatabase.h"
@@ -36,6 +37,7 @@
 #include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
+#include <QClipboard>
 #include <QComboBox>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -214,9 +216,17 @@ namespace
             previewCaption_->setAlignment(Qt::AlignCenter);
             previewCaption_->setTextInteractionFlags(Qt::TextSelectableByMouse);
             previewCaption_->setWordWrap(true);
-            previewCaption_->setMinimumHeight(
-                previewCaption_->fontMetrics().height() * 2);
+            previewCaption_->setToolTip(QStringLiteral("Selected texture UUID"));
+            copyUuidButton_ = new QPushButton(QStringLiteral("Copy UUID"), root);
+            copyUuidButton_->setToolTip(
+                QStringLiteral("Copy the selected texture UUID to the clipboard"));
+            copyUuidButton_->setEnabled(false);
+            previewDetails_ = new QLabel(root);
+            previewDetails_->setAlignment(Qt::AlignCenter);
+            previewDetails_->setWordWrap(true);
             previewCaption_->setStyleSheet(
+                QStringLiteral("QLabel { color: #666; }"));
+            previewDetails_->setStyleSheet(
                 QStringLiteral("QLabel { color: #666; }"));
 
             statusLabel_ = new QLabel(
@@ -325,7 +335,11 @@ namespace
             auto* previewLayout = new QVBoxLayout();
             previewLayout->setContentsMargins(0, 0, 0, 0);
             previewLayout->addWidget(previewLabel_, 1);
-            previewLayout->addWidget(previewCaption_);
+            auto* previewCaptionLayout = new QHBoxLayout();
+            previewCaptionLayout->addWidget(previewCaption_, 1);
+            previewCaptionLayout->addWidget(copyUuidButton_);
+            previewLayout->addLayout(previewCaptionLayout);
+            previewLayout->addWidget(previewDetails_);
             contentLayout->addLayout(previewLayout, 1);
 
             layout->addLayout(pathLayout);
@@ -416,6 +430,24 @@ namespace
                 [this]()
                 {
                     FindUuid();
+                });
+
+            connect(
+                copyUuidButton_,
+                &QPushButton::clicked,
+                this,
+                [this]()
+                {
+                    const CacheEntry* entry = SelectedEntry();
+                    if (entry == nullptr)
+                    {
+                        return;
+                    }
+
+                    const QString uuid = ToQString(entry->uuid.ToString());
+                    QApplication::clipboard()->setText(uuid);
+                    statusLabel_->setText(
+                        QStringLiteral("Copied UUID: %1").arg(uuid));
                 });
 
             connect(
@@ -641,6 +673,7 @@ namespace
             ClearPreviewStatuses(previewCache_, tableModel_);
             previewPanel_.Clear();
             previewCaption_->clear();
+            previewDetails_->clear();
         }
 
         void UpdatePreviewCaption(
@@ -648,16 +681,9 @@ namespace
             std::uint32_t width = 0,
             std::uint32_t height = 0)
         {
-            QString text = ToQString(entry.uuid.ToString());
-
-            if (width > 0 && height > 0)
-            {
-                text += QStringLiteral("\n%1 x %2")
-                    .arg(width)
-                    .arg(height);
-            }
-
-            previewCaption_->setText(text);
+            previewCaption_->setText(ToQString(entry.uuid.ToString()));
+            previewDetails_->setText(
+                TextureDetailsText(entry, width, height));
         }
 
         void PopulateTable()
@@ -715,6 +741,7 @@ namespace
             uuidLookupEdit_->setEnabled(lookupAvailable);
             findUuidButton_->setEnabled(
                 lookupAvailable && !uuidLookupEdit_->text().trimmed().isEmpty());
+            copyUuidButton_->setEnabled(!busy_ && SelectedEntry() != nullptr);
         }
 
         void SetBusy(bool busy, const QString& message = {})
@@ -1613,6 +1640,8 @@ namespace
         QLabel* galleryActivityLabel_ = nullptr;
         QLabel* previewLabel_ = nullptr;
         QLabel* previewCaption_ = nullptr;
+        QPushButton* copyUuidButton_ = nullptr;
+        QLabel* previewDetails_ = nullptr;
         QLabel* statusLabel_ = nullptr;
         GalleryActivityIndicator galleryActivityIndicator_;
         PreviewPanel previewPanel_;

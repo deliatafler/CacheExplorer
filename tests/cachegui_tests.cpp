@@ -4,6 +4,7 @@
 #include "PreviewCache.h"
 #include "QtGalleryStatus.h"
 #include "QtHelpers.h"
+#include "QtTextureDetails.h"
 #include "TryNextPreviewState.h"
 
 #include <QStandardItemModel>
@@ -281,6 +282,31 @@ namespace
             CacheFolderDialogStartPath({}) == expectedFallback,
             "first cache folder picker starts in platform-local app data");
     }
+
+    void TestTextureDetailsText()
+    {
+        CacheEntry entry{};
+        entry.imageSize = 700;
+        entry.bodySize = 100;
+        entry.timestamp = 0;
+
+        Expect(
+            TextureDetailsText(entry) ==
+                QStringLiteral(
+                    "Cached 700 B of 700 B | Complete\nTime unavailable"),
+            "texture details describe complete cached data");
+
+        entry.imageSize = 2048;
+        entry.bodySize = 400;
+        const QString partialDetails = TextureDetailsText(entry, 512, 256);
+        Expect(
+            partialDetails.startsWith(QStringLiteral("512 x 256 pixels\n")),
+            "texture details include decoded dimensions when available");
+        Expect(
+            partialDetails.contains(
+                QStringLiteral("Cached 1000 B of 2.0 KiB | Partial")),
+            "texture details describe partial cached data");
+    }
 }
 
 int main(int argc, char* argv[])
@@ -294,6 +320,7 @@ int main(int argc, char* argv[])
     TestCachePathNormalization();
     TestRecentCachePathMigration();
     TestCacheFolderDialogStartPath();
+    TestTextureDetailsText();
 
     if (gFailures != 0)
     {

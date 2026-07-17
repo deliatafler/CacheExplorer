@@ -44,6 +44,8 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
         ${PROJECT_SOURCE_DIR}/cachegui/QtGalleryStatus.h
         ${PROJECT_SOURCE_DIR}/cachegui/QtHelpers.cpp
         ${PROJECT_SOURCE_DIR}/cachegui/QtHelpers.h
+        ${PROJECT_SOURCE_DIR}/cachegui/QtTextureDetails.cpp
+        ${PROJECT_SOURCE_DIR}/cachegui/QtTextureDetails.h
         ${PROJECT_SOURCE_DIR}/cachegui/TryNextPreviewState.cpp
         ${PROJECT_SOURCE_DIR}/cachegui/TryNextPreviewState.h
         cachegui_tests.cpp

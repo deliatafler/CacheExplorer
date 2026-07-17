@@ -414,6 +414,10 @@ and option defaults around `TextureExporter`; reusable export behavior must
 remain in `cachelib`. Multiple selected entries export asynchronously to a
 chosen folder without overwriting existing PNGs.
 
+`cachegui/QtTextureDetails.*` formats the selected texture's compact preview
+metadata. Cache-byte and completeness facts must continue to come from
+`cachelib` helpers.
+
 `cachegui/QtTryNextPreview.*` contains Qt proxy-model navigation and status text for the "Try Next Preview" action.
 
 `cachegui/QtViewMode.*` contains Qt table/gallery stacked-widget and toggle-button state helpers.
@@ -448,9 +452,10 @@ The Qt table must stay model-backed. An earlier `QTableWidget` version locked up
 
 Qt previews should be rendered from decoded RGBA in memory, not by writing PNG and asking Qt to reload it. The static/minimal Qt build may not have the PNG image loader available even when `TextureExporter` successfully writes a valid PNG.
 
-The large preview pane keeps a selectable UUID caption for the selected entry
-and adds decoded dimensions for successful previews. Status/error messages
-remain in the main status bar and preview panel.
+The large preview pane keeps a selectable UUID caption for the selected entry,
+offers a one-click Copy UUID action, and shows compact decoded-dimension, cache
+size/completeness, and timestamp details. Status/error messages remain in the
+main status bar and preview panel.
 
 Qt preview decode now runs off the UI thread via `std::async`, with a Qt timer polling for completion. Worker code uses `TextureRebuilder::Rebuild(cacheDirectory, entry, ...)` so it operates on copied entry data and a cache path instead of touching the live GUI-owned `TextureCacheDatabase`. Table selection previewing uses a short debounce; a finished stale request may populate the cache but must not replace the currently selected entry's panel.
 

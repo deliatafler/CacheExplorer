@@ -88,6 +88,10 @@ In `Gallery`, select a thumbnail tile to show its cached preview in the large
 preview panel. `Try Next Preview` is hidden because Gallery loads thumbnails
 itself.
 
+Below the large preview, CacheExplorer shows the full selectable UUID, decoded
+dimensions when known, cached-size completeness, and the cache timestamp. Use
+`Copy UUID` to place the selected texture UUID on the clipboard.
+
 If a preview is available, click `Export PNG` and choose an output file.
 Successful exports report the PNG path, decoded dimensions, and cached byte
 count in the status bar. If the cached texture cannot be decoded, export reports

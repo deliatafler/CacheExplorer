@@ -46,6 +46,8 @@ add_executable(cachegui WIN32 MACOSX_BUNDLE
     QtSelection.h
     QtTextureExport.cpp
     QtTextureExport.h
+    QtTextureDetails.cpp
+    QtTextureDetails.h
     QtTryNextPreview.cpp
     QtTryNextPreview.h
     QtViewMode.cpp
