@@ -58,7 +58,7 @@ roadmap rather than letting this become a changelog.
   cache in an Ubuntu desktop VM.
 - [x] Assemble all four platform packages and unified checksums through a
   manual release-workflow validation run.
-- [ ] Create draft GitHub Releases from explicit `v*` tags after all platform
+- [x] Create draft GitHub Releases from explicit `v*` tags after all platform
   validation passes.
 - [ ] Evaluate installers while retaining the portable ZIP: compare CPack
   native packages (Windows NSIS/WiX, macOS disk image, Linux DEB/RPM) with

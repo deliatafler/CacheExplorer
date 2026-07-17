@@ -106,3 +106,7 @@ After the manual assembly run and platform smoke tests pass, push the intended
 creates a draft GitHub Release using `RELEASE_NOTES.md`; it does not publish the
 release automatically. Confirm the tag, displayed application version, asset
 filenames, and `SHA256SUMS.txt` before publishing the draft.
+
+GitHub also applies commit-message CI skip markers to tag-push events. If the
+tagged commit contains `[skip ci]`, manually dispatch `Assemble Draft Release`
+with the version tag as its ref; the same guarded draft-release step will run.
