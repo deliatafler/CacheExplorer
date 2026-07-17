@@ -52,8 +52,9 @@ roadmap rather than letting this become a changelog.
   GitHub Actions.
 - [ ] Validate the unsigned Apple Silicon package against a real cache on
   physical Mac hardware.
-- [ ] Produce, install, and inspect an x86-64 Ubuntu `.deb` artifact in GitHub
-  Actions, then validate it against a real cache in an Ubuntu desktop VM.
+- [x] Produce, install, and inspect an x86-64 Ubuntu `.deb` artifact in GitHub
+  Actions.
+- [ ] Validate the Ubuntu package against a real cache in an Ubuntu desktop VM.
 - [ ] Evaluate installers while retaining the portable ZIP: compare CPack
   native packages (Windows NSIS/WiX, macOS disk image, Linux DEB/RPM) with
   CPack IFW/Qt Installer Framework for a consistent cross-platform installer.
