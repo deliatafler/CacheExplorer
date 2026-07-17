@@ -48,6 +48,11 @@ roadmap rather than letting this become a changelog.
   Windows hosted runner.
 - [x] Produce a repeatable beta ZIP and checksum in GitHub Actions, with a
   fresh-extraction package smoke test.
+- [ ] Evaluate installers while retaining the portable ZIP: compare CPack
+  native packages (Windows NSIS/WiX, macOS disk image, Linux DEB/RPM) with
+  CPack IFW/Qt Installer Framework for a consistent cross-platform installer.
+  Include uninstall behavior, shortcuts, per-user versus per-machine install,
+  upgrades, code signing, and CI artifact generation in the decision.
 - [ ] Revisit static Qt or single-file distribution only after the shared-Qt
   beta path has proven itself.
 
