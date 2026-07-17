@@ -25,6 +25,9 @@ roadmap rather than letting this become a changelog.
   existing PNGs.
 - [x] Add a small recent-cache picker if users commonly switch among multiple
   Firestorm profiles.
+- [ ] Start the first-run cache folder picker in the platform's local
+  application-data directory (`%LOCALAPPDATA%` on Windows) when no remembered
+  or discovered cache path is available.
 - [ ] Refine Gallery tile layout and preview-panel presentation from beta
   feedback.
 
