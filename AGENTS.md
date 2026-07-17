@@ -465,8 +465,9 @@ Good next low-risk slices:
 * Prefer official/prebuilt shared Qt for normal local development and contributor builds.
 * Keep the vcpkg static Qt path available only for reproducible/distribution experiments, ideally with binary caching in CI.
 * Keep `.github/workflows/linux-ci.yml` building the CLI and Qt GUI against
-  native Linux Qt 6 plus vcpkg OpenJPEG/libpng; it is early portability coverage,
-  not a Linux packaging/release claim.
+  native Linux Qt 6 plus vcpkg OpenJPEG/libpng. It also validates, installs,
+  and uploads an unsigned x86-64 CPack `.deb` plus checksum. Real-cache Linux
+  GUI validation remains a physical/VM release follow-up.
 * Keep `.github/workflows/macos-ci.yml` building and testing the Apple Silicon
   Qt GUI, deploying its app-local Qt frameworks, validating an unsigned CPack
   DMG, and uploading that DMG as a short-lived test artifact. Signing,

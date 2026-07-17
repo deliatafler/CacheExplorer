@@ -54,6 +54,44 @@ physical-Mac test artifact, not yet a polished public macOS release. Developer
 ID signing and Apple notarization require project-owned Apple credentials and
 should be added as a separate protected release workflow step.
 
+## Ubuntu Debian package
+
+Linux builds use the distribution's shared Qt runtime and produce a native
+x86-64 `.deb`. OpenJPEG and libpng remain statically linked from vcpkg. CPack
+derives the executable's normal shared-library dependencies and explicitly
+adds `qt6-qpa-plugins`, which provides the dynamically loaded Qt XCB platform
+plugin needed on a typical Ubuntu desktop.
+
+Configure, build, test, and package on Ubuntu:
+
+```bash
+cmake -S . -B build-linux -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-linux \
+  -DCACHEEXPLORER_BUILD_QT_GUI=ON \
+  -DCACHEEXPLORER_STATIC_MSVC_RUNTIME=OFF
+
+cmake --build build-linux
+ctest --test-dir build-linux --output-on-failure
+cpack --config build-linux/CPackConfig.cmake -G DEB -B artifacts
+```
+
+Validate and install the resulting package:
+
+```bash
+bash scripts/test-qt-linux-package.sh \
+  artifacts/CacheExplorer-0.1.0-beta-Linux-x86_64.deb
+
+sudo apt install ./artifacts/CacheExplorer-0.1.0-beta-Linux-x86_64.deb
+```
+
+The package installs the executable in `/usr/bin`, a desktop launcher in
+`/usr/share/applications`, the icon in `/usr/share/pixmaps`, and project/user
+documentation in `/usr/share/doc/cacheexplorer`. It relies on Ubuntu's normal
+package manager for Qt runtime libraries rather than copying a second Qt stack
+into the application package.
+
 ## Shared Qt package
 
 Prerequisites:

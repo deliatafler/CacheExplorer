@@ -155,4 +155,25 @@ if(APPLE)
         "${PROJECT_SOURCE_DIR}/docs/qt-user-guide.md"
         DESTINATION docs
     )
+elseif(UNIX)
+    include(GNUInstallDirs)
+
+    install(TARGETS cachegui
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    )
+    install(FILES
+        resources/io.github.deliatafler.CacheExplorer.desktop
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+    )
+    install(FILES
+        resources/cacheexplorer.png
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/pixmaps"
+    )
+    install(FILES
+        "${PROJECT_SOURCE_DIR}/README.md"
+        "${PROJECT_SOURCE_DIR}/RELEASE_NOTES.md"
+        "${PROJECT_SOURCE_DIR}/LICENSE"
+        "${PROJECT_SOURCE_DIR}/docs/qt-user-guide.md"
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/doc/cacheexplorer"
+    )
 endif()

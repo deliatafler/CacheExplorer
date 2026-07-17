@@ -1655,6 +1655,7 @@ int main(int argc, char* argv[])
         QStringLiteral("smoke-open"),
         QStringLiteral("Open a cache, populate the entry model, and exit."),
         QStringLiteral("cache-folder"));
+    commandLine.addVersionOption();
     commandLine.addOption(smokeOpenOption);
     commandLine.process(app);
 

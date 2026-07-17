@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=CacheExplorer
+Comment=Browse and export Second Life viewer texture caches
+Exec=CacheExplorer
+Icon=cacheexplorer
+Terminal=false
+Categories=Graphics;Utility;
+Keywords=Second Life;texture;cache;JPEG 2000;

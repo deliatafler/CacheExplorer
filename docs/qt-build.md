@@ -83,8 +83,11 @@ not require contributors to replace their local SDK.
 `.github/workflows/linux-ci.yml` provides early cross-platform coverage on an
 Ubuntu hosted runner. It installs the native Qt 6 Widgets development package,
 uses vcpkg only for OpenJPEG/libpng, then builds the CLI and Qt GUI and runs
-CTest. It is build/test coverage only; Linux packaging and real-cache GUI
-validation remain future work.
+CTest. It also creates a native x86-64 Debian package, validates its desktop
+launcher, metadata, files, checksum, and shared-library dependencies, installs
+it through `apt`, and performs a headless version launch. The unsigned `.deb`
+and checksum are uploaded as short-lived workflow artifacts. Real-cache GUI
+validation on a Linux desktop remains a separate milestone.
 
 `.github/workflows/macos-ci.yml` provides the corresponding early macOS
 coverage on GitHub's Apple Silicon `macos-15` runner. It installs the prebuilt
