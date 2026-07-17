@@ -471,7 +471,11 @@ Good next low-risk slices:
 * Improve `cachegui` preview presentation and Gallery layout behavior based on real-cache validation.
 * Continue packaging/deployment work for the Qt GUI.
 * Keep `docs/qt-user-guide.md` and `docs/beta-release-checklist.md` aligned with beta behavior.
-* Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable archive.
+* Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders
+  from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable
+  archive. The package excludes Qt's optional generic TUIO touch plugin and its
+  transitive Qt Network dependency; CacheExplorer itself does not use Qt
+  networking.
 * Use `scripts/test-qt-package.ps1` to verify shared-Qt package contents,
   archive contents, checksum, and optional short launch smoke. Its child process
   uses isolated runtime/plugin paths so an installed Qt SDK cannot mask missing

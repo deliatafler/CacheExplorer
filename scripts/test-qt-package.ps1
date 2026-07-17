@@ -32,6 +32,14 @@ function Assert-FileExists {
     }
 }
 
+function Assert-FileMissing {
+    param([string]$Path)
+
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        throw "Unexpected package file found: $Path"
+    }
+}
+
 function Test-ZipEntry {
     param(
         [System.IO.Compression.ZipArchive]$Archive,
@@ -132,8 +140,20 @@ $requiredFiles = @(
     "platforms/qwindows.dll"
 )
 
+$excludedFiles = @(
+    "Qt6Network.dll",
+    "generic/qtuiotouchplugin.dll",
+    "networkinformation/qnetworklistmanager.dll",
+    "tls/qcertonlybackend.dll",
+    "tls/qschannelbackend.dll"
+)
+
 foreach ($file in $requiredFiles) {
     Assert-FileExists (Join-Path $resolvedPackageDir $file)
+}
+
+foreach ($file in $excludedFiles) {
+    Assert-FileMissing (Join-Path $resolvedPackageDir $file)
 }
 
 Write-Host "Package directory contains required files:"
@@ -151,6 +171,12 @@ if ($ZipPath.Length -gt 0) {
         foreach ($file in $requiredFiles) {
             if (-not (Test-ZipEntry -Archive $archive -EntryName $file)) {
                 throw "Required package archive entry not found: $file"
+            }
+        }
+
+        foreach ($file in $excludedFiles) {
+            if (Test-ZipEntry -Archive $archive -EntryName $file) {
+                throw "Unexpected package archive entry found: $file"
             }
         }
     }
@@ -201,6 +227,10 @@ if ($ExtractAndLaunch) {
 
         foreach ($file in $requiredFiles) {
             Assert-FileExists (Join-Path $extractionDirectory $file)
+        }
+
+        foreach ($file in $excludedFiles) {
+            Assert-FileMissing (Join-Path $extractionDirectory $file)
         }
     }
     catch {

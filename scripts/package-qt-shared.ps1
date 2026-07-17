@@ -174,7 +174,11 @@ New-Item -ItemType Directory -Force -Path $resolvedOutputDir | Out-Null
 $packageExe = Join-Path $resolvedOutputDir "CacheExplorer.exe"
 Copy-Item -LiteralPath $builtExe -Destination $packageExe -Force
 
-& $windeployqt --release --dir $resolvedOutputDir $packageExe
+& $windeployqt `
+    --release `
+    --dir $resolvedOutputDir `
+    --skip-plugin-types generic,networkinformation,tls `
+    $packageExe
 if ($LASTEXITCODE -ne 0) {
     throw "windeployqt failed with exit code $LASTEXITCODE"
 }

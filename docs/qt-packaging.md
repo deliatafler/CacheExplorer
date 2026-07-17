@@ -42,6 +42,10 @@ script also creates
 `artifacts/cacheexplorer-qt-shared.zip` unless `-ZipPath` is supplied. It also
 writes a `.sha256` checksum file next to the zip unless `-NoChecksum` is used.
 
+The package excludes Qt's generic TUIO touch plugin. CacheExplorer does not use
+networking, and that optional plugin would otherwise pull `Qt6Network.dll` plus
+network-information and TLS plugins into the package transitively.
+
 ## Smoke test checklist
 
 Run the packaged executable from inside the package directory, then:
