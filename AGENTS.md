@@ -488,7 +488,7 @@ Good next low-risk slices:
   Qt GUI, deploying its app-local Qt frameworks, validating an unsigned CPack
   DMG, and uploading that DMG as a short-lived test artifact. Signing,
   notarization, and physical-Mac validation remain release follow-ups rather
-  than beta.1 gates.
+  than beta.2 gates.
 * Keep the platform CI workflows reusable through `workflow_call`.
   `.github/workflows/draft-release.yml` manually assembles their five packages
   and unified checksums without publishing; a pushed `v*` tag may create a

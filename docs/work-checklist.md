@@ -51,12 +51,12 @@ roadmap rather than letting this become a changelog.
 - [x] Produce and inspect an unsigned Apple Silicon `.app`/DMG artifact in
   GitHub Actions.
 - [ ] Validate the unsigned Apple Silicon package against a real cache on
-  physical Mac hardware. This is deferred and is not a beta.1 release gate.
+  physical Mac hardware. This is deferred and is not a beta.2 release gate.
 - [x] Produce, install, and inspect release-specific Ubuntu 24.04 and 26.04
   x86-64 `.deb` artifacts in GitHub Actions.
 - [x] Validate the Ubuntu 26.04 package and all GUI features against a real
   cache in an Ubuntu desktop VM.
-- [x] Assemble all four platform packages and unified checksums through a
+- [ ] Assemble all five platform packages and unified checksums through a
   manual release-workflow validation run.
 - [x] Create draft GitHub Releases from explicit `v*` tags after all platform
   validation passes.

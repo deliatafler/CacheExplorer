@@ -1,11 +1,39 @@
 # CacheExplorer Release Notes
 
-## Unreleased
+## 0.1.0-beta.2
 
-* Added a conventional Windows installer with Start menu and uninstall support;
-  the portable ZIP remains available.
-* Added compact selected-texture details and one-click UUID copying below the
-  large preview.
+CacheExplorer 0.1.0-beta.2 promotes the Windows installer to the recommended
+Windows beta package and includes the latest preview-panel improvements.
+
+### Changes since beta.1
+
+* Added a conventional Windows installer with license, Start menu, upgrade, and
+  uninstall support. The portable ZIP remains available.
+* Added compact selected-texture dimensions, cache completeness, timestamp,
+  and one-click UUID copying below the large preview.
+* Added automated Windows installer install/launch/uninstall coverage.
+
+### Beta limitations
+
+* Many real viewer cache entries are incomplete or progressively cached and
+  will not preview. These are expected no-preview cases, not app failures.
+* The Windows installer is unsigned, so Windows may show an unknown-publisher
+  or SmartScreen warning.
+* The macOS package is unsigned and unnotarized. Physical-Mac validation remains
+  deferred and is not a beta.2 release gate.
+* Static/single-file distribution remains future work.
+* CacheExplorer reads and exports cache data; it does not repair or modify the
+  viewer cache.
+
+### Packages
+
+The beta.2 release includes:
+
+* Windows x64 installer with app-local Qt and Visual C++ runtime files.
+* Windows x64 portable ZIP with the same runtime model.
+* Apple Silicon macOS DMG with app-local Qt frameworks.
+* Ubuntu 24.04 and 26.04 x86-64 Debian packages.
+* `SHA256SUMS.txt` covering all five platform packages.
 
 ## 0.1.0-beta.1
 
@@ -46,13 +74,12 @@ the GUI's `About` diagnostics when possible.
 
 ### Packages
 
-The beta release should include:
+The beta.1 release included:
 
 * Windows x64 portable ZIP with Qt and Visual C++ runtime files.
-* Windows x64 installer with Start menu and uninstall support.
 * Apple Silicon macOS DMG with app-local Qt frameworks.
 * Ubuntu 24.04 and 26.04 x86-64 Debian packages.
-* `SHA256SUMS.txt` covering all five platform packages.
+* `SHA256SUMS.txt` covering all four platform packages.
 
 Pushing a version tag matching `v*` runs the reusable platform CI workflows and
 creates a draft GitHub Release. A manual `Assemble Draft Release` workflow run

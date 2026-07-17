@@ -39,7 +39,7 @@ Create and validate the disk image:
 ```bash
 cpack --config build-macos/CPackConfig.cmake -G DragNDrop -B artifacts
 bash scripts/test-qt-macos-package.sh \
-  artifacts/CacheExplorer-0.1.0-beta.1-macOS-arm64.dmg
+  artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg
 ```
 
 The DMG contains `CacheExplorer.app`, its app-local Qt frameworks and Cocoa
@@ -84,9 +84,9 @@ Validate and install the resulting package:
 
 ```bash
 bash scripts/test-qt-linux-package.sh \
-  artifacts/CacheExplorer-0.1.0-beta.1-Ubuntu-26.04-x86_64.deb
+  artifacts/CacheExplorer-0.1.0-beta.2-Ubuntu-26.04-x86_64.deb
 
-sudo apt install ./artifacts/CacheExplorer-0.1.0-beta.1-Ubuntu-26.04-x86_64.deb
+sudo apt install ./artifacts/CacheExplorer-0.1.0-beta.2-Ubuntu-26.04-x86_64.deb
 ```
 
 The package installs the executable in `/usr/bin`, a desktop launcher in
@@ -124,7 +124,7 @@ complete install/launch/uninstall lifecycle with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 `
-  -InstallerPath artifacts\CacheExplorer-0.1.0-beta.1-Windows-x64-Setup.exe
+  -InstallerPath artifacts\CacheExplorer-0.1.0-beta.2-Windows-x64-Setup.exe
 ```
 
 The beta installer is unsigned, so Windows may show an unknown-publisher or
@@ -246,7 +246,7 @@ check, or incomplete installation. To avoid the notice without relaxing home
 directory permissions, copy the package to `/tmp` first:
 
 ```bash
-cp ~/Downloads/CacheExplorer-0.1.0-beta.1-Ubuntu-26.04-x86_64.deb \
+cp ~/Downloads/CacheExplorer-0.1.0-beta.2-Ubuntu-26.04-x86_64.deb \
   /tmp/cacheexplorer.deb
 sudo apt install /tmp/cacheexplorer.deb
 rm /tmp/cacheexplorer.deb

@@ -31,7 +31,7 @@ jobs:
     env:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-binary-cache
-      PACKAGE_BASENAME: CacheExplorer-0.1.0-beta.1-${{ matrix.package_tag }}-x86_64
+      PACKAGE_BASENAME: CacheExplorer-0.1.0-beta.2-${{ matrix.package_tag }}-x86_64
 
     steps:
       - name: Check out source
@@ -90,7 +90,7 @@ jobs:
             "./artifacts/$PACKAGE_BASENAME.deb"
           version_output="$(QT_QPA_PLATFORM=offscreen CacheExplorer --version)"
           echo "$version_output"
-          grep -q "0.1.0-beta.1" <<<"$version_output"
+          grep -q "0.1.0-beta.2" <<<"$version_output"
 
       - name: Upload Ubuntu package
         uses: actions/upload-artifact@v7
