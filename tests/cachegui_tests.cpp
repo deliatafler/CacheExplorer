@@ -1,5 +1,7 @@
 #include "CacheEntryTableModel.h"
+#include "GalleryActivityIndicator.h"
 #include "GalleryFilterProxyModel.h"
+#include "GalleryPreviewMetrics.h"
 #include "GalleryPreviewQueue.h"
 #include "PreviewCache.h"
 #include "QtGalleryStatus.h"
@@ -16,6 +18,7 @@
 #include <QString>
 #include <QTemporaryDir>
 
+#include <chrono>
 #include <iostream>
 #include <string>
 
@@ -67,6 +70,44 @@ namespace
         Expect(queue.Total() == 0, "clear resets total entries");
         Expect(queue.Completed() == 0, "clear resets completed entries");
         Expect(!queue.RefreshPending(), "clear removes pending refresh");
+    }
+
+    void TestGalleryPreviewMetrics()
+    {
+        GalleryPreviewMetrics metrics;
+        metrics.Record(std::chrono::milliseconds{100}, true);
+        metrics.Record(std::chrono::milliseconds{300}, false);
+
+        const GalleryPreviewMetricsSnapshot snapshot = metrics.Snapshot();
+        Expect(snapshot.completed == 2, "metrics count completed previews");
+        Expect(snapshot.succeeded == 1, "metrics count successful previews");
+        Expect(snapshot.unavailable == 1, "metrics count unavailable previews");
+        Expect(
+            snapshot.previewsPerSecond == 5.0,
+            "metrics calculate single-worker decode throughput");
+
+        GalleryActivityState activity;
+        activity.workerActive = true;
+        activity.queueTotal = 8;
+        activity.queueCompleted = 2;
+        activity.measuredCompleted = snapshot.completed;
+        activity.measuredSucceeded = snapshot.succeeded;
+        activity.measuredUnavailable = snapshot.unavailable;
+        activity.previewsPerSecond = snapshot.previewsPerSecond;
+        Expect(
+            GalleryActivityText(activity) ==
+                QStringLiteral("Loading thumbnails 3 / 8 (5.0/s)"),
+            "activity text includes measured thumbnail throughput");
+        Expect(
+            GalleryActivityTooltip(activity) ==
+                QStringLiteral(
+                    "This cache: 2 checked, 1 previews, 1 unavailable, 5.0 per second"),
+            "activity tooltip includes measured thumbnail outcomes");
+
+        metrics.Reset();
+        Expect(
+            metrics.Snapshot().completed == 0,
+            "metrics reset between opened caches");
     }
 
     void TestTryNextPreviewState()
@@ -314,6 +355,7 @@ int main(int argc, char* argv[])
     QCoreApplication app(argc, argv);
 
     TestGalleryPreviewQueue();
+    TestGalleryPreviewMetrics();
     TestTryNextPreviewState();
     TestGalleryStatusText();
     TestInitialGalleryFilter();

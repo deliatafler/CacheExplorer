@@ -40,6 +40,10 @@ Primary platform:
 * `x64-windows-static-md` vcpkg triplet plus dynamic MSVC runtime for the
   preferred prebuilt-Qt GUI path
 
+MSVC builds explicitly enable standard C++ exception unwinding with `/EHsc`.
+Keep this explicit because some prebuilt-Qt build environments do not populate
+CMake's normal MSVC exception flags.
+
 Dependencies:
 
 * OpenJPEG
@@ -438,6 +442,14 @@ Gallery mode shows a lightweight activity label while it is scanning visible
 items, refreshing the visible thumbnail queue, or checking thumbnails with
 queued progress. The main bottom status label remains reserved for Table
 selection previewing, Try Next Preview, Export, and cache open results.
+The activity label also reports measured single-worker thumbnail decode
+throughput while queued work is active. Measurements reset when a cache is
+opened and are intended to guide any future multi-worker decision.
+
+`Images only` batches terminal preview-state refiltering over a short interval
+instead of reflowing the Gallery after every unavailable thumbnail. Queue work
+continues during the batch window, then the visible queue is refreshed once for
+the accumulated removals.
 
 `tests/cachelib_tests.cpp` contains the initial CTest-backed cachelib regression
 coverage. It uses synthetic `texture.entries` data to verify usable-entry

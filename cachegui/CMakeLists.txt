@@ -11,6 +11,8 @@ add_executable(cachegui WIN32 MACOSX_BUNDLE
     GalleryListView.h
     GalleryPreviewController.cpp
     GalleryPreviewController.h
+    GalleryPreviewMetrics.cpp
+    GalleryPreviewMetrics.h
     GalleryPreviewQueue.cpp
     GalleryPreviewQueue.h
     GalleryPreviewScanner.cpp

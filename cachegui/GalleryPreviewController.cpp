@@ -92,9 +92,17 @@ std::optional<CacheEntry> GalleryPreviewController::TakeNextAttemptableEntry(
     return std::nullopt;
 }
 
-void GalleryPreviewController::MarkCompleted()
+void GalleryPreviewController::MarkCompleted(
+    std::chrono::milliseconds duration,
+    bool succeeded)
 {
     queue_.MarkCompleted();
+    metrics_.Record(duration, succeeded);
+}
+
+void GalleryPreviewController::ResetMetrics()
+{
+    metrics_.Reset();
 }
 
 GalleryActivityState GalleryPreviewController::ActivityState(
@@ -102,6 +110,8 @@ GalleryActivityState GalleryPreviewController::ActivityState(
     bool databaseOpen,
     bool workerActive) const
 {
+    const GalleryPreviewMetricsSnapshot metrics = metrics_.Snapshot();
+
     return GalleryActivityState{
         galleryMode,
         databaseOpen,
@@ -110,5 +120,9 @@ GalleryActivityState GalleryPreviewController::ActivityState(
         queue_.RefreshPending(),
         queue_.HasEntries(),
         queue_.Total(),
-        queue_.Completed()};
+        queue_.Completed(),
+        metrics.completed,
+        metrics.succeeded,
+        metrics.unavailable,
+        metrics.previewsPerSecond};
 }

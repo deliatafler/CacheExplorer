@@ -4,6 +4,7 @@
 #include "TextureCacheDatabase.h"
 
 #include <cstdint>
+#include <chrono>
 #include <filesystem>
 #include <string>
 
@@ -22,6 +23,7 @@ struct PreviewDecodeResult
     PreviewDecodeStatus status = PreviewDecodeStatus::Incomplete;
     std::string message;
     DecodedImage image;
+    std::chrono::milliseconds decodeDuration{0};
 };
 
 PreviewDecodeResult DecodePreview(

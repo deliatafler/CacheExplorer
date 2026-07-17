@@ -36,8 +36,12 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
     find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
     add_executable(cachegui_tests
+        ${PROJECT_SOURCE_DIR}/cachegui/GalleryActivityIndicator.cpp
+        ${PROJECT_SOURCE_DIR}/cachegui/GalleryActivityIndicator.h
         ${PROJECT_SOURCE_DIR}/cachegui/GalleryFilterProxyModel.cpp
         ${PROJECT_SOURCE_DIR}/cachegui/GalleryFilterProxyModel.h
+        ${PROJECT_SOURCE_DIR}/cachegui/GalleryPreviewMetrics.cpp
+        ${PROJECT_SOURCE_DIR}/cachegui/GalleryPreviewMetrics.h
         ${PROJECT_SOURCE_DIR}/cachegui/GalleryPreviewQueue.cpp
         ${PROJECT_SOURCE_DIR}/cachegui/GalleryPreviewQueue.h
         ${PROJECT_SOURCE_DIR}/cachegui/QtGalleryStatus.cpp

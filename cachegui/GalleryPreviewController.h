@@ -1,8 +1,10 @@
 #pragma once
 
 #include "GalleryActivityIndicator.h"
+#include "GalleryPreviewMetrics.h"
 #include "GalleryPreviewQueue.h"
 
+#include <chrono>
 #include <deque>
 #include <optional>
 
@@ -39,7 +41,8 @@ public:
     void ReplaceQueue(std::deque<CacheEntry> entries);
     std::optional<CacheEntry> TakeNextAttemptableEntry(
         const PreviewCache& previewCache);
-    void MarkCompleted();
+    void MarkCompleted(std::chrono::milliseconds duration, bool succeeded);
+    void ResetMetrics();
 
     GalleryActivityState ActivityState(
         bool galleryMode,
@@ -48,5 +51,6 @@ public:
 
 private:
     GalleryPreviewQueue queue_;
+    GalleryPreviewMetrics metrics_;
     bool searchPending_ = false;
 };

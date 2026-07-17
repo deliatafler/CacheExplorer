@@ -181,7 +181,7 @@ namespace
             galleryActivityLabel_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
             galleryActivityLabel_->setMinimumWidth(
                 galleryActivityLabel_->fontMetrics().horizontalAdvance(
-                    QStringLiteral("Refreshing visible thumbnails...")));
+                    QStringLiteral("Loading thumbnails 64 / 64 (999.9/s)")));
             galleryActivityLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
             galleryActivityLabel_->hide();
             galleryActivityIndicator_.SetLabel(galleryActivityLabel_);
@@ -204,6 +204,9 @@ namespace
             tableSelectionPreviewTimer_->setInterval(125);
             galleryPreviewPollTimer_ = new QTimer(root);
             galleryPreviewPollTimer_->setInterval(50);
+            galleryFilterRefreshTimer_ = new QTimer(root);
+            galleryFilterRefreshTimer_->setSingleShot(true);
+            galleryFilterRefreshTimer_->setInterval(150);
             batchExportPollTimer_ = new QTimer(root);
             batchExportPollTimer_->setInterval(100);
 
@@ -575,6 +578,15 @@ namespace
                 });
 
             connect(
+                galleryFilterRefreshTimer_,
+                &QTimer::timeout,
+                this,
+                [this]()
+                {
+                    FlushGalleryFilterRefresh();
+                });
+
+            connect(
                 batchExportPollTimer_,
                 &QTimer::timeout,
                 this,
@@ -670,6 +682,7 @@ namespace
         void ClearPreviewUiState()
         {
             ClearGalleryPreviewQueue();
+            galleryPreviewController_.ResetMetrics();
             ClearPreviewStatuses(previewCache_, tableModel_);
             previewPanel_.Clear();
             previewCaption_->clear();
@@ -1099,7 +1112,9 @@ namespace
                 return;
             }
 
-            galleryPreviewController_.MarkCompleted();
+            galleryPreviewController_.MarkCompleted(
+                result.decodeDuration,
+                result.succeeded);
             ApplyGalleryPreviewResult(result);
         }
 
@@ -1151,13 +1166,24 @@ namespace
 
         void ContinueAfterUnavailableGalleryPreview()
         {
-            if (proxyModel_->RefreshForPreviewStateChange())
+            if (!galleryFilterRefreshTimer_->isActive())
             {
-                UpdateGalleryEntryCount();
-                galleryPreviewController_.RequestRefresh();
-                UpdateGalleryActivity();
+                galleryFilterRefreshTimer_->start();
             }
 
+            StartNextQueuedGalleryPreview();
+        }
+
+        void FlushGalleryFilterRefresh()
+        {
+            if (!proxyModel_->RefreshForPreviewStateChange())
+            {
+                return;
+            }
+
+            UpdateGalleryEntryCount();
+            galleryPreviewController_.RequestRefresh();
+            UpdateGalleryActivity();
             StartNextQueuedGalleryPreview();
         }
 
@@ -1433,6 +1459,7 @@ namespace
 
         void ClearGalleryPreviewQueue()
         {
+            galleryFilterRefreshTimer_->stop();
             galleryPreviewController_.Clear();
         }
 
@@ -1652,6 +1679,7 @@ namespace
         QTimer* previewPollTimer_ = nullptr;
         QTimer* tableSelectionPreviewTimer_ = nullptr;
         QTimer* galleryPreviewPollTimer_ = nullptr;
+        QTimer* galleryFilterRefreshTimer_ = nullptr;
         QTimer* batchExportPollTimer_ = nullptr;
         GalleryPreviewController galleryPreviewController_;
         TextureCacheDatabase database_;

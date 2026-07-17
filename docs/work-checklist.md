@@ -35,6 +35,12 @@ roadmap rather than letting this become a changelog.
 
 - [x] Add targeted regression coverage for Qt-facing pure helpers as they are
   extracted; keep cache-format behavior covered in `cachelib` tests.
+- [x] Make MSVC C++ exception unwinding explicit across all targets and keep
+  the preferred prebuilt-Qt Release build free of C4530 warnings.
+- [x] Add lightweight single-worker thumbnail throughput measurement to the
+  existing Gallery activity display.
+- [x] Batch `Images only` terminal-state removals so large viewports do not
+  reflow after every unavailable thumbnail.
 - [ ] Measure real-cache Gallery throughput before considering a bounded
   multi-worker thumbnail queue.
 - [ ] Consider persisting successful thumbnail metadata or images only if

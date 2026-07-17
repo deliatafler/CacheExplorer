@@ -5,6 +5,55 @@
 #include <QLabel>
 #include <QString>
 
+QString GalleryActivityText(const GalleryActivityState& state)
+{
+    if (state.searchPending)
+    {
+        return QStringLiteral("Finding visible thumbnails...");
+    }
+
+    if (state.refreshPending)
+    {
+        return QStringLiteral("Refreshing visible thumbnails...");
+    }
+
+    if (state.queueTotal > 0)
+    {
+        const std::size_t current =
+            std::min(
+                state.queueTotal,
+                state.queueCompleted + (state.workerActive ? 1u : 0u));
+        QString text = QStringLiteral("Loading thumbnails %1 / %2")
+            .arg(static_cast<qulonglong>(current))
+            .arg(static_cast<qulonglong>(state.queueTotal));
+
+        if (state.measuredCompleted > 0 && state.previewsPerSecond > 0.0)
+        {
+            text += QStringLiteral(" (%1/s)")
+                .arg(state.previewsPerSecond, 0, 'f', 1);
+        }
+
+        return text;
+    }
+
+    return QStringLiteral("Loading thumbnails...");
+}
+
+QString GalleryActivityTooltip(const GalleryActivityState& state)
+{
+    if (state.measuredCompleted == 0)
+    {
+        return {};
+    }
+
+    return QStringLiteral(
+        "This cache: %1 checked, %2 previews, %3 unavailable, %4 per second")
+        .arg(static_cast<qulonglong>(state.measuredCompleted))
+        .arg(static_cast<qulonglong>(state.measuredSucceeded))
+        .arg(static_cast<qulonglong>(state.measuredUnavailable))
+        .arg(state.previewsPerSecond, 0, 'f', 1);
+}
+
 void GalleryActivityIndicator::SetLabel(QLabel* label)
 {
     label_ = label;
@@ -29,6 +78,7 @@ void GalleryActivityIndicator::Update(const GalleryActivityState& state)
             state.hasQueuedEntries);
 
     label_->setVisible(reserveLabelSpace);
+    label_->setToolTip(GalleryActivityTooltip(state));
 
     if (!reserveLabelSpace)
     {
@@ -42,30 +92,5 @@ void GalleryActivityIndicator::Update(const GalleryActivityState& state)
         return;
     }
 
-    if (state.searchPending)
-    {
-        label_->setText(QStringLiteral("Finding visible thumbnails..."));
-        return;
-    }
-
-    if (state.refreshPending)
-    {
-        label_->setText(QStringLiteral("Refreshing visible thumbnails..."));
-        return;
-    }
-
-    if (state.queueTotal > 0)
-    {
-        const std::size_t current =
-            std::min(
-                state.queueTotal,
-                state.queueCompleted + (state.workerActive ? 1u : 0u));
-        label_->setText(
-            QStringLiteral("Loading thumbnails %1 / %2")
-                .arg(static_cast<qulonglong>(current))
-                .arg(static_cast<qulonglong>(state.queueTotal)));
-        return;
-    }
-
-    label_->setText(QStringLiteral("Loading thumbnails..."));
+    label_->setText(GalleryActivityText(state));
 }
