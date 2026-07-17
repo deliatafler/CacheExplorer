@@ -99,6 +99,12 @@ the shared ZIP can launch on Windows systems without Visual Studio installed.
 Its redistributable lookup must not assume a particular Visual Studio release
 directory because hosted CI images may use newer toolsets.
 
+The preferred Windows end-user package is now a CPack/NSIS installer, while the
+portable shared-Qt ZIP remains supported. CMake install rules deploy Qt and the
+MSVC runtime app-locally. Windows CI builds both packages and runs a temporary
+install/launch/uninstall smoke test with `scripts/test-windows-installer.ps1`;
+the smoke script must refuse to overwrite an existing registered installation.
+
 Optional Qt GUI build with vcpkg-provided static Qt. This is useful for reproducible builds and distribution experiments, but first-time dependency setup is slow and it is not the primary contributor path:
 
 ```bash
@@ -484,7 +490,7 @@ Good next low-risk slices:
   notarization, and physical-Mac validation remain release follow-ups rather
   than beta.1 gates.
 * Keep the platform CI workflows reusable through `workflow_call`.
-  `.github/workflows/draft-release.yml` manually assembles their four packages
+  `.github/workflows/draft-release.yml` manually assembles their five packages
   and unified checksums without publishing; a pushed `v*` tag may create a
   draft GitHub Release, but never publish it automatically.
 * Improve Qt gallery UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.

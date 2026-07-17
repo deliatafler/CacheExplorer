@@ -54,6 +54,7 @@ jobs:
 
           expected_assets=(
             CacheExplorer-0.1.0-beta.1-Windows-x64.zip
+            CacheExplorer-0.1.0-beta.1-Windows-x64-Setup.exe
             CacheExplorer-0.1.0-beta.1-macOS-arm64.dmg
             CacheExplorer-0.1.0-beta.1-Ubuntu-24.04-x86_64.deb
             CacheExplorer-0.1.0-beta.1-Ubuntu-26.04-x86_64.deb
@@ -68,6 +69,7 @@ jobs:
             cd release-assets
             sha256sum \
               CacheExplorer-0.1.0-beta.1-Windows-x64.zip \
+              CacheExplorer-0.1.0-beta.1-Windows-x64-Setup.exe \
               CacheExplorer-0.1.0-beta.1-macOS-arm64.dmg \
               CacheExplorer-0.1.0-beta.1-Ubuntu-24.04-x86_64.deb \
               CacheExplorer-0.1.0-beta.1-Ubuntu-26.04-x86_64.deb \

@@ -1,5 +1,12 @@
 # CacheExplorer Release Notes
 
+## Unreleased
+
+* Added a conventional Windows installer with Start menu and uninstall support;
+  the portable ZIP remains available.
+* Added compact selected-texture details and one-click UUID copying below the
+  large preview.
+
 ## 0.1.0-beta.1
 
 CacheExplorer 0.1.0-beta.1 is the first cross-platform test build candidate of
@@ -21,7 +28,7 @@ the Qt GUI.
 
 * Many real viewer cache entries are incomplete or progressively cached and
   will not preview. These are expected no-preview cases, not app failures.
-* Windows is distributed as a portable shared-Qt ZIP. Ubuntu uses
+* Windows beta.1 is distributed as a portable shared-Qt ZIP. Ubuntu uses
   release-specific `.deb` packages for 24.04 and 26.04. Apple Silicon macOS
   uses a DMG containing a native application bundle.
 * The current macOS package is unsigned and unnotarized, so Gatekeeper may
@@ -42,9 +49,10 @@ the GUI's `About` diagnostics when possible.
 The beta release should include:
 
 * Windows x64 portable ZIP with Qt and Visual C++ runtime files.
+* Windows x64 installer with Start menu and uninstall support.
 * Apple Silicon macOS DMG with app-local Qt frameworks.
 * Ubuntu 24.04 and 26.04 x86-64 Debian packages.
-* `SHA256SUMS.txt` covering all four platform packages.
+* `SHA256SUMS.txt` covering all five platform packages.
 
 Pushing a version tag matching `v*` runs the reusable platform CI workflows and
 creates a draft GitHub Release. A manual `Assemble Draft Release` workflow run

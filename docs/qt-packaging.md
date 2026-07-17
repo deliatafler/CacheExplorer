@@ -97,6 +97,42 @@ into the application package.
 
 ## Shared Qt package
 
+### Windows installer
+
+The recommended Windows end-user package is an unsigned CPack/NSIS installer.
+It installs the application under Program Files, adds a Start menu shortcut,
+and registers CacheExplorer in Windows Apps & features with a standard
+uninstaller. The portable ZIP remains available alongside it.
+
+Install NSIS 3.03 or newer, configure and build the preferred prebuilt-Qt
+Release target, then run:
+
+```powershell
+cpack --config build-qt-prebuilt/CPackConfig.cmake `
+  -C Release `
+  -G NSIS `
+  -B artifacts
+```
+
+CMake's install rules run Qt's deployment helper, omit translations and the
+unused generic/network plugin types, and place the required Visual C++ runtime
+DLLs app-locally. The generated installer and `.sha256` checksum are written to
+`artifacts`.
+
+On a machine without an existing CacheExplorer installation, exercise the
+complete install/launch/uninstall lifecycle with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 `
+  -InstallerPath artifacts\CacheExplorer-0.1.0-beta.1-Windows-x64-Setup.exe
+```
+
+The beta installer is unsigned, so Windows may show an unknown-publisher or
+SmartScreen warning. Code signing is a later release-hardening item and should
+use protected project credentials in the release workflow.
+
+### Portable ZIP
+
 Prerequisites:
 
 * A Release `cachegui` build configured against a prebuilt shared Qt

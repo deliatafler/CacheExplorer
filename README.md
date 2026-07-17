@@ -102,7 +102,8 @@ See `docs/qt-build.md` for deployment details and the optional static Qt path.
 
 Cross-platform beta candidates are produced by GitHub Actions:
 
-* Windows x64 portable ZIP with app-local Qt and Visual C++ runtime files.
+* Windows x64 installer and portable ZIP with app-local Qt and Visual C++
+  runtime files.
 * Apple Silicon macOS DMG with a native application bundle and app-local Qt
   frameworks. The current test package is unsigned and unnotarized.
 * Ubuntu 24.04 and 26.04 x86-64 Debian packages using each release's native Qt
@@ -112,7 +113,22 @@ Version tags assemble these platform packages and a unified checksum file into
 a draft GitHub Release. See `docs/qt-packaging.md` for package-specific build,
 installation, and smoke-test details.
 
-### Windows shared-Qt package
+### Windows packages
+
+The Windows installer is the recommended package for normal use. It installs
+CacheExplorer under Program Files, creates a Start menu shortcut, and registers
+a standard uninstaller. The portable ZIP remains available for removable or
+no-install use.
+
+Build the installer from a configured Release build with NSIS 3.03 or newer:
+
+```powershell
+cpack --config build-qt-prebuilt/CPackConfig.cmake `
+  -C Release -G NSIS -B artifacts
+```
+
+See `docs/qt-packaging.md` for installer lifecycle smoke testing and unsigned
+beta caveats.
 
 For a shared-Qt test package:
 

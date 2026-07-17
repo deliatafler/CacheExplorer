@@ -29,16 +29,17 @@ beta gate.
 
 Run the `Assemble Draft Release` workflow manually before tagging. It reuses
 the Windows, macOS, and Ubuntu CI workflows, verifies all package jobs, gathers
-the four platform packages, and creates a unified `SHA256SUMS.txt` without
+the five platform packages, and creates a unified `SHA256SUMS.txt` without
 publishing a GitHub Release.
 
 The assembled assets must contain:
 
 * Windows x64 portable ZIP.
+* Windows x64 installer.
 * Apple Silicon macOS DMG.
 * Ubuntu 24.04 x86-64 Debian package.
 * Ubuntu 26.04 x86-64 Debian package.
-* `SHA256SUMS.txt` covering those exact four files.
+* `SHA256SUMS.txt` covering those exact five files.
 
 For a local Windows package check, create the shared-Qt package from a Visual
 Studio developer shell:
@@ -71,6 +72,20 @@ powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
 The smoke script isolates the packaged process from developer Qt runtime and
 plugin paths. This complements, but does not replace, one launch on a separate
 Windows machine without the Qt SDK before public distribution.
+
+Build and smoke-test the Windows installer with NSIS 3.03 or newer:
+
+```powershell
+cpack --config build-qt-prebuilt/CPackConfig.cmake `
+  -C Release -G NSIS -B artifacts
+
+powershell -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 `
+  -InstallerPath artifacts\CacheExplorer-0.1.0-beta.1-Windows-x64-Setup.exe
+```
+
+The installer smoke test must run only when CacheExplorer is not already
+installed. It refuses to replace a registered installation, installs into a
+temporary directory, launches the app, and verifies silent uninstall cleanup.
 
 ## GUI smoke test
 

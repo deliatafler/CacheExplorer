@@ -157,6 +157,33 @@ if(APPLE)
         "${PROJECT_SOURCE_DIR}/docs/qt-user-guide.md"
         DESTINATION docs
     )
+elseif(WIN32)
+    include(GNUInstallDirs)
+
+    install(TARGETS cachegui
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    )
+
+    qt_generate_deploy_app_script(
+        TARGET cachegui
+        OUTPUT_SCRIPT cacheexplorer_deploy_script
+        NO_TRANSLATIONS
+        NO_UNSUPPORTED_PLATFORM_ERROR
+        DEPLOY_TOOL_OPTIONS
+            --skip-plugin-types generic,networkinformation,tls
+    )
+    install(SCRIPT "${cacheexplorer_deploy_script}")
+
+    install(FILES
+        "${PROJECT_SOURCE_DIR}/README.md"
+        "${PROJECT_SOURCE_DIR}/RELEASE_NOTES.md"
+        "${PROJECT_SOURCE_DIR}/LICENSE"
+        DESTINATION .
+    )
+    install(FILES
+        "${PROJECT_SOURCE_DIR}/docs/qt-user-guide.md"
+        DESTINATION docs
+    )
 elseif(UNIX)
     include(GNUInstallDirs)
 

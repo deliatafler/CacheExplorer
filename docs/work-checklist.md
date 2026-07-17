@@ -60,11 +60,12 @@ roadmap rather than letting this become a changelog.
   manual release-workflow validation run.
 - [x] Create draft GitHub Releases from explicit `v*` tags after all platform
   validation passes.
-- [ ] Evaluate installers while retaining the portable ZIP: compare CPack
-  native packages (Windows NSIS/WiX, macOS disk image, Linux DEB/RPM) with
-  CPack IFW/Qt Installer Framework for a consistent cross-platform installer.
-  Include uninstall behavior, shortcuts, per-user versus per-machine install,
-  upgrades, code signing, and CI artifact generation in the decision.
+- [x] Add a conventional CPack/NSIS Windows installer while retaining the
+  portable ZIP, including Start menu and uninstall support plus a CI
+  install/launch/uninstall smoke test.
+- [ ] Evaluate per-user installation, upgrade behavior, and code signing after
+  beta feedback; retain native macOS DMG and Linux DEB packages rather than
+  requiring Qt Installer Framework solely for visual consistency.
 - [ ] Revisit static Qt or single-file distribution only after the shared-Qt
   beta path has proven itself.
 

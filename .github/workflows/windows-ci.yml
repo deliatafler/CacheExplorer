@@ -97,6 +97,25 @@ jobs:
             -ExtractAndLaunch `
             -LaunchSeconds 10
 
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis --yes --no-progress
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          cpack --config build-qt-prebuilt/CPackConfig.cmake `
+            -C Release `
+            -G NSIS `
+            -B artifacts
+
+      - name: Smoke-test Windows installer
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 `
+            -InstallerPath artifacts\CacheExplorer-0.1.0-beta.1-Windows-x64-Setup.exe `
+            -LaunchSeconds 10
+
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
@@ -104,5 +123,7 @@ jobs:
           path: |
             artifacts/CacheExplorer-0.1.0-beta.1-Windows-x64.zip
             artifacts/CacheExplorer-0.1.0-beta.1-Windows-x64.zip.sha256
+            artifacts/CacheExplorer-0.1.0-beta.1-Windows-x64-Setup.exe
+            artifacts/CacheExplorer-0.1.0-beta.1-Windows-x64-Setup.exe.sha256
           if-no-files-found: error
           retention-days: 14

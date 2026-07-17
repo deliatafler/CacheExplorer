@@ -68,6 +68,30 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
             "CacheExplorer-${CACHEEXPLORER_DISPLAY_VERSION}-macOS-${cacheexplorer_macos_package_arch}")
         set(CPACK_DMG_VOLUME_NAME "CacheExplorer ${CACHEEXPLORER_DISPLAY_VERSION}")
         set(CPACK_DMG_FORMAT "UDZO")
+    elseif(WIN32)
+        set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "bin")
+        include(InstallRequiredSystemLibraries)
+
+        set(CPACK_GENERATOR "NSIS")
+        set(CPACK_PACKAGE_FILE_NAME
+            "CacheExplorer-${CACHEEXPLORER_DISPLAY_VERSION}-Windows-x64-Setup")
+        set(CPACK_PACKAGE_INSTALL_DIRECTORY "CacheExplorer")
+        set(CPACK_PACKAGE_EXECUTABLES "CacheExplorer" "CacheExplorer")
+        set(CPACK_NSIS_EXECUTABLES_DIRECTORY "bin")
+        set(CPACK_NSIS_DISPLAY_NAME "CacheExplorer")
+        set(CPACK_NSIS_PACKAGE_NAME
+            "CacheExplorer ${CACHEEXPLORER_DISPLAY_VERSION}")
+        set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\CacheExplorer.exe")
+        set(CPACK_NSIS_MUI_ICON
+            "${PROJECT_SOURCE_DIR}/cachegui/resources/cacheexplorer.ico")
+        set(CPACK_NSIS_MUI_UNIICON
+            "${PROJECT_SOURCE_DIR}/cachegui/resources/cacheexplorer.ico")
+        set(CPACK_NSIS_HELP_LINK
+            "https://github.com/deliatafler/CacheExplorer/issues")
+        set(CPACK_NSIS_URL_INFO_ABOUT
+            "https://github.com/deliatafler/CacheExplorer")
+        set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+        set(CPACK_PACKAGE_CHECKSUM "SHA256")
     elseif(UNIX)
         set(CPACK_GENERATOR "DEB")
         set(CPACK_PACKAGE_FILE_NAME
@@ -83,7 +107,7 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
         set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-qpa-plugins")
     endif()
 
-    if(APPLE OR UNIX)
+    if(APPLE OR WIN32 OR UNIX)
         set(CPACK_PACKAGE_NAME "CacheExplorer")
         set(CPACK_PACKAGE_VENDOR "CacheExplorer contributors")
         set(CPACK_PACKAGE_CONTACT
@@ -91,6 +115,7 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
         set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
             "Browser and PNG exporter for Second Life viewer texture caches")
         set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+        set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
         include(CPack)
     endif()
 endif()
