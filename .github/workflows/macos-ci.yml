@@ -83,7 +83,8 @@ jobs:
         run: |
           bash scripts/test-qt-macos-package.sh \
             artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg \
-            0.1.0
+            0.1.0 \
+            0.1.0-beta.2
           shasum -a 256 \
             artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg \
             > artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg.sha256

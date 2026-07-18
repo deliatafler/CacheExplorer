@@ -502,9 +502,11 @@ Good next low-risk slices:
   test artifact. Developer ID signing, notarization, and physical-Mac
   validation remain release follow-ups rather than beta.2 gates.
   The DMG test must verify the deployed app's ad-hoc signature integrity with
-  `codesign --verify --deep --strict`; this does not replace Developer ID
-  signing or notarization and will not make Gatekeeper accept a downloaded app
-  without a per-application override.
+  `codesign --verify --deep --strict`, report the binary deployment target, and
+  require the app-local `@executable_path/../Frameworks` `LC_RPATH` before it
+  launches the packaged executable with `--version`; this does not replace
+  Developer ID signing or notarization and will not make Gatekeeper accept a
+  downloaded app without a per-application override.
 * Keep the platform CI workflows reusable through `workflow_call`.
   `.github/workflows/draft-release.yml` manually assembles their five packages
   and unified checksums without publishing; a pushed `v*` tag may create a

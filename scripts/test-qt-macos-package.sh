@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
-    echo "Usage: $0 <CacheExplorer.dmg> [expected-version]" >&2
+if [[ $# -lt 1 || $# -gt 3 ]]; then
+    echo "Usage: $0 <CacheExplorer.dmg> [expected-bundle-version] [expected-display-version]" >&2
     exit 2
 fi
 
@@ -14,13 +14,14 @@ fi
 
 dmg_path="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 expected_version="${2:-0.1.0}"
+expected_display_version="${3:-}"
 
 if [[ ! -f "$dmg_path" ]]; then
     echo "DMG not found: $dmg_path" >&2
     exit 1
 fi
 
-for tool in hdiutil plutil file otool codesign; do
+for tool in hdiutil plutil file otool codesign vtool; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "Required tool not found: $tool" >&2
         exit 1
@@ -88,6 +89,9 @@ grep -q "arm64" <<<"$architecture"
 
 codesign --verify --deep --strict --verbose=2 "$app"
 
+deployment_info="$(vtool -show-build "$executable")"
+echo "$deployment_info"
+
 dependencies="$(otool -L "$executable")"
 for framework in QtCore QtGui QtWidgets; do
     if ! grep -q "@rpath/$framework.framework" <<<"$dependencies"; then
@@ -97,6 +101,31 @@ for framework in QtCore QtGui QtWidgets; do
 done
 if grep -Eq '/Users/runner/work|/Qt/[0-9]' <<<"$dependencies"; then
     echo "Executable contains a developer-machine Qt dependency path." >&2
+    exit 1
+fi
+
+rpaths="$(otool -l "$executable" | awk '
+    $1 == "cmd" && $2 == "LC_RPATH" {
+        getline
+        getline
+        print $2
+    }
+')"
+if ! grep -Fxq "@executable_path/../Frameworks" <<<"$rpaths"; then
+    echo "Executable is missing the app-local Qt framework runpath." >&2
+    echo "Detected runpaths: ${rpaths:-<none>}" >&2
+    exit 1
+fi
+
+version_output="$("$executable" --version 2>&1)"
+echo "$version_output"
+if ! grep -Fq "CacheExplorer" <<<"$version_output"; then
+    echo "Packaged application did not report its name at startup." >&2
+    exit 1
+fi
+if [[ -n "$expected_display_version" ]] &&
+   ! grep -Fq "$expected_display_version" <<<"$version_output"; then
+    echo "Unexpected application display version: $version_output" >&2
     exit 1
 fi
 

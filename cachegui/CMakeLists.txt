@@ -101,6 +101,8 @@ if(APPLE)
             MACOSX_BUNDLE_ICON_FILE "cacheexplorer.icns"
             MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
             MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+            BUILD_RPATH "@executable_path/../Frameworks"
+            INSTALL_RPATH "@executable_path/../Frameworks"
     )
 endif()
 

@@ -47,8 +47,12 @@ platform plugin, plus `README.md`, `RELEASE_NOTES.md`, `LICENSE`, and the Qt
 user guide. The package test mounts the image read-only, verifies those files,
 checks bundle metadata and ARM64 architecture, confirms the executable resolves
 Qt through bundled `@rpath` frameworks, and rejects an unexpected Qt Network
-framework. It also verifies the complete app bundle's ad-hoc code-signature
-integrity with `codesign --verify --deep --strict`.
+framework. It asserts that the executable's `LC_RPATH` includes the app-local
+`@executable_path/../Frameworks` directory, verifies the complete app bundle's
+ad-hoc code-signature integrity with `codesign --verify --deep --strict`,
+reports its deployment target, and starts the packaged executable with
+`--version` to exercise the dynamic loader, Qt runtime, and Cocoa platform
+plugin.
 
 After Qt deployment, CacheExplorer explicitly ad-hoc signs the complete app
 bundle before CPack creates the DMG. This preserves bundle integrity after
