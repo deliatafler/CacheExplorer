@@ -4,10 +4,10 @@
 
 # CacheExplorer
 
-CacheExplorer is a standalone browser and PNG exporter for Second Life viewer
+CacheExplorer is a standalone browser and PNG exporter for Second Life® viewer
 texture caches. It is intended as a modern, open-source replacement for the
 defunct SLCacheViewer. It is verified with the official Second Life viewer and
-Firestorm.
+Firestorm Viewer.
 
 CacheExplorer does not link against Firestorm and does not require Firestorm
 source code. Firestorm source was used only to understand the texture-cache file
@@ -160,3 +160,10 @@ See `RELEASE_NOTES.md` for draft beta release notes.
 ## License
 
 CacheExplorer is available under the [MIT License](LICENSE).
+
+## Trademarks
+
+Second Life® is a registered trademark of Linden Research, Inc. Firestorm Viewer
+is a trademark of The Phoenix Firestorm Project, Inc. CacheExplorer is not
+affiliated with, sponsored by, or endorsed by Linden Research, Inc. or The
+Phoenix Firestorm Project, Inc.

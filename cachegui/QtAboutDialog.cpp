@@ -62,9 +62,13 @@ void ShowAboutDialog(
     aboutBox.setText(QStringLiteral("Cache Explorer"));
     aboutBox.setInformativeText(
         QStringLiteral(
-            "Standalone Second Life viewer texture-cache browser and PNG exporter.\n"
-            "Verified with the official Second Life viewer and Firestorm.\n\n"
-            "Open-source software licensed under the MIT License."));
+            "Standalone Second Life® viewer texture-cache browser and PNG exporter.\n"
+            "Verified with the official Second Life viewer and Firestorm Viewer.\n\n"
+            "Open-source software licensed under the MIT License.\n\n"
+            "Second Life® is a registered trademark of Linden Research, Inc.\n"
+            "Firestorm Viewer is a trademark of The Phoenix Firestorm Project, Inc.\n"
+            "CacheExplorer is not affiliated with, sponsored by, or endorsed by "
+            "either organization."));
     aboutBox.setDetailedText(BuildDiagnosticText(database));
     aboutBox.exec();
 }

@@ -16,7 +16,7 @@ Do not disable Gatekeeper system-wide.
 ## Open a cache
 
 CacheExplorer reads compatible Second Life viewer texture caches directly. It is
-verified with the official Second Life viewer and Firestorm. You can select
+verified with the official Second Life viewer and Firestorm Viewer. You can select
 either:
 
 * the `texturecache` folder itself, or
@@ -126,3 +126,10 @@ diagnostics. This information is useful in beta bug reports.
 * CacheExplorer does not repair or modify the viewer cache.
 * CacheExplorer does not require Firestorm source code and does not link against
   Firestorm.
+
+## Trademarks
+
+Second Life® is a registered trademark of Linden Research, Inc. Firestorm Viewer
+is a trademark of The Phoenix Firestorm Project, Inc. CacheExplorer is not
+affiliated with, sponsored by, or endorsed by Linden Research, Inc. or The
+Phoenix Firestorm Project, Inc.

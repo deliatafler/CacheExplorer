@@ -377,6 +377,7 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 `cachegui/PreviewWorkerState.*` contains async preview request state and decode-worker startup shared by manual and gallery preview workers.
 
 `cachegui/QtAboutDialog.*` contains the Qt-only About/diagnostics dialog.
+It also presents the project license and third-party trademark attribution.
 
 `cachegui/resources/cacheexplorer.png` is the transparent cross-platform Qt
 application icon and README artwork. The multi-resolution

@@ -44,6 +44,13 @@ The beta.3 release includes:
 * Ubuntu 24.04 and 26.04 x86-64 Debian packages.
 * `SHA256SUMS.txt` covering all five platform packages.
 
+### Trademarks
+
+Second Life® is a registered trademark of Linden Research, Inc. Firestorm Viewer
+is a trademark of The Phoenix Firestorm Project, Inc. CacheExplorer is not
+affiliated with, sponsored by, or endorsed by Linden Research, Inc. or The
+Phoenix Firestorm Project, Inc.
+
 ## 0.1.0-beta.2
 
 CacheExplorer 0.1.0-beta.2 promotes the Windows installer to the recommended
