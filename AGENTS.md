@@ -497,10 +497,10 @@ Good next low-risk slices:
   do not break installation. The Ubuntu 26.04 package has passed full GUI
   validation against a real cache in a desktop VM.
 * Keep `.github/workflows/macos-ci.yml` building and testing the Apple Silicon
-  Qt GUI, deploying its app-local Qt frameworks, validating an unsigned CPack
-  DMG, and uploading that DMG as a short-lived test artifact. Signing,
-  notarization, and physical-Mac validation remain release follow-ups rather
-  than beta.2 gates.
+  Qt GUI, deploying its app-local Qt frameworks, ad-hoc signing the final app
+  bundle, validating the CPack DMG, and uploading that DMG as a short-lived
+  test artifact. Developer ID signing, notarization, and physical-Mac
+  validation remain release follow-ups rather than beta.2 gates.
   The DMG test must verify the deployed app's ad-hoc signature integrity with
   `codesign --verify --deep --strict`; this does not replace Developer ID
   signing or notarization and will not make Gatekeeper accept a downloaded app

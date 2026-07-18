@@ -73,7 +73,7 @@ jobs:
           file build-macos/cachegui/CacheExplorer.app/Contents/MacOS/CacheExplorer | tee cacheexplorer-file.txt
           grep -q "arm64" cacheexplorer-file.txt
 
-      - name: Package unsigned macOS DMG
+      - name: Package ad-hoc-signed macOS DMG
         run: |
           cpack --config build-macos/CPackConfig.cmake \
             -G DragNDrop \
@@ -88,7 +88,7 @@ jobs:
             artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg \
             > artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg.sha256
 
-      - name: Upload unsigned macOS package
+      - name: Upload ad-hoc-signed macOS package
         uses: actions/upload-artifact@v7
         with:
           name: CacheExplorer-macOS-arm64

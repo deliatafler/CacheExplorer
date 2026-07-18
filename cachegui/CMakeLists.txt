@@ -149,6 +149,23 @@ if(APPLE)
     )
     install(SCRIPT "${cacheexplorer_deploy_script}")
 
+    # macdeployqt modifies the installed bundle after the build-time ad-hoc
+    # signature was created. Sign the fully deployed bundle so Gatekeeper can
+    # verify its integrity even when no Developer ID identity is available.
+    install(CODE [=[
+        set(cacheexplorer_installed_app
+            "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/CacheExplorer.app")
+        execute_process(
+            COMMAND /usr/bin/codesign --force --deep --sign -
+                "${cacheexplorer_installed_app}"
+            RESULT_VARIABLE cacheexplorer_codesign_result
+        )
+        if(NOT cacheexplorer_codesign_result EQUAL 0)
+            message(FATAL_ERROR
+                "Failed to ad-hoc sign ${cacheexplorer_installed_app}")
+        endif()
+    ]=])
+
     install(FILES
         "${PROJECT_SOURCE_DIR}/README.md"
         "${PROJECT_SOURCE_DIR}/RELEASE_NOTES.md"

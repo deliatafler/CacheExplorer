@@ -50,9 +50,11 @@ Qt through bundled `@rpath` frameworks, and rejects an unexpected Qt Network
 framework. It also verifies the complete app bundle's ad-hoc code-signature
 integrity with `codesign --verify --deep --strict`.
 
-The current DMG is ad-hoc signed by Qt's deployment tool, but it is not signed
-with an Apple-issued Developer ID certificate or notarized. It is therefore a
-CI and physical-Mac test artifact, not yet a polished public macOS release.
+After Qt deployment, CacheExplorer explicitly ad-hoc signs the complete app
+bundle before CPack creates the DMG. This preserves bundle integrity after
+`macdeployqt` adds the app-local frameworks and plugins. The package is not
+signed with an Apple-issued Developer ID certificate or notarized, so it is a
+CI and physical-Mac test artifact rather than a polished public macOS release.
 Developer ID signing and Apple notarization require project-owned Apple
 credentials and should be added as a separate protected release workflow step.
 
