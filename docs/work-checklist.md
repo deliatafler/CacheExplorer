@@ -56,9 +56,10 @@ roadmap rather than letting this become a changelog.
   fresh-extraction package smoke test.
 - [x] Produce, ad-hoc sign, and inspect an Apple Silicon `.app`/DMG artifact in
   GitHub Actions, including app-local Qt runpath and mounted-DMG launch checks.
-- [ ] Validate the ad-hoc-signed Apple Silicon package against a real cache on
-  physical Mac hardware. Initial testing exposed and fixed a missing Qt
-  framework `LC_RPATH`; repeat the GUI validation with the repaired package.
+- [x] Validate the ad-hoc-signed Apple Silicon package against a real cache on
+  physical Mac hardware after fixing the missing Qt framework `LC_RPATH`.
+  Launch, responsive Gallery scrolling/resizing, `Images only`, and single and
+  multi-PNG export all passed on macOS 26.5.2.
 - [x] Produce, install, and inspect release-specific Ubuntu 24.04 and 26.04
   x86-64 `.deb` artifacts in GitHub Actions.
 - [x] Validate the Ubuntu 26.04 package and all GUI features against a real

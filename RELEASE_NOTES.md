@@ -16,6 +16,10 @@ Windows beta package and includes the latest preview-panel improvements.
   app can locate its bundled Qt libraries at launch.
 * Expanded macOS package validation to check the final ad-hoc signature,
   app-local framework runpath, and an actual mounted-DMG startup.
+* Validated launch, real-cache Gallery browsing and filtering, and single and
+  multi-PNG export on an Apple Silicon Mac running macOS 26.5.2.
+* Changed the first macOS cache chooser location to `~/Library/Caches` and
+  added discovery for common Second Life and Firestorm cache directories.
 
 ### Beta limitations
 
@@ -25,8 +29,7 @@ Windows beta package and includes the latest preview-panel improvements.
   or SmartScreen warning.
 * The macOS package is ad-hoc signed for integrity but is not Developer ID
   signed or notarized. Gatekeeper therefore requires the per-application
-  `Open Anyway` override described in `docs/qt-packaging.md`. Physical-Mac
-  validation remains in progress.
+  `Open Anyway` override described in `docs/qt-packaging.md`.
 * Static/single-file distribution remains future work.
 * CacheExplorer reads and exports cache data; it does not repair or modify the
   viewer cache.

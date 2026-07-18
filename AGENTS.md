@@ -400,6 +400,9 @@ exposes the default-cache shortcut state. On Windows, the default shortcut
 chooses the first existing cache in this order: official Second Life,
 official Firestorm, then self-built Firestorm. Keep this per-user UI state
 outside the viewer cache directory.
+On macOS, default discovery checks common Second Life and Firestorm directories
+under `~/Library/Caches`, and the first folder chooser starts at that cache root
+rather than `~/Library/Application Support`.
 It retains up to eight valid recently opened cache paths for the GUI's `Recent`
 menu; missing folders are omitted and users can clear the menu from the UI.
 Remembered paths are lexically normalized, displayed with platform-native path

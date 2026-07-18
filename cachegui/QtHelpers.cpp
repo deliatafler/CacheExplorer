@@ -147,6 +147,29 @@ QString DefaultCachePath()
             }
         }
     }
+#elif defined(__APPLE__)
+    const QString userCaches =
+        QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation);
+
+    if (!userCaches.isEmpty())
+    {
+        const std::filesystem::path userCachesPath =
+            PathFromQString(userCaches);
+        const std::filesystem::path candidatePaths[] = {
+            userCachesPath / "SecondLife" / "texturecache",
+            userCachesPath / "Firestorm" / "texturecache",
+            userCachesPath / "Firestorm_x64" / "texturecache",
+            userCachesPath / "FirestormOS" / "texturecache",
+            userCachesPath / "FirestormOS_x64" / "texturecache"};
+
+        for (const std::filesystem::path& candidatePath : candidatePaths)
+        {
+            if (TextureEntriesFileExists(candidatePath))
+            {
+                return PathToQString(candidatePath);
+            }
+        }
+    }
 #endif
 
     return {};
@@ -182,11 +205,17 @@ QString CacheFolderDialogStartPath(const QString& currentPath)
         return currentPath;
     }
 
-    const QString localDataPath =
-        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    if (!localDataPath.isEmpty())
+    const QStandardPaths::StandardLocation startLocation =
+#ifdef __APPLE__
+        QStandardPaths::GenericCacheLocation;
+#else
+        QStandardPaths::GenericDataLocation;
+#endif
+    const QString platformStartPath =
+        QStandardPaths::writableLocation(startLocation);
+    if (!platformStartPath.isEmpty())
     {
-        return localDataPath;
+        return platformStartPath;
     }
 
     return QStandardPaths::writableLocation(QStandardPaths::HomeLocation);

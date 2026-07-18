@@ -313,15 +313,21 @@ namespace
             CacheFolderDialogStartPath(explicitPath) == explicitPath,
             "cache folder picker preserves a current path");
 
-        const QString localDataPath =
+        const QStandardPaths::StandardLocation startLocation =
+#ifdef __APPLE__
+            QStandardPaths::GenericCacheLocation;
+#else
+            QStandardPaths::GenericDataLocation;
+#endif
+        const QString platformStartPath =
             QStandardPaths::writableLocation(
-                QStandardPaths::GenericDataLocation);
-        const QString expectedFallback = localDataPath.isEmpty()
+                startLocation);
+        const QString expectedFallback = platformStartPath.isEmpty()
             ? QStandardPaths::writableLocation(QStandardPaths::HomeLocation)
-            : localDataPath;
+            : platformStartPath;
         Expect(
             CacheFolderDialogStartPath({}) == expectedFallback,
-            "first cache folder picker starts in platform-local app data");
+            "first cache folder picker starts in the platform cache root");
     }
 
     void TestTextureDetailsText()
