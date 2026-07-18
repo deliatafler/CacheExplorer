@@ -105,7 +105,9 @@ Cross-platform beta candidates are produced by GitHub Actions:
 * Windows x64 installer and portable ZIP with app-local Qt and Visual C++
   runtime files.
 * Apple Silicon macOS DMG with a native application bundle and app-local Qt
-  frameworks. The current test package is unsigned and unnotarized.
+  frameworks. The current test package is ad-hoc signed for integrity but is
+  not Developer ID signed or notarized, so Gatekeeper requires a manual
+  per-application override described in `docs/qt-packaging.md`.
 * Ubuntu 24.04 and 26.04 x86-64 Debian packages using each release's native Qt
   runtime dependencies.
 

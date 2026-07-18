@@ -501,6 +501,10 @@ Good next low-risk slices:
   DMG, and uploading that DMG as a short-lived test artifact. Signing,
   notarization, and physical-Mac validation remain release follow-ups rather
   than beta.2 gates.
+  The DMG test must verify the deployed app's ad-hoc signature integrity with
+  `codesign --verify --deep --strict`; this does not replace Developer ID
+  signing or notarization and will not make Gatekeeper accept a downloaded app
+  without a per-application override.
 * Keep the platform CI workflows reusable through `workflow_call`.
   `.github/workflows/draft-release.yml` manually assembles their five packages
   and unified checksums without publishing; a pushed `v*` tag may create a

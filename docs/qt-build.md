@@ -102,9 +102,9 @@ and real-cache GUI validation on physical Mac hardware remain separate release
 milestones.
 
 The generated DMG is suitable for development testing, but macOS Gatekeeper
-may require an explicit right-click and Open because it is not signed or
-notarized. See `docs/qt-packaging.md` for local package commands and package
-contents.
+requires a per-application override because it is not Developer ID signed or
+notarized. See `docs/qt-packaging.md` for the current `Privacy & Security` test
+procedure, local package commands, and package contents.
 
 ### Validated prebuilt-Qt developer setup
 

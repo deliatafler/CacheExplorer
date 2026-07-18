@@ -2,6 +2,17 @@
 
 The Qt GUI is the supported beta interface for CacheExplorer.
 
+## macOS first launch
+
+The current Apple Silicon beta is ad-hoc signed for bundle integrity but is not
+Developer ID signed or notarized. After downloading it, macOS may report that
+CacheExplorer is damaged. If you trust the package and its published checksum,
+try to open it once, then open `System Settings` > `Privacy & Security`, scroll
+to `Security`, and choose `Open Anyway` for CacheExplorer. Authenticate and
+confirm `Open`; macOS remembers the exception for later launches.
+
+Do not disable Gatekeeper system-wide.
+
 ## Open a cache
 
 CacheExplorer reads compatible Second Life viewer texture caches directly. It is

@@ -20,7 +20,7 @@ if [[ ! -f "$dmg_path" ]]; then
     exit 1
 fi
 
-for tool in hdiutil plutil file otool; do
+for tool in hdiutil plutil file otool codesign; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "Required tool not found: $tool" >&2
         exit 1
@@ -85,6 +85,8 @@ fi
 architecture="$(file "$executable")"
 echo "$architecture"
 grep -q "arm64" <<<"$architecture"
+
+codesign --verify --deep --strict --verbose=2 "$app"
 
 dependencies="$(otool -L "$executable")"
 for framework in QtCore QtGui QtWidgets; do

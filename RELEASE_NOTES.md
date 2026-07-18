@@ -19,8 +19,10 @@ Windows beta package and includes the latest preview-panel improvements.
   will not preview. These are expected no-preview cases, not app failures.
 * The Windows installer is unsigned, so Windows may show an unknown-publisher
   or SmartScreen warning.
-* The macOS package is unsigned and unnotarized. Physical-Mac validation remains
-  deferred and is not a beta.2 release gate.
+* The macOS package is ad-hoc signed for integrity but is not Developer ID
+  signed or notarized. Gatekeeper therefore requires the per-application
+  `Open Anyway` override described in `docs/qt-packaging.md`. Physical-Mac
+  validation remains in progress.
 * Static/single-file distribution remains future work.
 * CacheExplorer reads and exports cache data; it does not repair or modify the
   viewer cache.

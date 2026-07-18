@@ -47,12 +47,26 @@ platform plugin, plus `README.md`, `RELEASE_NOTES.md`, `LICENSE`, and the Qt
 user guide. The package test mounts the image read-only, verifies those files,
 checks bundle metadata and ARM64 architecture, confirms the executable resolves
 Qt through bundled `@rpath` frameworks, and rejects an unexpected Qt Network
-framework.
+framework. It also verifies the complete app bundle's ad-hoc code-signature
+integrity with `codesign --verify --deep --strict`.
 
-The current DMG is deliberately unsigned and unnotarized. It is a CI and
-physical-Mac test artifact, not yet a polished public macOS release. Developer
-ID signing and Apple notarization require project-owned Apple credentials and
-should be added as a separate protected release workflow step.
+The current DMG is ad-hoc signed by Qt's deployment tool, but it is not signed
+with an Apple-issued Developer ID certificate or notarized. It is therefore a
+CI and physical-Mac test artifact, not yet a polished public macOS release.
+Developer ID signing and Apple notarization require project-owned Apple
+credentials and should be added as a separate protected release workflow step.
+
+After downloading the current DMG, macOS Gatekeeper may report that
+CacheExplorer is damaged even when its checksum and code-signature integrity
+are valid. To authorize a trusted test build using Apple's supported override:
+
+1. Try to open CacheExplorer once and dismiss the warning.
+2. Open `System Settings`, select `Privacy & Security`, and scroll to
+   `Security`.
+3. Click `Open Anyway` for CacheExplorer, authenticate, and confirm `Open`.
+
+The override is intentionally per application. Do not disable Gatekeeper
+system-wide.
 
 ## Ubuntu Debian package
 
