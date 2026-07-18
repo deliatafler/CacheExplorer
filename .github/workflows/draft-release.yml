@@ -53,11 +53,11 @@ jobs:
           set -euo pipefail
 
           expected_assets=(
-            CacheExplorer-0.1.0-beta.2-Windows-x64.zip
-            CacheExplorer-0.1.0-beta.2-Windows-x64-Setup.exe
-            CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg
-            CacheExplorer-0.1.0-beta.2-Ubuntu-24.04-x86_64.deb
-            CacheExplorer-0.1.0-beta.2-Ubuntu-26.04-x86_64.deb
+            CacheExplorer-0.1.0-beta.3-Windows-x64.zip
+            CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe
+            CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg
+            CacheExplorer-0.1.0-beta.3-Ubuntu-24.04-x86_64.deb
+            CacheExplorer-0.1.0-beta.3-Ubuntu-26.04-x86_64.deb
           )
 
           for asset in "${expected_assets[@]}"; do
@@ -68,11 +68,11 @@ jobs:
           (
             cd release-assets
             sha256sum \
-              CacheExplorer-0.1.0-beta.2-Windows-x64.zip \
-              CacheExplorer-0.1.0-beta.2-Windows-x64-Setup.exe \
-              CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg \
-              CacheExplorer-0.1.0-beta.2-Ubuntu-24.04-x86_64.deb \
-              CacheExplorer-0.1.0-beta.2-Ubuntu-26.04-x86_64.deb \
+              CacheExplorer-0.1.0-beta.3-Windows-x64.zip \
+              CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe \
+              CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg \
+              CacheExplorer-0.1.0-beta.3-Ubuntu-24.04-x86_64.deb \
+              CacheExplorer-0.1.0-beta.3-Ubuntu-26.04-x86_64.deb \
               > SHA256SUMS.txt
             sha256sum --check SHA256SUMS.txt
           )

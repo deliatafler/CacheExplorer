@@ -85,7 +85,7 @@ jobs:
             -Configuration Release `
             -QtBinDir "$env:QT_ROOT_DIR\bin" `
             -OutputDir artifacts\cacheexplorer-qt-shared `
-            -ZipPath artifacts\CacheExplorer-0.1.0-beta.2-Windows-x64.zip `
+            -ZipPath artifacts\CacheExplorer-0.1.0-beta.3-Windows-x64.zip `
             -Zip
 
       - name: Smoke-test packaged GUI
@@ -93,7 +93,7 @@ jobs:
         run: |
           powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
             -PackageDir artifacts\cacheexplorer-qt-shared `
-            -ZipPath artifacts\CacheExplorer-0.1.0-beta.2-Windows-x64.zip `
+            -ZipPath artifacts\CacheExplorer-0.1.0-beta.3-Windows-x64.zip `
             -ExtractAndLaunch `
             -LaunchSeconds 10
 
@@ -113,7 +113,7 @@ jobs:
         shell: pwsh
         run: |
           powershell -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 `
-            -InstallerPath artifacts\CacheExplorer-0.1.0-beta.2-Windows-x64-Setup.exe `
+            -InstallerPath artifacts\CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe `
             -LaunchSeconds 10
 
       - name: Upload package
@@ -121,9 +121,9 @@ jobs:
         with:
           name: CacheExplorer-Windows-x64
           path: |
-            artifacts/CacheExplorer-0.1.0-beta.2-Windows-x64.zip
-            artifacts/CacheExplorer-0.1.0-beta.2-Windows-x64.zip.sha256
-            artifacts/CacheExplorer-0.1.0-beta.2-Windows-x64-Setup.exe
-            artifacts/CacheExplorer-0.1.0-beta.2-Windows-x64-Setup.exe.sha256
+            artifacts/CacheExplorer-0.1.0-beta.3-Windows-x64.zip
+            artifacts/CacheExplorer-0.1.0-beta.3-Windows-x64.zip.sha256
+            artifacts/CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe
+            artifacts/CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe.sha256
           if-no-files-found: error
           retention-days: 14

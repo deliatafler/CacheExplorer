@@ -2,10 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 project(CacheExplorer VERSION 0.1.0 LANGUAGES CXX)
 
-set(CACHEEXPLORER_DISPLAY_VERSION
-    "0.1.0-beta.2"
-    CACHE STRING
-    "User-facing CacheExplorer version string")
+set(CACHEEXPLORER_DISPLAY_VERSION "0.1.0-beta.3")
 
 set(CACHEEXPLORER_LINUX_PACKAGE_TAG
     "Linux"

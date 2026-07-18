@@ -80,7 +80,7 @@ cpack --config build-qt-prebuilt/CPackConfig.cmake `
   -C Release -G NSIS -B artifacts
 
 powershell -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 `
-  -InstallerPath artifacts\CacheExplorer-0.1.0-beta.2-Windows-x64-Setup.exe
+  -InstallerPath artifacts\CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe
 ```
 
 The installer smoke test must run only when CacheExplorer is not already

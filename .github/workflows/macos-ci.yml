@@ -82,19 +82,19 @@ jobs:
       - name: Test macOS DMG
         run: |
           bash scripts/test-qt-macos-package.sh \
-            artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg \
+            artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg \
             0.1.0 \
-            0.1.0-beta.2
+            0.1.0-beta.3
           shasum -a 256 \
-            artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg \
-            > artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg.sha256
+            artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg \
+            > artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg.sha256
 
       - name: Upload ad-hoc-signed macOS package
         uses: actions/upload-artifact@v7
         with:
           name: CacheExplorer-macOS-arm64
           path: |
-            artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg
-            artifacts/CacheExplorer-0.1.0-beta.2-macOS-arm64.dmg.sha256
+            artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg
+            artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg.sha256
           if-no-files-found: error
           retention-days: 14

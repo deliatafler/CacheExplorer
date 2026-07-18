@@ -15,8 +15,8 @@ format.
 
 ## Status
 
-CacheExplorer is approaching a first beta. The Qt 6 GUI is the app path for
-future development, beta testing, and cross-platform work.
+CacheExplorer is in active cross-platform beta testing. The Qt 6 GUI is the app
+path for future development and cross-platform work.
 
 Many real cache entries are expected to be incomplete or undecodable because
 viewers use progressive JPEG2000 texture caching. CacheExplorer treats those

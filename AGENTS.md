@@ -503,7 +503,7 @@ Good next low-risk slices:
   Qt GUI, deploying its app-local Qt frameworks, ad-hoc signing the final app
   bundle, validating the CPack DMG, and uploading that DMG as a short-lived
   test artifact. Developer ID signing, notarization, and physical-Mac
-  validation remain release follow-ups rather than beta.2 gates.
+  validation remain release follow-ups rather than beta gates.
   The DMG test must verify the deployed app's ad-hoc signature integrity with
   `codesign --verify --deep --strict`, report the binary deployment target, and
   require the app-local `@executable_path/../Frameworks` `LC_RPATH` before it
