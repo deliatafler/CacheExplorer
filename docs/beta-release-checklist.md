@@ -94,6 +94,10 @@ Run each packaged GUI on its target platform, then complete
 primary Windows package and the core open/browse/preview/export flow on macOS
 and Ubuntu.
 
+Before physical-Mac validation, confirm `scripts/test-qt-macos-package.sh`
+passes against the exact DMG being tested. This verifies the final bundle
+signature, app-local Qt framework `LC_RPATH`, and packaged `--version` startup.
+
 Minimum beta acceptance:
 
 * Opens a real compatible viewer texture cache without freezing.

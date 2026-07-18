@@ -12,6 +12,10 @@ Windows beta package and includes the latest preview-panel improvements.
 * Added compact selected-texture dimensions, cache completeness, timestamp,
   and one-click UUID copying below the large preview.
 * Added automated Windows installer install/launch/uninstall coverage.
+* Fixed the macOS application bundle's Qt framework runpath so the installed
+  app can locate its bundled Qt libraries at launch.
+* Expanded macOS package validation to check the final ad-hoc signature,
+  app-local framework runpath, and an actual mounted-DMG startup.
 
 ### Beta limitations
 
