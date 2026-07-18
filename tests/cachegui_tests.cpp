@@ -19,6 +19,7 @@
 #include <QTemporaryDir>
 
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -205,10 +206,20 @@ namespace
     void TestCachePathNormalization()
     {
 #ifdef _WIN32
-        const QString alternatePath = QStringLiteral(
-            "C:/Users/test/AppData/Local/SecondLife/texturecache");
-        const QString nativePath = QStringLiteral(
-            "C:\\Users\\test\\AppData\\Local\\SecondLife\\texturecache");
+        const QString localAppData = QStandardPaths::writableLocation(
+            QStandardPaths::GenericDataLocation);
+        Expect(
+            !localAppData.isEmpty(),
+            "Windows local application-data path is available");
+        if (localAppData.isEmpty())
+        {
+            return;
+        }
+
+        const QString nativePath = PathToQString(
+            PathFromQString(localAppData) / "SecondLife" / "texturecache");
+        QString alternatePath = nativePath;
+        alternatePath.replace('\\', '/');
 
         Expect(
             PathToQString(PathFromQString(alternatePath)) == nativePath,
@@ -224,9 +235,12 @@ namespace
                 PathFromQString(nativePath.toLower())),
             "cache path comparison remains case-insensitive on Windows");
 #else
-        const QString unnormalizedPath =
-            QStringLiteral("/home/test/cache/../texturecache");
-        const QString normalizedPath = QStringLiteral("/home/test/texturecache");
+        const std::filesystem::path homePath = PathFromQString(
+            QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
+        const QString unnormalizedPath = PathToQString(
+            homePath / "cache" / ".." / "texturecache");
+        const QString normalizedPath = PathToQString(
+            (homePath / "texturecache").lexically_normal());
 
         Expect(
             PathToQString(
