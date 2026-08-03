@@ -1,6 +1,7 @@
 #include "CacheEntryTableModel.h"
 #include "GalleryFilterProxyModel.h"
 #include "GalleryActivityIndicator.h"
+#include "GalleryItemDelegate.h"
 #include "GalleryListView.h"
 #include "GalleryPreviewController.h"
 #include "GalleryPreviewScanner.h"
@@ -21,6 +22,7 @@
 #include "QtTextureDetails.h"
 #include "QtTryNextPreview.h"
 #include "QtViewMode.h"
+#include "QtVisualStyle.h"
 #include "TextureCacheDatabase.h"
 #include "TryNextPreviewState.h"
 #include "UUID.h"
@@ -39,7 +41,7 @@
 #include <QCommandLineParser>
 #include <QClipboard>
 #include <QComboBox>
-#include <QGridLayout>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QIcon>
@@ -53,6 +55,7 @@
 #include <QPushButton>
 #include <QScrollBar>
 #include <QResizeEvent>
+#include <QSplitter>
 #include <QStackedWidget>
 #include <QStyle>
 #include <QTableView>
@@ -80,6 +83,7 @@ namespace
             resize(1050, 680);
 
             auto* root = new QWidget(this);
+            root->setObjectName(QStringLiteral("CacheExplorerRoot"));
             CreateControls(root);
             ConfigureModels();
             ConfigureTable();
@@ -130,8 +134,10 @@ namespace
     private:
         void CreateControls(QWidget* root)
         {
-            pathLabel_ = new QLabel(QStringLiteral("Texture cache"), root);
+            pathLabel_ = new QLabel(QStringLiteral("Cache"), root);
+            pathLabel_->setObjectName(QStringLiteral("SecondaryText"));
             pathEdit_ = new QLineEdit(PreferredCachePath(), root);
+            pathEdit_->setMinimumWidth(180);
             defaultCacheButton_ = new QToolButton(root);
             defaultCacheButton_->setIcon(
                 style()->standardIcon(QStyle::SP_DirHomeIcon));
@@ -145,21 +151,35 @@ namespace
             recentCacheMenu_ = new QMenu(recentCacheButton_);
             recentCacheButton_->setMenu(recentCacheMenu_);
             recentCacheButton_->setVisible(false);
-            browseButton_ = new QPushButton(QStringLiteral("Choose Folder..."), root);
+            browseButton_ = new QPushButton(QStringLiteral("Choose..."), root);
+            browseButton_->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
+            browseButton_->setToolTip(QStringLiteral("Choose a texture cache folder"));
             openButton_ = new QPushButton(QStringLiteral("Open"), root);
-            aboutButton_ = new QPushButton(QStringLiteral("About"), root);
+            openButton_->setIcon(style()->standardIcon(QStyle::SP_DialogOpenButton));
+            openButton_->setProperty("primary", true);
+            aboutButton_ = new QPushButton(root);
+            aboutButton_->setIcon(
+                style()->standardIcon(QStyle::SP_MessageBoxInformation));
+            aboutButton_->setToolTip(QStringLiteral("About Cache Explorer"));
+            aboutButton_->setFixedWidth(36);
 
-            uuidLookupLabel_ = new QLabel(QStringLiteral("Find UUID"), root);
             uuidLookupEdit_ = new QLineEdit(root);
             uuidLookupEdit_->setPlaceholderText(
-                QStringLiteral("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"));
+                QStringLiteral("Find texture UUID"));
             uuidLookupEdit_->setClearButtonEnabled(true);
-            uuidLookupEdit_->setMinimumWidth(290);
+            uuidLookupEdit_->setMinimumWidth(250);
             findUuidButton_ = new QPushButton(QStringLiteral("Find"), root);
+            findUuidButton_->setIcon(
+                style()->standardIcon(QStyle::SP_FileDialogContentsView));
 
             tryNextButton_ = new QPushButton(QStringLiteral("Try Next Preview"), root);
+            tryNextButton_->setIcon(
+                style()->standardIcon(QStyle::SP_ArrowForward));
             exportButton_ = new QPushButton(QStringLiteral("Export PNG"), root);
+            exportButton_->setIcon(
+                style()->standardIcon(QStyle::SP_DialogSaveButton));
             viewToggleButton_ = new QPushButton(QStringLiteral("Gallery"), root);
+            viewToggleButton_->setObjectName(QStringLiteral("ViewToggle"));
             galleryFilterLabel_ = new QLabel(QStringLiteral("Show"), root);
             galleryFilterCombo_ = new QComboBox(root);
             ConfigureGalleryPreviewFilterControl(*galleryFilterCombo_);
@@ -171,18 +191,18 @@ namespace
             gallerySortLabel_->hide();
             gallerySortCombo_->hide();
             galleryCountLabel_ = new QLabel(root);
+            galleryCountLabel_->setObjectName(QStringLiteral("GalleryCount"));
             galleryCountLabel_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
             galleryCountLabel_->setMinimumWidth(
                 galleryCountLabel_->fontMetrics().horizontalAdvance(
                     QStringLiteral("999999 of 999999 entries")));
-            galleryCountLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
             galleryCountLabel_->hide();
             galleryActivityLabel_ = new QLabel(root);
+            galleryActivityLabel_->setObjectName(QStringLiteral("GalleryActivity"));
             galleryActivityLabel_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
             galleryActivityLabel_->setMinimumWidth(
                 galleryActivityLabel_->fontMetrics().horizontalAdvance(
                     QStringLiteral("Loading thumbnails 64 / 64 (999.9/s)")));
-            galleryActivityLabel_->setStyleSheet(QStringLiteral("QLabel { color: #666; }"));
             galleryActivityLabel_->hide();
             galleryActivityIndicator_.SetLabel(galleryActivityLabel_);
             tryNextButton_->setEnabled(false);
@@ -211,12 +231,14 @@ namespace
             batchExportPollTimer_->setInterval(100);
 
             previewLabel_ = new QLabel(QStringLiteral("No preview selected."), root);
+            previewLabel_->setObjectName(QStringLiteral("PreviewImage"));
             previewLabel_->setAlignment(Qt::AlignCenter);
             previewLabel_->setMinimumSize(320, 320);
             previewPanel_.SetLabel(previewLabel_);
             previewPanel_.Clear();
             previewCaption_ = new QLabel(root);
-            previewCaption_->setAlignment(Qt::AlignCenter);
+            previewCaption_->setObjectName(QStringLiteral("PreviewCaption"));
+            previewCaption_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
             previewCaption_->setTextInteractionFlags(Qt::TextSelectableByMouse);
             previewCaption_->setWordWrap(true);
             previewCaption_->setToolTip(QStringLiteral("Selected texture UUID"));
@@ -225,16 +247,14 @@ namespace
                 QStringLiteral("Copy the selected texture UUID to the clipboard"));
             copyUuidButton_->setEnabled(false);
             previewDetails_ = new QLabel(root);
-            previewDetails_->setAlignment(Qt::AlignCenter);
+            previewDetails_->setObjectName(QStringLiteral("PreviewDetails"));
+            previewDetails_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
             previewDetails_->setWordWrap(true);
-            previewCaption_->setStyleSheet(
-                QStringLiteral("QLabel { color: #666; }"));
-            previewDetails_->setStyleSheet(
-                QStringLiteral("QLabel { color: #666; }"));
 
             statusLabel_ = new QLabel(
                 QStringLiteral("Choose a Second Life viewer texture cache folder."),
                 root);
+            statusLabel_->setObjectName(QStringLiteral("StatusLabel"));
         }
 
         void ConfigureModels()
@@ -252,6 +272,8 @@ namespace
             table_->setSelectionBehavior(QAbstractItemView::SelectRows);
             table_->setSelectionMode(QAbstractItemView::ExtendedSelection);
             table_->setSortingEnabled(true);
+            table_->setAlternatingRowColors(true);
+            table_->setShowGrid(false);
             table_->setIconSize(QSize(16, 16));
             table_->verticalHeader()->hide();
             table_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
@@ -277,18 +299,14 @@ namespace
             galleryView_->setWrapping(true);
             galleryView_->setResizeMode(QListView::Adjust);
             galleryView_->setMovement(QListView::Static);
-            galleryView_->setIconSize(QSize(128, 128));
-            galleryView_->setGridSize(QSize(196, 174));
+            galleryView_->setObjectName(QStringLiteral("GalleryView"));
+            galleryView_->setIconSize(QSize(144, 144));
+            galleryView_->setGridSize(QSize(184, 184));
+            galleryView_->setItemDelegate(new GalleryItemDelegate(galleryView_));
             galleryView_->setUniformItemSizes(true);
             galleryView_->setWordWrap(false);
+            galleryView_->setMouseTracking(true);
             galleryView_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-            galleryView_->setStyleSheet(
-                QStringLiteral(
-                    "QListView::item:selected { "
-                    "background: #dbeafe; "
-                    "border: 2px solid #2563eb; "
-                    "color: #172554; "
-                    "}"));
         }
 
         void ConfigureSelectionModels()
@@ -301,54 +319,79 @@ namespace
         void CreateLayout(QWidget* root)
         {
             auto* layout = new QVBoxLayout(root);
+            layout->setContentsMargins(12, 12, 12, 10);
+            layout->setSpacing(10);
 
-            auto* pathLayout = new QGridLayout();
-            pathLayout->addWidget(pathLabel_, 0, 0);
-            pathLayout->addWidget(pathEdit_, 0, 1);
-            pathLayout->addWidget(defaultCacheButton_, 0, 2);
-            pathLayout->addWidget(recentCacheButton_, 0, 3);
-            pathLayout->addWidget(browseButton_, 0, 4);
-            pathLayout->addWidget(openButton_, 0, 5);
-            pathLayout->addWidget(aboutButton_, 0, 6);
-            pathLayout->setColumnStretch(1, 1);
+            auto* sourceBand = new QFrame(root);
+            sourceBand->setObjectName(QStringLiteral("ToolbarBand"));
+            auto* pathLayout = new QHBoxLayout(sourceBand);
+            pathLayout->setContentsMargins(10, 8, 10, 8);
+            pathLayout->setSpacing(7);
+            pathLayout->addWidget(pathLabel_);
+            pathLayout->addWidget(pathEdit_, 1);
+            pathLayout->addWidget(defaultCacheButton_);
+            pathLayout->addWidget(recentCacheButton_);
+            pathLayout->addWidget(browseButton_);
+            pathLayout->addWidget(openButton_);
+            pathLayout->addWidget(aboutButton_);
 
-            auto* lookupLayout = new QHBoxLayout();
-            lookupLayout->addWidget(uuidLookupLabel_);
-            lookupLayout->addWidget(uuidLookupEdit_);
-            lookupLayout->addWidget(findUuidButton_);
-            lookupLayout->addStretch(1);
+            auto* commandBand = new QFrame(root);
+            commandBand->setObjectName(QStringLiteral("ToolbarBand"));
+            auto* commandLayout = new QVBoxLayout(commandBand);
+            commandLayout->setContentsMargins(10, 8, 10, 8);
+            commandLayout->setSpacing(7);
+            auto* primaryActionLayout = new QHBoxLayout();
+            primaryActionLayout->setSpacing(7);
+            primaryActionLayout->addWidget(exportButton_);
+            primaryActionLayout->addWidget(tryNextButton_);
+            primaryActionLayout->addWidget(uuidLookupEdit_);
+            primaryActionLayout->addWidget(findUuidButton_);
+            primaryActionLayout->addStretch(1);
+            primaryActionLayout->addWidget(viewToggleButton_);
+            commandLayout->addLayout(primaryActionLayout);
 
-            auto* actionLayout = new QHBoxLayout();
-            actionLayout->addWidget(tryNextButton_);
-            actionLayout->addWidget(exportButton_);
-            actionLayout->addStretch(1);
-            actionLayout->addWidget(galleryFilterLabel_);
-            actionLayout->addWidget(galleryFilterCombo_);
-            actionLayout->addWidget(gallerySortLabel_);
-            actionLayout->addWidget(gallerySortCombo_);
-            actionLayout->addWidget(galleryCountLabel_);
-            actionLayout->addWidget(galleryActivityLabel_);
-            actionLayout->addWidget(viewToggleButton_);
+            auto* galleryControlLayout = new QHBoxLayout();
+            galleryControlLayout->setSpacing(7);
+            galleryControlLayout->addStretch(1);
+            galleryControlLayout->addWidget(galleryFilterLabel_);
+            galleryControlLayout->addWidget(galleryFilterCombo_);
+            galleryControlLayout->addWidget(gallerySortLabel_);
+            galleryControlLayout->addWidget(gallerySortCombo_);
+            galleryControlLayout->addWidget(galleryCountLabel_);
+            galleryControlLayout->addWidget(galleryActivityLabel_);
+            commandLayout->addLayout(galleryControlLayout);
 
             viewStack_->addWidget(table_);
             viewStack_->addWidget(galleryView_);
 
-            auto* contentLayout = new QHBoxLayout();
-            contentLayout->addWidget(viewStack_, 3);
-            auto* previewLayout = new QVBoxLayout();
-            previewLayout->setContentsMargins(0, 0, 0, 0);
+            auto* previewPane = new QFrame(root);
+            previewPane->setObjectName(QStringLiteral("PreviewPane"));
+            previewPane->setMinimumWidth(300);
+            auto* previewLayout = new QVBoxLayout(previewPane);
+            previewLayout->setContentsMargins(10, 10, 10, 10);
+            previewLayout->setSpacing(8);
+            auto* previewHeaderLayout = new QHBoxLayout();
+            auto* previewTitle = new QLabel(QStringLiteral("Preview"), previewPane);
+            previewTitle->setObjectName(QStringLiteral("PreviewTitle"));
+            previewHeaderLayout->addWidget(previewTitle);
+            previewHeaderLayout->addStretch(1);
+            previewHeaderLayout->addWidget(copyUuidButton_);
+            previewLayout->addLayout(previewHeaderLayout);
             previewLayout->addWidget(previewLabel_, 1);
-            auto* previewCaptionLayout = new QHBoxLayout();
-            previewCaptionLayout->addWidget(previewCaption_, 1);
-            previewCaptionLayout->addWidget(copyUuidButton_);
-            previewLayout->addLayout(previewCaptionLayout);
+            previewLayout->addWidget(previewCaption_);
             previewLayout->addWidget(previewDetails_);
-            contentLayout->addLayout(previewLayout, 1);
 
-            layout->addLayout(pathLayout);
-            layout->addLayout(lookupLayout);
-            layout->addLayout(actionLayout);
-            layout->addLayout(contentLayout, 1);
+            auto* contentSplitter = new QSplitter(Qt::Horizontal, root);
+            contentSplitter->setChildrenCollapsible(false);
+            contentSplitter->addWidget(viewStack_);
+            contentSplitter->addWidget(previewPane);
+            contentSplitter->setStretchFactor(0, 3);
+            contentSplitter->setStretchFactor(1, 1);
+            contentSplitter->setSizes({720, 320});
+
+            layout->addWidget(sourceBand);
+            layout->addWidget(commandBand);
+            layout->addWidget(contentSplitter, 1);
             layout->addWidget(statusLabel_);
         }
 
@@ -677,6 +720,11 @@ namespace
                 reopeningCurrentCache
                     ? QStringLiteral("Refresh")
                     : QStringLiteral("Open"));
+            openButton_->setIcon(
+                style()->standardIcon(
+                    reopeningCurrentCache
+                        ? QStyle::SP_BrowserReload
+                        : QStyle::SP_DialogOpenButton));
         }
 
         void ClearPreviewUiState()
@@ -1650,7 +1698,6 @@ namespace
         QMenu* recentCacheMenu_ = nullptr;
         QPushButton* openButton_ = nullptr;
         QPushButton* aboutButton_ = nullptr;
-        QLabel* uuidLookupLabel_ = nullptr;
         QLineEdit* uuidLookupEdit_ = nullptr;
         QPushButton* findUuidButton_ = nullptr;
         QPushButton* tryNextButton_ = nullptr;
@@ -1706,6 +1753,7 @@ int main(int argc, char* argv[])
     QApplication::setOrganizationName(QStringLiteral("CacheExplorer"));
     QApplication::setWindowIcon(
         QIcon(QStringLiteral(":/resources/cacheexplorer.png")));
+    ApplyCacheExplorerVisualStyle(app);
 
     QCommandLineParser commandLine;
     const QCommandLineOption smokeOpenOption(

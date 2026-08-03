@@ -3,6 +3,7 @@
 #include <QListView>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QTableView>
 #include <QWidget>
 
@@ -24,4 +25,9 @@ void ApplyViewMode(
             : static_cast<QWidget*>(&table));
     viewToggleButton.setText(
         galleryMode ? QStringLiteral("Table") : QStringLiteral("Gallery"));
+    viewToggleButton.setIcon(
+        viewToggleButton.style()->standardIcon(
+            galleryMode
+                ? QStyle::SP_FileDialogDetailedView
+                : QStyle::SP_FileDialogListView));
 }

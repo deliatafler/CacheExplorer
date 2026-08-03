@@ -318,7 +318,14 @@ Gallery tiles flow left to right and wrap to use the available browsing width.
 Resizing the Gallery schedules the same visible-thumbnail search used after
 scrolling, so newly exposed tiles load without requiring a scroll event.
 Selected Gallery tiles use a clear blue outline and light blue fill so single
-and extended selections remain visible against the normal white background.
+and extended selections remain visible against the normal background.
+`cachegui/GalleryItemDelegate.*` paints the palette-aware tile surface,
+thumbnail, hover/selection borders, and middle-elided UUID caption.
+
+`cachegui/QtVisualStyle.*` applies the shared palette-aware Qt Widgets styling
+for toolbar bands, compact command controls, Table surfaces, and the framed
+preview pane. The main content uses a non-collapsible splitter so the Gallery
+or Table and the large preview can be resized without changing view behavior.
 
 The Qt GUI provides a `Find UUID` control that looks up an in-world texture UUID
 through `TextureCacheDatabase::Find`, selects the matching entry in either view,

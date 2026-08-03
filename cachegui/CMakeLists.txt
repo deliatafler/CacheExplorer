@@ -5,6 +5,8 @@ add_executable(cachegui WIN32 MACOSX_BUNDLE
     CacheEntryTableModel.h
     GalleryFilterProxyModel.cpp
     GalleryFilterProxyModel.h
+    GalleryItemDelegate.cpp
+    GalleryItemDelegate.h
     GalleryActivityIndicator.cpp
     GalleryActivityIndicator.h
     GalleryListView.cpp
@@ -54,6 +56,8 @@ add_executable(cachegui WIN32 MACOSX_BUNDLE
     QtTryNextPreview.h
     QtViewMode.cpp
     QtViewMode.h
+    QtVisualStyle.cpp
+    QtVisualStyle.h
     TryNextPreviewState.cpp
     TryNextPreviewState.h
 )

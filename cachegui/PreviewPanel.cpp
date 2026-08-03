@@ -89,22 +89,30 @@ void PreviewPanel::ApplyState(PreviewPanelState state)
     {
         case PreviewPanelState::Empty:
             label_->setStyleSheet(
-                QStringLiteral("QLabel { background: #202020; color: #a8a8a8; }"));
+                QStringLiteral(
+                    "QLabel { background: #202124; color: #9aa0a6; "
+                    "border: 0; border-radius: 5px; padding: 12px; }"));
             break;
 
         case PreviewPanelState::Notice:
             label_->setStyleSheet(
-                QStringLiteral("QLabel { background: #202020; color: #d0d0d0; }"));
+                QStringLiteral(
+                    "QLabel { background: #202124; color: #d0d4d8; "
+                    "border: 0; border-radius: 5px; padding: 12px; }"));
             break;
 
         case PreviewPanelState::Message:
             label_->setStyleSheet(
-                QStringLiteral("QLabel { background: #241f1f; color: #f0c7c7; }"));
+                QStringLiteral(
+                    "QLabel { background: #2b2021; color: #f2c9cb; "
+                    "border: 0; border-radius: 5px; padding: 12px; }"));
             break;
 
         case PreviewPanelState::Image:
             label_->setStyleSheet(
-                QStringLiteral("QLabel { background: #202020; color: #d0d0d0; }"));
+                QStringLiteral(
+                    "QLabel { background: #202124; color: #d0d4d8; "
+                    "border: 0; border-radius: 5px; padding: 0; }"));
             break;
     }
 }

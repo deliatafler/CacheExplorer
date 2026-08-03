@@ -28,7 +28,7 @@ roadmap rather than letting this become a changelog.
 - [x] Start the first-run cache folder picker in the platform's viewer-cache
   root (`%LOCALAPPDATA%` on Windows and `~/Library/Caches` on macOS) when no
   remembered or discovered cache path is available.
-- [ ] Refine Gallery tile layout and preview-panel presentation from beta
+- [x] Refine Gallery tile layout and preview-panel presentation from beta
   feedback.
 
 ## Reliability and performance

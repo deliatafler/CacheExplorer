@@ -34,7 +34,7 @@ FastCache.cache
 f/
 ```
 
-Click `Choose Folder...` to select either folder; the app opens the selected
+Click `Choose...` to select either folder; the app opens the selected
 cache immediately. On first use, when no remembered or automatically discovered
 cache path is available, the folder chooser starts in the platform's normal
 per-user cache root: local application data on Windows and `~/Library/Caches`
@@ -80,6 +80,9 @@ Both views support Ctrl-click and Shift-click multi-selection. Selected entries
 remain selected when switching between Gallery and Table; the current entry is
 still the one shown in the large preview panel.
 
+Drag the divider beside the preview panel to give the browser or the selected
+texture more room.
+
 ## Find a texture UUID
 
 Enter an in-world texture UUID in `Find UUID` and click `Find` to select its
@@ -117,7 +120,7 @@ counts.
 
 ## Diagnostics
 
-Click `About` to view the app version, Qt runtime/build versions, and cache
+Click the information button to view the app version, Qt runtime/build versions, and cache
 diagnostics. This information is useful in beta bug reports.
 
 ## Limitations
