@@ -5,6 +5,7 @@
 #include "GalleryPreviewQueue.h"
 #include "PreviewCache.h"
 #include "QtGalleryStatus.h"
+#include "QtGalleryDiagnostics.h"
 #include "QtHelpers.h"
 #include "QtTextureDetails.h"
 #include "QtWindowState.h"
@@ -105,11 +106,24 @@ namespace
                 QStringLiteral(
                     "This cache: 2 checked, 1 previews, 1 unavailable, 5.0 per second"),
             "activity tooltip includes measured thumbnail outcomes");
+        Expect(
+            GalleryPerformanceDiagnosticText(snapshot) ==
+                QStringLiteral(
+                    "Gallery thumbnails checked: 2\n"
+                    "Gallery previews: 1\n"
+                    "Gallery unavailable: 1\n"
+                    "Gallery decode rate: 5.0 per second (single worker)"),
+            "About diagnostics retain the complete Gallery measurement");
 
         metrics.Reset();
         Expect(
             metrics.Snapshot().completed == 0,
             "metrics reset between opened caches");
+        Expect(
+            GalleryPerformanceDiagnosticText(metrics.Snapshot()) ==
+                QStringLiteral(
+                    "Gallery thumbnail sample: not measured this session"),
+            "About diagnostics explain an empty Gallery sample");
     }
 
     void TestTryNextPreviewState()

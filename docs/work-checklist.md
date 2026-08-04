@@ -44,8 +44,10 @@ roadmap rather than letting this become a changelog.
   existing Gallery activity display.
 - [x] Batch `Images only` terminal-state removals so large viewports do not
   reflow after every unavailable thumbnail.
-- [ ] Measure real-cache Gallery throughput before considering a bounded
-  multi-worker thumbnail queue.
+- [x] Measure real-cache Gallery throughput before considering a bounded
+  multi-worker thumbnail queue. An initial 97-entry Windows sample averaged
+  18.0 thumbnail decodes per second, so retain one worker pending broader beta
+  evidence.
 - [ ] Consider persisting successful thumbnail metadata or images only if
   Gallery startup remains a real bottleneck.
 

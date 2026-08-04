@@ -126,8 +126,10 @@ counts.
 
 ## Diagnostics
 
-Click the information button to view the app version, Qt runtime/build versions, and cache
-diagnostics. This information is useful in beta bug reports.
+Click the information button to view the app version, Qt runtime/build versions,
+cache diagnostics, and the current session's Gallery thumbnail counts and
+single-worker decode rate. This information is useful in beta bug reports and
+performance comparisons.
 
 ## Limitations
 

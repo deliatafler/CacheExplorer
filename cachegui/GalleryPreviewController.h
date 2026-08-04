@@ -43,6 +43,7 @@ public:
         const PreviewCache& previewCache);
     void MarkCompleted(std::chrono::milliseconds duration, bool succeeded);
     void ResetMetrics();
+    GalleryPreviewMetricsSnapshot MetricsSnapshot() const;
 
     GalleryActivityState ActivityState(
         bool galleryMode,

@@ -105,6 +105,11 @@ void GalleryPreviewController::ResetMetrics()
     metrics_.Reset();
 }
 
+GalleryPreviewMetricsSnapshot GalleryPreviewController::MetricsSnapshot() const
+{
+    return metrics_.Snapshot();
+}
+
 GalleryActivityState GalleryPreviewController::ActivityState(
     bool galleryMode,
     bool databaseOpen,

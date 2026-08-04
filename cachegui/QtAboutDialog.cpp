@@ -1,5 +1,6 @@
 #include "QtAboutDialog.h"
 
+#include "QtGalleryDiagnostics.h"
 #include "QtHelpers.h"
 #include "TextureCacheDatabase.h"
 
@@ -38,23 +39,28 @@ namespace
             .arg(ToQString(header.encoderVersion));
     }
 
-    QString BuildDiagnosticText(const TextureCacheDatabase& database)
+    QString BuildDiagnosticText(
+        const TextureCacheDatabase& database,
+        const GalleryPreviewMetricsSnapshot& galleryMetrics)
     {
         return QStringLiteral(
             "Application version: %1\n"
             "Qt runtime: %2\n"
             "Qt build: %3\n"
-            "%4")
+            "%4\n"
+            "%5")
             .arg(QStringLiteral(CACHEEXPLORER_VERSION))
             .arg(QString::fromLatin1(qVersion()))
             .arg(QStringLiteral(QT_VERSION_STR))
-            .arg(CacheDiagnosticText(database));
+            .arg(CacheDiagnosticText(database))
+            .arg(GalleryPerformanceDiagnosticText(galleryMetrics));
     }
 }
 
 void ShowAboutDialog(
     QWidget& parent,
-    const TextureCacheDatabase& database)
+    const TextureCacheDatabase& database,
+    const GalleryPreviewMetricsSnapshot& galleryMetrics)
 {
     QMessageBox aboutBox(&parent);
     aboutBox.setWindowTitle(QStringLiteral("About Cache Explorer"));
@@ -69,6 +75,6 @@ void ShowAboutDialog(
             "Firestorm Viewer is a trademark of The Phoenix Firestorm Project, Inc.\n"
             "CacheExplorer is not affiliated with, sponsored by, or endorsed by "
             "either organization."));
-    aboutBox.setDetailedText(BuildDiagnosticText(database));
+    aboutBox.setDetailedText(BuildDiagnosticText(database, galleryMetrics));
     aboutBox.exec();
 }

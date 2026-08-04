@@ -391,7 +391,10 @@ Qt preview decode results distinguish rebuild failures from incomplete/undecodab
 `cachegui/PreviewWorkerState.*` contains async preview request state and decode-worker startup shared by manual and gallery preview workers.
 
 `cachegui/QtAboutDialog.*` contains the Qt-only About/diagnostics dialog.
-It also presents the project license and third-party trademark attribution.
+It also presents the project license, third-party trademark attribution, and
+the current cache session's Gallery thumbnail sample. `cachegui/QtGalleryDiagnostics.*`
+formats the checked/previewable/unavailable counts and measured single-worker
+decode rate for that report.
 
 `cachegui/resources/cacheexplorer.png` is the transparent cross-platform Qt
 application icon and README artwork. The multi-resolution
@@ -462,7 +465,10 @@ queued progress. The main bottom status label remains reserved for Table
 selection previewing, Try Next Preview, Export, and cache open results.
 The activity label also reports measured single-worker thumbnail decode
 throughput while queued work is active. Measurements reset when a cache is
-opened and are intended to guide any future multi-worker decision.
+opened and are retained in About diagnostics after visible work settles. An
+initial Windows real-cache sample checked 97 thumbnails at 18.0 per second;
+keep the single-worker design unless broader beta measurements demonstrate a
+need for bounded concurrency.
 
 `Images only` batches terminal preview-state refiltering over a short interval
 instead of reflowing the Gallery after every unavailable thumbnail. Queue work

@@ -21,6 +21,10 @@ Completed slices:
 * The Gallery `Show` control offers a demand-driven `Images only` mode that
   keeps successful thumbnails and removes unavailable visible entries without
   scanning the full cache up front.
+* About diagnostics retain each open cache session's checked, previewable, and
+  unavailable thumbnail counts plus average single-worker decode rate. An
+  initial Windows real-cache sample checked 97 entries at 18.0 per second, so
+  bounded concurrency is deferred until broader beta evidence supports it.
 
 Possible follow-up:
 

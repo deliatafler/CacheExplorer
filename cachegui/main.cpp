@@ -586,7 +586,10 @@ namespace
                 this,
                 [this]()
                 {
-                    ShowAboutDialog(*this, database_);
+                    ShowAboutDialog(
+                        *this,
+                        database_,
+                        galleryPreviewController_.MetricsSnapshot());
                 });
 
             connect(

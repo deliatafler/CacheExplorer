@@ -65,8 +65,10 @@ export checks below.
     UUID and decoded dimensions. Resize the window and confirm the preview
     rescales. In `Gallery`, newly exposed tiles should also begin lazy thumbnail
     loading.
-16. Click the information button and confirm the details include the app version, Qt runtime,
-    and either the open cache path or `Cache: not open`.
+16. Click the information button and confirm the details include the app
+    version, Qt runtime, either the open cache path or `Cache: not open`, and
+    the current session's Gallery thumbnail sample after visible items have
+    been checked.
 17. Ctrl-click or Shift-click multiple entries in both views, switch views, and
     confirm the selection remains. Confirm the current item still drives the
     large preview panel. In `Gallery`, selected tiles should have a clearly

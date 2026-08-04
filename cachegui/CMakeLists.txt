@@ -40,6 +40,8 @@ add_executable(cachegui WIN32 MACOSX_BUNDLE
     QtFileDialogs.h
     QtGallerySort.cpp
     QtGallerySort.h
+    QtGalleryDiagnostics.cpp
+    QtGalleryDiagnostics.h
     QtGalleryStatus.cpp
     QtGalleryStatus.h
     QtHelpers.cpp
