@@ -65,12 +65,17 @@ export checks below.
     UUID and decoded dimensions. Resize the window and confirm the preview
     rescales. In `Gallery`, newly exposed tiles should also begin lazy thumbnail
     loading.
-16. Click `About` and confirm the details include the app version, Qt runtime,
+16. Click the information button and confirm the details include the app version, Qt runtime,
     and either the open cache path or `Cache: not open`.
 17. Ctrl-click or Shift-click multiple entries in both views, switch views, and
     confirm the selection remains. Confirm the current item still drives the
     large preview panel. In `Gallery`, selected tiles should have a clearly
     visible blue outline and fill.
+18. Use the platform Find shortcut and confirm keyboard focus moves to the UUID
+    field. Tab through the visible controls and confirm focus follows their
+    visual command order without stopping on hidden Gallery/Table controls.
+19. Resize the window, drag the browser/preview divider, close normally, and
+    relaunch. Confirm the window and divider return to their previous geometry.
 
 ## Export smoke test
 

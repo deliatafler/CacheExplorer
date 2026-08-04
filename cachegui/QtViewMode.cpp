@@ -30,4 +30,11 @@ void ApplyViewMode(
             galleryMode
                 ? QStyle::SP_FileDialogDetailedView
                 : QStyle::SP_FileDialogListView));
+    const QString targetView = galleryMode
+        ? QStringLiteral("Table")
+        : QStringLiteral("Gallery");
+    viewToggleButton.setAccessibleName(
+        QStringLiteral("Switch to %1 view").arg(targetView));
+    viewToggleButton.setToolTip(
+        QStringLiteral("Switch to %1 view").arg(targetView));
 }

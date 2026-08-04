@@ -58,6 +58,8 @@ add_executable(cachegui WIN32 MACOSX_BUNDLE
     QtViewMode.h
     QtVisualStyle.cpp
     QtVisualStyle.h
+    QtWindowState.cpp
+    QtWindowState.h
     TryNextPreviewState.cpp
     TryNextPreviewState.h
 )

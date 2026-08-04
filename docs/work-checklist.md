@@ -30,6 +30,9 @@ roadmap rather than letting this become a changelog.
   remembered or discovered cache path is available.
 - [x] Refine Gallery tile layout and preview-panel presentation from beta
   feedback.
+- [x] Remember the main-window geometry and browser/preview divider position.
+- [x] Add platform-native command shortcuts, meaningful accessible control
+  names, and an intentional keyboard tab order.
 
 ## Reliability and performance
 

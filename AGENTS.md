@@ -327,6 +327,13 @@ for toolbar bands, compact command controls, Table surfaces, and the framed
 preview pane. The main content uses a non-collapsible splitter so the Gallery
 or Table and the large preview can be resized without changing view behavior.
 
+`cachegui/QtWindowState.*` persists the main-window geometry and content
+splitter state through per-user Qt settings. `MainWindow` restores both after
+constructing the layout and saves them on a normal close. Common commands use
+platform-native Open, Refresh, Find, and Save As key sequences. Keep icon-only
+controls named for accessibility and preserve the intentional tab order across
+visible Gallery/Table controls.
+
 The Qt GUI provides a `Find UUID` control that looks up an in-world texture UUID
 through `TextureCacheDatabase::Find`, selects the matching entry in either view,
 and clears a Gallery-only filter only when that filter hides the result.

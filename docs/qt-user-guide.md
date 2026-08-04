@@ -81,7 +81,13 @@ remain selected when switching between Gallery and Table; the current entry is
 still the one shown in the large preview panel.
 
 Drag the divider beside the preview panel to give the browser or the selected
-texture more room.
+texture more room. CacheExplorer remembers the window position, window size,
+and divider position between launches.
+
+The common Open, Refresh, Find, and Save As keyboard shortcuts choose a cache,
+refresh the displayed cache, focus UUID search, and export the current
+selection respectively. Button tooltips show the platform-specific key
+sequence.
 
 ## Find a texture UUID
 

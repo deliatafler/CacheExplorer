@@ -7,6 +7,7 @@
 #include "QtGalleryStatus.h"
 #include "QtHelpers.h"
 #include "QtTextureDetails.h"
+#include "QtWindowState.h"
 #include "TryNextPreviewState.h"
 
 #include <QStandardItemModel>
@@ -344,6 +345,53 @@ namespace
             "first cache folder picker starts in the platform cache root");
     }
 
+    void TestWindowStatePersistence()
+    {
+        QTemporaryDir settingsDirectory;
+        Expect(
+            settingsDirectory.isValid(),
+            "temporary window-state settings directory is available");
+        if (!settingsDirectory.isValid())
+        {
+            return;
+        }
+
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(
+            QSettings::IniFormat,
+            QSettings::UserScope,
+            settingsDirectory.path());
+        QCoreApplication::setOrganizationName(
+            QStringLiteral("CacheExplorerTests"));
+        QCoreApplication::setApplicationName(
+            QStringLiteral("WindowStatePersistence"));
+
+        QSettings settings;
+        settings.clear();
+        settings.sync();
+
+        const QtWindowState emptyState = LoadQtWindowState();
+        Expect(
+            emptyState.windowGeometry.isEmpty() &&
+                emptyState.contentSplitterState.isEmpty(),
+            "window state is empty before it is first saved");
+
+        const QtWindowState expectedState{
+            QByteArray("geometry-state"),
+            QByteArray("splitter-state")};
+        SaveQtWindowState(expectedState);
+        settings.sync();
+
+        const QtWindowState restoredState = LoadQtWindowState();
+        Expect(
+            restoredState.windowGeometry == expectedState.windowGeometry,
+            "window geometry round-trips through Qt settings");
+        Expect(
+            restoredState.contentSplitterState ==
+                expectedState.contentSplitterState,
+            "content splitter state round-trips through Qt settings");
+    }
+
     void TestTextureDetailsText()
     {
         CacheEntry entry{};
@@ -382,6 +430,7 @@ int main(int argc, char* argv[])
     TestCachePathNormalization();
     TestRecentCachePathMigration();
     TestCacheFolderDialogStartPath();
+    TestWindowStatePersistence();
     TestTextureDetailsText();
 
     if (gFailures != 0)

@@ -23,6 +23,7 @@
 #include "QtTryNextPreview.h"
 #include "QtViewMode.h"
 #include "QtVisualStyle.h"
+#include "QtWindowState.h"
 #include "TextureCacheDatabase.h"
 #include "TryNextPreviewState.h"
 #include "UUID.h"
@@ -40,12 +41,14 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QClipboard>
+#include <QCloseEvent>
 #include <QComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QIcon>
 #include <QItemSelectionModel>
+#include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListView>
@@ -55,6 +58,7 @@
 #include <QPushButton>
 #include <QScrollBar>
 #include <QResizeEvent>
+#include <QShortcut>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStyle>
@@ -90,7 +94,10 @@ namespace
             ConfigureGallery();
             ConfigureSelectionModels();
             CreateLayout(root);
+            ConfigureAccessibility();
+            ConfigureKeyboardNavigation();
             ConnectSignals();
+            ConfigureShortcuts();
 
             ApplyViewMode(
                 galleryMode_,
@@ -106,6 +113,7 @@ namespace
             galleryCountLabel_->setVisible(true);
 
             setCentralWidget(root);
+            RestoreWindowState();
         }
 
         bool SmokeOpenCache(const QString& cachePath)
@@ -119,6 +127,14 @@ namespace
         }
 
     protected:
+        void closeEvent(QCloseEvent* event) override
+        {
+            SaveQtWindowState({
+                saveGeometry(),
+                contentSplitter_->saveState()});
+            QMainWindow::closeEvent(event);
+        }
+
         void resizeEvent(QResizeEvent* event) override
         {
             QMainWindow::resizeEvent(event);
@@ -138,11 +154,17 @@ namespace
             pathLabel_->setObjectName(QStringLiteral("SecondaryText"));
             pathEdit_ = new QLineEdit(PreferredCachePath(), root);
             pathEdit_->setMinimumWidth(180);
+            pathEdit_->setAccessibleName(
+                QStringLiteral("Texture cache folder"));
             defaultCacheButton_ = new QToolButton(root);
             defaultCacheButton_->setIcon(
                 style()->standardIcon(QStyle::SP_DirHomeIcon));
             defaultCacheButton_->setToolTip(
                 QStringLiteral("Open the preferred viewer texture cache"));
+            defaultCacheButton_->setAccessibleName(
+                QStringLiteral("Open preferred texture cache"));
+            defaultCacheButton_->setAccessibleDescription(
+                defaultCacheButton_->toolTip());
             defaultCacheButton_->setVisible(DefaultCachePathExists());
             recentCacheButton_ = new QToolButton(root);
             recentCacheButton_->setText(QStringLiteral("Recent"));
@@ -150,6 +172,8 @@ namespace
             recentCacheButton_->setPopupMode(QToolButton::InstantPopup);
             recentCacheMenu_ = new QMenu(recentCacheButton_);
             recentCacheButton_->setMenu(recentCacheMenu_);
+            recentCacheButton_->setAccessibleName(
+                QStringLiteral("Recent texture caches"));
             recentCacheButton_->setVisible(false);
             browseButton_ = new QPushButton(QStringLiteral("Choose..."), root);
             browseButton_->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
@@ -161,6 +185,8 @@ namespace
             aboutButton_->setIcon(
                 style()->standardIcon(QStyle::SP_MessageBoxInformation));
             aboutButton_->setToolTip(QStringLiteral("About Cache Explorer"));
+            aboutButton_->setAccessibleName(
+                QStringLiteral("About Cache Explorer"));
             aboutButton_->setFixedWidth(36);
 
             uuidLookupEdit_ = new QLineEdit(root);
@@ -168,6 +194,8 @@ namespace
                 QStringLiteral("Find texture UUID"));
             uuidLookupEdit_->setClearButtonEnabled(true);
             uuidLookupEdit_->setMinimumWidth(250);
+            uuidLookupEdit_->setAccessibleName(
+                QStringLiteral("Find texture UUID"));
             findUuidButton_ = new QPushButton(QStringLiteral("Find"), root);
             findUuidButton_->setIcon(
                 style()->standardIcon(QStyle::SP_FileDialogContentsView));
@@ -183,11 +211,13 @@ namespace
             galleryFilterLabel_ = new QLabel(QStringLiteral("Show"), root);
             galleryFilterCombo_ = new QComboBox(root);
             ConfigureGalleryPreviewFilterControl(*galleryFilterCombo_);
+            galleryFilterLabel_->setBuddy(galleryFilterCombo_);
             galleryFilterLabel_->hide();
             galleryFilterCombo_->hide();
             gallerySortLabel_ = new QLabel(QStringLiteral("Sort"), root);
             gallerySortCombo_ = new QComboBox(root);
             ConfigureGallerySortControl(*gallerySortCombo_);
+            gallerySortLabel_->setBuddy(gallerySortCombo_);
             gallerySortLabel_->hide();
             gallerySortCombo_->hide();
             galleryCountLabel_ = new QLabel(root);
@@ -216,6 +246,8 @@ namespace
             table_ = new QTableView(root);
             galleryView_ = new GalleryListView(root);
             viewStack_ = new QStackedWidget(root);
+            table_->setAccessibleName(QStringLiteral("Texture table"));
+            galleryView_->setAccessibleName(QStringLiteral("Texture gallery"));
 
             previewPollTimer_ = new QTimer(root);
             previewPollTimer_->setInterval(50);
@@ -234,6 +266,7 @@ namespace
             previewLabel_->setObjectName(QStringLiteral("PreviewImage"));
             previewLabel_->setAlignment(Qt::AlignCenter);
             previewLabel_->setMinimumSize(320, 320);
+            previewLabel_->setAccessibleName(QStringLiteral("Texture preview"));
             previewPanel_.SetLabel(previewLabel_);
             previewPanel_.Clear();
             previewCaption_ = new QLabel(root);
@@ -255,6 +288,8 @@ namespace
                 QStringLiteral("Choose a Second Life viewer texture cache folder."),
                 root);
             statusLabel_->setObjectName(QStringLiteral("StatusLabel"));
+            statusLabel_->setAccessibleName(QStringLiteral("Status"));
+            pathLabel_->setBuddy(pathEdit_);
         }
 
         void ConfigureModels()
@@ -381,18 +416,121 @@ namespace
             previewLayout->addWidget(previewCaption_);
             previewLayout->addWidget(previewDetails_);
 
-            auto* contentSplitter = new QSplitter(Qt::Horizontal, root);
-            contentSplitter->setChildrenCollapsible(false);
-            contentSplitter->addWidget(viewStack_);
-            contentSplitter->addWidget(previewPane);
-            contentSplitter->setStretchFactor(0, 3);
-            contentSplitter->setStretchFactor(1, 1);
-            contentSplitter->setSizes({720, 320});
+            contentSplitter_ = new QSplitter(Qt::Horizontal, root);
+            contentSplitter_->setAccessibleName(
+                QStringLiteral("Browser and preview divider"));
+            contentSplitter_->setChildrenCollapsible(false);
+            contentSplitter_->addWidget(viewStack_);
+            contentSplitter_->addWidget(previewPane);
+            contentSplitter_->setStretchFactor(0, 3);
+            contentSplitter_->setStretchFactor(1, 1);
+            contentSplitter_->setSizes({720, 320});
 
             layout->addWidget(sourceBand);
             layout->addWidget(commandBand);
-            layout->addWidget(contentSplitter, 1);
+            layout->addWidget(contentSplitter_, 1);
             layout->addWidget(statusLabel_);
+        }
+
+        void ConfigureAccessibility()
+        {
+            galleryFilterCombo_->setAccessibleName(
+                QStringLiteral("Gallery contents"));
+            gallerySortCombo_->setAccessibleName(
+                QStringLiteral("Gallery sort order"));
+            previewCaption_->setAccessibleName(
+                QStringLiteral("Selected texture UUID"));
+            previewDetails_->setAccessibleName(
+                QStringLiteral("Selected texture details"));
+        }
+
+        void ConfigureKeyboardNavigation()
+        {
+            setTabOrder(pathEdit_, defaultCacheButton_);
+            setTabOrder(defaultCacheButton_, recentCacheButton_);
+            setTabOrder(recentCacheButton_, browseButton_);
+            setTabOrder(browseButton_, openButton_);
+            setTabOrder(openButton_, aboutButton_);
+            setTabOrder(aboutButton_, exportButton_);
+            setTabOrder(exportButton_, tryNextButton_);
+            setTabOrder(tryNextButton_, uuidLookupEdit_);
+            setTabOrder(uuidLookupEdit_, findUuidButton_);
+            setTabOrder(findUuidButton_, viewToggleButton_);
+            setTabOrder(viewToggleButton_, galleryFilterCombo_);
+            setTabOrder(galleryFilterCombo_, gallerySortCombo_);
+            setTabOrder(gallerySortCombo_, galleryView_);
+            setTabOrder(galleryView_, table_);
+            setTabOrder(table_, copyUuidButton_);
+        }
+
+        void ConfigureShortcuts()
+        {
+            const QKeySequence openSequence(QKeySequence::Open);
+            AddButtonShortcut(openSequence, *browseButton_);
+            browseButton_->setToolTip(
+                QStringLiteral("Choose a texture cache folder (%1)")
+                    .arg(openSequence.toString(QKeySequence::NativeText)));
+
+            const QKeySequence refreshSequence(QKeySequence::Refresh);
+            AddButtonShortcut(refreshSequence, *openButton_);
+            openButton_->setToolTip(
+                QStringLiteral("Open or refresh the displayed cache (%1)")
+                    .arg(refreshSequence.toString(QKeySequence::NativeText)));
+
+            const QKeySequence findSequence(QKeySequence::Find);
+            auto* findShortcut = new QShortcut(findSequence, this);
+            connect(
+                findShortcut,
+                &QShortcut::activated,
+                this,
+                [this]()
+                {
+                    if (uuidLookupEdit_->isEnabled())
+                    {
+                        uuidLookupEdit_->setFocus();
+                        uuidLookupEdit_->selectAll();
+                    }
+                });
+            uuidLookupEdit_->setToolTip(
+                QStringLiteral("Find a texture UUID (%1)")
+                    .arg(findSequence.toString(QKeySequence::NativeText)));
+
+            const QKeySequence exportSequence(QKeySequence::SaveAs);
+            AddButtonShortcut(exportSequence, *exportButton_);
+            exportButton_->setToolTip(
+                QStringLiteral("Export selected textures as PNG (%1)")
+                    .arg(exportSequence.toString(QKeySequence::NativeText)));
+        }
+
+        void AddButtonShortcut(
+            const QKeySequence& sequence,
+            QPushButton& button)
+        {
+            auto* shortcut = new QShortcut(sequence, this);
+            connect(
+                shortcut,
+                &QShortcut::activated,
+                this,
+                [&button]()
+                {
+                    if (button.isEnabled())
+                    {
+                        button.click();
+                    }
+                });
+        }
+
+        void RestoreWindowState()
+        {
+            const QtWindowState state = LoadQtWindowState();
+            if (!state.windowGeometry.isEmpty())
+            {
+                restoreGeometry(state.windowGeometry);
+            }
+            if (!state.contentSplitterState.isEmpty())
+            {
+                contentSplitter_->restoreState(state.contentSplitterState);
+            }
         }
 
         void ConnectSignals()
@@ -1711,6 +1849,7 @@ namespace
         QTableView* table_ = nullptr;
         QListView* galleryView_ = nullptr;
         QStackedWidget* viewStack_ = nullptr;
+        QSplitter* contentSplitter_ = nullptr;
         QLabel* galleryActivityLabel_ = nullptr;
         QLabel* previewLabel_ = nullptr;
         QLabel* previewCaption_ = nullptr;
