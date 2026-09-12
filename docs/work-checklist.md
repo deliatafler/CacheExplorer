@@ -87,15 +87,15 @@ changelog.
 - [ ] Revisit static Qt or single-file distribution only after the shared-Qt
   release path has proven itself.
 
-## 0.1.0 release preparation
+## 0.1.0 release
 
 - [x] Promote the application and package display version to `0.1.0`.
 - [x] Make the root `VERSION` file the source for CMake and CI package naming.
 - [x] Update stable release notes, user documentation, and issue templates.
-- [ ] Run the manual `Assemble Draft Release` workflow and verify all five
+- [x] Run the manual `Assemble Draft Release` workflow and verify all five
   packages plus `SHA256SUMS.txt`.
-- [ ] Complete final packaged smoke tests before creating `v0.1.0`.
-- [ ] Create `v0.1.0`, inspect the generated draft release, and publish it.
+- [x] Complete final packaged smoke tests before creating `v0.1.0`.
+- [x] Create `v0.1.0`, inspect the generated draft release, and publish it.
 
 ## Post-release product work
 
