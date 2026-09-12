@@ -39,7 +39,7 @@ Create and validate the disk image:
 ```bash
 cpack --config build-macos/CPackConfig.cmake -G DragNDrop -B artifacts
 bash scripts/test-qt-macos-package.sh \
-  artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg
+  artifacts/CacheExplorer-0.1.0-macOS-arm64.dmg
 ```
 
 The DMG contains `CacheExplorer.app`, its app-local Qt frameworks and Cocoa
@@ -57,14 +57,14 @@ plugin.
 After Qt deployment, CacheExplorer explicitly ad-hoc signs the complete app
 bundle before CPack creates the DMG. This preserves bundle integrity after
 `macdeployqt` adds the app-local frameworks and plugins. The package is not
-signed with an Apple-issued Developer ID certificate or notarized, so it is a
-CI and physical-Mac test artifact rather than a polished public macOS release.
-Developer ID signing and Apple notarization require project-owned Apple
-credentials and should be added as a separate protected release workflow step.
+signed with an Apple-issued Developer ID certificate or notarized, so users
+must authorize it with a per-application Gatekeeper override. Developer ID
+signing and Apple notarization require project-owned Apple credentials and
+remain future release-hardening work.
 
 After downloading the current DMG, macOS Gatekeeper may report that
 CacheExplorer is damaged even when its checksum and code-signature integrity
-are valid. To authorize a trusted test build using Apple's supported override:
+are valid. To authorize a trusted download using Apple's supported override:
 
 1. Try to open CacheExplorer once and dismiss the warning.
 2. Open `System Settings`, select `Privacy & Security`, and scroll to
@@ -104,9 +104,9 @@ Validate and install the resulting package:
 
 ```bash
 bash scripts/test-qt-linux-package.sh \
-  artifacts/CacheExplorer-0.1.0-beta.3-Ubuntu-26.04-x86_64.deb
+  artifacts/CacheExplorer-0.1.0-Ubuntu-26.04-x86_64.deb
 
-sudo apt install ./artifacts/CacheExplorer-0.1.0-beta.3-Ubuntu-26.04-x86_64.deb
+sudo apt install ./artifacts/CacheExplorer-0.1.0-Ubuntu-26.04-x86_64.deb
 ```
 
 The package installs the executable in `/usr/bin`, a desktop launcher in
@@ -144,10 +144,10 @@ complete install/launch/uninstall lifecycle with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 `
-  -InstallerPath artifacts\CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe
+  -InstallerPath artifacts\CacheExplorer-0.1.0-Windows-x64-Setup.exe
 ```
 
-The beta installer is unsigned, so Windows may show an unknown-publisher or
+The installer is unsigned, so Windows may show an unknown-publisher or
 SmartScreen warning. Code signing is a later release-hardening item and should
 use protected project credentials in the release workflow.
 
@@ -181,7 +181,7 @@ copied by `windeployqt`, app-local Visual C++ runtime DLLs, `README.md`,
 `RELEASE_NOTES.md`, `LICENSE`, the CacheExplorer icon used by the packaged
 README, and `docs/qt-user-guide.md`. It also writes
 `PACKAGE_INFO.txt` with the package version and build/deployment details for
-beta support reports. With `-Zip`, the
+support reports. With `-Zip`, the
 script also creates
 `artifacts/cacheexplorer-qt-shared.zip` unless `-ZipPath` is supplied. It also
 writes a `.sha256` checksum file next to the zip unless `-NoChecksum` is used.
@@ -213,7 +213,7 @@ powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
 
 `-ExtractAndLaunch` expands the ZIP into a newly created temporary directory,
 checks the deployed files again, launches the extracted executable briefly, and
-removes that temporary directory. It is the preferred beta-release smoke check
+removes that temporary directory. It is the preferred release smoke check
 because it avoids relying on the build tree or local Qt installation. The child
 process receives an isolated `PATH` containing only the extracted package and
 Windows system directories, with Qt plugin/import overrides cleared, so an
@@ -232,7 +232,7 @@ powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
 
 This uses the GUI-only `--smoke-open` switch, which opens the cache through the
 normal main-window path, verifies the entry model was populated, and exits.
-The isolated launch is strong automated deployment coverage, but the final beta
+The isolated launch is strong automated deployment coverage, but the final
 check on a separate Windows machine without a developer Qt SDK is still useful.
 
 For developer builds that have not been packaged with `windeployqt`, launch
@@ -241,7 +241,7 @@ on `PATH`.
 
 ## Optional static release path
 
-The shared package is the current beta packaging path. Static Qt distribution
+The shared package is the current release packaging path. Static Qt distribution
 experiments can use the vcpkg `qt-gui` feature and `x64-windows-static` triplet
 from `docs/qt-build.md`, but contributors should not need to build Qt this way.
 
@@ -266,7 +266,7 @@ check, or incomplete installation. To avoid the notice without relaxing home
 directory permissions, copy the package to `/tmp` first:
 
 ```bash
-cp ~/Downloads/CacheExplorer-0.1.0-beta.3-Ubuntu-26.04-x86_64.deb \
+cp ~/Downloads/CacheExplorer-0.1.0-Ubuntu-26.04-x86_64.deb \
   /tmp/cacheexplorer.deb
 sudo apt install /tmp/cacheexplorer.deb
 rm /tmp/cacheexplorer.deb

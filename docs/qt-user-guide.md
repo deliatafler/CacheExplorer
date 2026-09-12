@@ -1,10 +1,10 @@
 # CacheExplorer Qt user guide
 
-The Qt GUI is the supported beta interface for CacheExplorer.
+The Qt GUI is the supported interface for CacheExplorer.
 
 ## macOS first launch
 
-The current Apple Silicon beta is ad-hoc signed for bundle integrity but is not
+The current Apple Silicon package is ad-hoc signed for bundle integrity but is not
 Developer ID signed or notarized. After downloading it, macOS may report that
 CacheExplorer is damaged. If you trust the package and its published checksum,
 try to open it once, then open `System Settings` > `Privacy & Security`, scroll
@@ -137,7 +137,7 @@ counts.
 
 Click the information button to view the app version, Qt runtime/build versions,
 cache diagnostics, and the current session's Gallery thumbnail counts and
-single-worker decode rate. This information is useful in beta bug reports and
+single-worker decode rate. This information is useful in bug reports and
 performance comparisons.
 
 ## Limitations

@@ -1,12 +1,54 @@
 # CacheExplorer Release Notes
 
-## Next beta
+## 0.1.0
 
+CacheExplorer 0.1.0 is the first stable cross-platform release of the standalone
+Second Life viewer texture-cache browser and PNG exporter.
+
+### Changes since beta.3
+
+* Refreshed the Qt interface with palette-aware toolbar bands, clearer Gallery
+  tiles and selection, a resizable browser/preview divider, and improved preview
+  presentation.
+* Added platform-native Open, Refresh, Find, and Save As shortcuts, improved
+  accessible names and tab order, and remembered window/divider geometry.
 * Added a Gallery `Recent changes` filter. Refreshing the currently open cache
   reports and exposes entries added or updated since its previous successful
   read.
 * PNG export dialogs now remember the last selected destination. The first
   export starts in the platform's Pictures directory when available.
+* Added measured Gallery thumbnail throughput to loading status and support
+  diagnostics while retaining the proven single-worker loading model.
+* Removed user-specific paths from the Qt regression tests.
+
+### Known limitations
+
+* Many real viewer cache entries are incomplete or progressively cached and
+  will not preview. These are expected no-preview cases, not app failures.
+* The Windows installer is unsigned, so Windows may show an unknown-publisher
+  or SmartScreen warning.
+* The macOS package is ad-hoc signed for integrity but is not Developer ID
+  signed or notarized. Gatekeeper therefore requires the per-application
+  `Open Anyway` override described in `docs/qt-packaging.md`.
+* CacheExplorer reads and exports cache data; it does not repair or modify the
+  viewer cache.
+
+### Packages
+
+The 0.1.0 release includes:
+
+* Windows x64 installer with app-local Qt and Visual C++ runtime files.
+* Windows x64 portable ZIP with the same runtime model.
+* Apple Silicon macOS DMG with app-local Qt frameworks.
+* Ubuntu 24.04 and 26.04 x86-64 Debian packages.
+* `SHA256SUMS.txt` covering all five platform packages.
+
+### Trademarks
+
+Second Life® is a registered trademark of Linden Research, Inc. Firestorm Viewer
+is a trademark of The Phoenix Firestorm Project, Inc. CacheExplorer is not
+affiliated with, sponsored by, or endorsed by Linden Research, Inc. or The
+Phoenix Firestorm Project, Inc.
 
 ## 0.1.0-beta.3
 

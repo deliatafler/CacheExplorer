@@ -1,7 +1,7 @@
-# Post-beta roadmap
+# Post-release roadmap
 
 Use this as a parking lot for ideas that should be considered after the first
-Qt beta candidate.
+stable Qt release.
 
 ## Gallery and preview throughput
 
@@ -24,11 +24,11 @@ Completed slices:
 * About diagnostics retain each open cache session's checked, previewable, and
   unavailable thumbnail counts plus average single-worker decode rate. An
   initial Windows real-cache sample checked 97 entries at 18.0 per second, so
-  bounded concurrency is deferred until broader beta evidence supports it.
+  bounded concurrency is deferred until broader usage evidence supports it.
 
 Possible follow-up:
 
 * Persist successful thumbnail images or previewable metadata separately if
   Gallery startup throughput becomes a problem.
 * Batch or debounce `Images only` removals if large Gallery viewports still
-  reflow too often during beta use.
+  reflow too often in real use.

@@ -1,13 +1,13 @@
-# Beta release checklist
+# Release checklist
 
-Use this checklist before tagging or sharing a beta package.
+Use this checklist before tagging or sharing a CacheExplorer package.
 
 ## Version and scope
 
-* Confirm `CMakeLists.txt` has the intended numeric project version and
-  user-facing `CACHEEXPLORER_DISPLAY_VERSION` beta version.
+* Confirm the root `VERSION` file has the intended release version. CMake and
+  all platform workflows derive their display and package versions from it.
 * Confirm the CLI usage output and Qt `About` dialog show that same version.
-* Confirm the Qt GUI is the beta-facing UI.
+* Confirm the Qt GUI is the supported UI.
 * Confirm known limitations are documented in `README.md` and
   `docs/qt-user-guide.md`.
 
@@ -21,9 +21,9 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build-qt-prebuilt --config Release --target cachegui
 ```
 
-The beta GUI packages should be built against prebuilt or distribution-native
-Qt. The static vcpkg Qt build is optional release engineering coverage, not a
-beta gate.
+The GUI packages should be built against prebuilt or distribution-native Qt.
+The static vcpkg Qt build is optional release engineering coverage, not a
+release gate.
 
 ## Packages
 
@@ -80,7 +80,7 @@ cpack --config build-qt-prebuilt/CPackConfig.cmake `
   -C Release -G NSIS -B artifacts
 
 powershell -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 `
-  -InstallerPath artifacts\CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe
+  -InstallerPath artifacts\CacheExplorer-0.1.0-Windows-x64-Setup.exe
 ```
 
 The installer smoke test must run only when CacheExplorer is not already
@@ -98,7 +98,7 @@ Before physical-Mac validation, confirm `scripts/test-qt-macos-package.sh`
 passes against the exact DMG being tested. This verifies the final bundle
 signature, app-local Qt framework `LC_RPATH`, and packaged `--version` startup.
 
-Minimum beta acceptance:
+Minimum release acceptance:
 
 * Opens a real compatible viewer texture cache without freezing.
 * Table and Gallery views both work.
@@ -111,7 +111,7 @@ Minimum beta acceptance:
 
 Before publishing, write short notes that include:
 
-* This is a beta.
+* The release version and intended stability level.
 * Qt GUI is the supported interface.
 * The Qt GUI is the only GUI target.
 * Many viewer cache entries may not preview because they are incomplete.
@@ -123,8 +123,11 @@ Before publishing, write short notes that include:
 After the manual assembly run and platform smoke tests pass, push the intended
 `v*` version tag. The tag-triggered workflow builds the packages again and
 creates a draft GitHub Release using `RELEASE_NOTES.md`; it does not publish the
-release automatically. Confirm the tag, displayed application version, asset
-filenames, and `SHA256SUMS.txt` before publishing the draft.
+release automatically. The workflow refuses a tag that does not exactly match
+`v` plus the root `VERSION` value. Versions with a prerelease suffix create a
+prerelease draft; stable versions create a normal draft. Confirm the tag,
+displayed application version, asset filenames, and `SHA256SUMS.txt` before
+publishing the draft.
 
 GitHub also applies commit-message CI skip markers to tag-push events. If the
 tagged commit contains `[skip ci]`, manually dispatch `Assemble Draft Release`

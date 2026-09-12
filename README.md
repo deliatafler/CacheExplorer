@@ -15,14 +15,14 @@ format.
 
 ## Status
 
-CacheExplorer is in active cross-platform beta testing. The Qt 6 GUI is the app
-path for future development and cross-platform work.
+CacheExplorer 0.1.0 is the first stable cross-platform release. The Qt 6 GUI is
+the supported application interface and the path for future development.
 
 Many real cache entries are expected to be incomplete or undecodable because
 viewers use progressive JPEG2000 texture caching. CacheExplorer treats those
 entries as ordinary no-preview cases, not application failures.
 
-Beta feedback and bug reports are collected through
+Feedback and bug reports are collected through
 [GitHub Issues](https://github.com/deliatafler/CacheExplorer/issues). For GUI
 problems, include the diagnostics shown by `About` when possible.
 
@@ -63,8 +63,8 @@ tests.
 
 ### Qt GUI with prebuilt shared Qt
 
-This is the supported beta GUI path. It is also the preferred developer path
-because it avoids rebuilding Qt locally.
+This is the supported GUI path. It is also the preferred developer path because
+it avoids rebuilding Qt locally.
 
 The helper script configures the recommended build: official/prebuilt Qt,
 static vcpkg libraries for OpenJPEG/libpng, and the dynamic MSVC runtime to
@@ -103,12 +103,12 @@ See `docs/qt-build.md` for deployment details and the optional static Qt path.
 
 ## Packages
 
-Cross-platform beta candidates are produced by GitHub Actions:
+Cross-platform release packages are produced by GitHub Actions:
 
 * Windows x64 installer and portable ZIP with app-local Qt and Visual C++
   runtime files.
 * Apple Silicon macOS DMG with a native application bundle and app-local Qt
-  frameworks. The current test package is ad-hoc signed for integrity but is
+  frameworks. The current package is ad-hoc signed for integrity but is
   not Developer ID signed or notarized, so Gatekeeper requires a manual
   per-application override described in `docs/qt-packaging.md`.
 * Ubuntu 24.04 and 26.04 x86-64 Debian packages using each release's native Qt
@@ -133,7 +133,7 @@ cpack --config build-qt-prebuilt/CPackConfig.cmake `
 ```
 
 See `docs/qt-packaging.md` for installer lifecycle smoke testing and unsigned
-beta caveats.
+package caveats.
 
 For a shared-Qt test package:
 
@@ -157,8 +157,8 @@ launch smoke checks.
 
 Use `docs/qt-gui-validation.md` after GUI behavior changes. Build-only
 validation is usually enough for documentation-only and narrow helper changes.
-Use `docs/beta-release-checklist.md` before tagging or sharing a beta package.
-See `RELEASE_NOTES.md` for draft beta release notes.
+Use `docs/release-checklist.md` before tagging or sharing a release package.
+See `RELEASE_NOTES.md` for release history and current release notes.
 
 ## License
 

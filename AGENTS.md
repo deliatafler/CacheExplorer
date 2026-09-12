@@ -21,9 +21,9 @@ The GUI depends directly on `cachelib`. It must not wrap or invoke the CLI.
 
 Business logic belongs in `cachelib`. CLI-specific argument parsing and console presentation belong in `cachecli`.
 
-The project direction is Qt 6 for GUI development, beta testing, and
-cross-platform support. The native Win32 GUI prototype has been removed; useful
-follow-up ideas from it are parked in `docs/post-beta-roadmap.md`.
+The project direction is Qt 6 for GUI development, releases, and cross-platform
+support. The native Win32 GUI prototype has been removed; useful follow-up ideas
+from it are parked in `docs/post-release-roadmap.md`.
 
 ## Platform and build
 
@@ -49,6 +49,11 @@ Dependencies:
 * OpenJPEG
 * libpng
 
+The root `VERSION` file is the single source for the user-facing application
+version and package filenames. CMake derives its numeric project version from
+the same value. Platform workflows must read this file rather than duplicating
+version strings, and tagged releases must use exactly `v<VERSION>`.
+
 Clean build from Git Bash:
 
 ```bash
@@ -67,8 +72,8 @@ Executable:
 build/cachecli/Release/cachecli.exe
 ```
 
-See `docs/qt-build.md` for detailed Qt GUI build, prebuilt-Qt, static-Qt, and deployment notes. See `docs/qt-packaging.md` for the shared-Qt package helper and smoke-test checklist. See `docs/qt-user-guide.md` for user-facing Qt GUI usage notes, `docs/beta-release-checklist.md` before tagging or sharing a beta, and `RELEASE_NOTES.md` for draft release notes.
-Use `docs/work-checklist.md` for the active beta and post-beta work list.
+See `docs/qt-build.md` for detailed Qt GUI build, prebuilt-Qt, static-Qt, and deployment notes. See `docs/qt-packaging.md` for the shared-Qt package helper and smoke-test checklist. See `docs/qt-user-guide.md` for user-facing Qt GUI usage notes, `docs/release-checklist.md` before tagging or sharing a release, and `RELEASE_NOTES.md` for release notes.
+Use `docs/work-checklist.md` for the active release and post-release work list.
 
 Primary Qt GUI build with a prebuilt shared Qt installation. This is the preferred developer path because it avoids rebuilding Qt locally and matches the official Qt SDK runtime model:
 
@@ -312,7 +317,7 @@ through `cachelib`, shows entries in a sortable model-backed table, can preview
 and export selected entries as PNG through `TextureExporter`, and tracks preview
 status in the table.
 
-The Qt GUI has an `About` diagnostics dialog for beta/support reports. Keep it
+The Qt GUI has an `About` diagnostics dialog for support reports. Keep it
 Qt-only; reusable cache facts should still come from `cachelib`.
 
 Use `docs/qt-gui-validation.md` for the manual Qt GUI smoke/regression checklist. Build-only validation is acceptable for narrow helper moves; run the GUI checklist after changes to async preview flow, selection behavior, gallery loading, export, cache-open behavior, or rendering.
@@ -483,7 +488,7 @@ The activity label also reports measured single-worker thumbnail decode
 throughput while queued work is active. Measurements reset when a cache is
 opened and are retained in About diagnostics after visible work settles. An
 initial Windows real-cache sample checked 97 thumbnails at 18.0 per second;
-keep the single-worker design unless broader beta measurements demonstrate a
+keep the single-worker design unless broader usage measurements demonstrate a
 need for bounded concurrency.
 
 `Images only` batches terminal preview-state refiltering over a short interval
@@ -541,8 +546,8 @@ Good next low-risk slices:
 * Keep `.github/workflows/macos-ci.yml` building and testing the Apple Silicon
   Qt GUI, deploying its app-local Qt frameworks, ad-hoc signing the final app
   bundle, validating the CPack DMG, and uploading that DMG as a short-lived
-  test artifact. Developer ID signing, notarization, and physical-Mac
-  validation remain release follow-ups rather than beta gates.
+  test artifact. Physical-Mac validation has passed; Developer ID signing and
+  notarization remain future distribution-hardening work.
   The DMG test must verify the deployed app's ad-hoc signature integrity with
   `codesign --verify --deep --strict`, report the binary deployment target, and
   require the app-local `@executable_path/../Frameworks` `LC_RPATH` before it
@@ -556,7 +561,7 @@ Good next low-risk slices:
 * Improve Qt gallery UX: consider richer visible loading progress and possibly multiple thumbnail workers if one-worker throughput is not enough.
 * Improve `cachegui` preview presentation and Gallery layout behavior based on real-cache validation.
 * Continue packaging/deployment work for the Qt GUI.
-* Keep `docs/qt-user-guide.md` and `docs/beta-release-checklist.md` aligned with beta behavior.
+* Keep `docs/qt-user-guide.md` and `docs/release-checklist.md` aligned with release behavior.
 * Use `scripts/package-qt-shared.ps1` for repeatable shared-Qt package folders
   from prebuilt Qt developer builds. Pass `-Zip` when preparing a shareable
   archive. The package excludes Qt's optional generic TUIO touch plugin and its

@@ -1,6 +1,6 @@
 ---
-name: Beta bug report
-about: Report a problem found while testing CacheExplorer
+name: Bug report
+about: Report a problem with CacheExplorer
 title: ""
 labels: ""
 assignees: ""

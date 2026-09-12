@@ -28,6 +28,18 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v7
 
+      - name: Read release version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content -LiteralPath VERSION -Raw).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$') {
+            throw "Invalid VERSION value: $version"
+          }
+          "display=$version" >> $env:GITHUB_OUTPUT
+          "portable=CacheExplorer-$version-Windows-x64" >> $env:GITHUB_OUTPUT
+          "installer=CacheExplorer-$version-Windows-x64-Setup" >> $env:GITHUB_OUTPUT
+
       - name: Create vcpkg binary cache directory
         shell: pwsh
         run: New-Item -ItemType Directory -Force -Path "$env:VCPKG_DEFAULT_BINARY_CACHE" | Out-Null
@@ -79,21 +91,25 @@ jobs:
 
       - name: Package shared Qt GUI
         shell: pwsh
+        env:
+          PORTABLE_BASENAME: ${{ steps.version.outputs.portable }}
         run: |
           powershell -ExecutionPolicy Bypass -File scripts/package-qt-shared.ps1 `
             -BuildDir build-qt-prebuilt `
             -Configuration Release `
             -QtBinDir "$env:QT_ROOT_DIR\bin" `
             -OutputDir artifacts\cacheexplorer-qt-shared `
-            -ZipPath artifacts\CacheExplorer-0.1.0-beta.3-Windows-x64.zip `
+            -ZipPath "artifacts\$env:PORTABLE_BASENAME.zip" `
             -Zip
 
       - name: Smoke-test packaged GUI
         shell: pwsh
+        env:
+          PORTABLE_BASENAME: ${{ steps.version.outputs.portable }}
         run: |
           powershell -ExecutionPolicy Bypass -File scripts/test-qt-package.ps1 `
             -PackageDir artifacts\cacheexplorer-qt-shared `
-            -ZipPath artifacts\CacheExplorer-0.1.0-beta.3-Windows-x64.zip `
+            -ZipPath "artifacts\$env:PORTABLE_BASENAME.zip" `
             -ExtractAndLaunch `
             -LaunchSeconds 10
 
@@ -111,9 +127,11 @@ jobs:
 
       - name: Smoke-test Windows installer
         shell: pwsh
+        env:
+          INSTALLER_BASENAME: ${{ steps.version.outputs.installer }}
         run: |
           powershell -ExecutionPolicy Bypass -File scripts/test-windows-installer.ps1 `
-            -InstallerPath artifacts\CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe `
+            -InstallerPath "artifacts\$env:INSTALLER_BASENAME.exe" `
             -LaunchSeconds 10
 
       - name: Upload package
@@ -121,9 +139,9 @@ jobs:
         with:
           name: CacheExplorer-Windows-x64
           path: |
-            artifacts/CacheExplorer-0.1.0-beta.3-Windows-x64.zip
-            artifacts/CacheExplorer-0.1.0-beta.3-Windows-x64.zip.sha256
-            artifacts/CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe
-            artifacts/CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe.sha256
+            artifacts/${{ steps.version.outputs.portable }}.zip
+            artifacts/${{ steps.version.outputs.portable }}.zip.sha256
+            artifacts/${{ steps.version.outputs.installer }}.exe
+            artifacts/${{ steps.version.outputs.installer }}.exe.sha256
           if-no-files-found: error
           retention-days: 14

@@ -226,7 +226,7 @@ $packageInfo = @(
     "Packaged at: $((Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))"
     ""
     "Run CacheExplorer.exe to open the Qt GUI."
-    "See README.md, RELEASE_NOTES.md, LICENSE, and docs/qt-user-guide.md for beta notes."
+    "See README.md, RELEASE_NOTES.md, LICENSE, and docs/qt-user-guide.md for release notes."
 )
 
 Set-Content `

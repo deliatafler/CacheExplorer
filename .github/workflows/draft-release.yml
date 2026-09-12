@@ -40,6 +40,17 @@ jobs:
       - name: Check out release notes
         uses: actions/checkout@v7
 
+      - name: Read release version
+        id: version
+        shell: bash
+        run: |
+          version="$(tr -d '\r\n' < VERSION)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid VERSION value: $version" >&2
+            exit 1
+          fi
+          echo "display=$version" >> "$GITHUB_OUTPUT"
+
       - name: Download platform packages
         uses: actions/download-artifact@v8
         with:
@@ -49,15 +60,17 @@ jobs:
 
       - name: Verify and checksum release assets
         shell: bash
+        env:
+          CACHEEXPLORER_VERSION: ${{ steps.version.outputs.display }}
         run: |
           set -euo pipefail
 
           expected_assets=(
-            CacheExplorer-0.1.0-beta.3-Windows-x64.zip
-            CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe
-            CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg
-            CacheExplorer-0.1.0-beta.3-Ubuntu-24.04-x86_64.deb
-            CacheExplorer-0.1.0-beta.3-Ubuntu-26.04-x86_64.deb
+            "CacheExplorer-$CACHEEXPLORER_VERSION-Windows-x64.zip"
+            "CacheExplorer-$CACHEEXPLORER_VERSION-Windows-x64-Setup.exe"
+            "CacheExplorer-$CACHEEXPLORER_VERSION-macOS-arm64.dmg"
+            "CacheExplorer-$CACHEEXPLORER_VERSION-Ubuntu-24.04-x86_64.deb"
+            "CacheExplorer-$CACHEEXPLORER_VERSION-Ubuntu-26.04-x86_64.deb"
           )
 
           for asset in "${expected_assets[@]}"; do
@@ -67,13 +80,9 @@ jobs:
           find release-assets -maxdepth 1 -type f -name '*.sha256' -delete
           (
             cd release-assets
-            sha256sum \
-              CacheExplorer-0.1.0-beta.3-Windows-x64.zip \
-              CacheExplorer-0.1.0-beta.3-Windows-x64-Setup.exe \
-              CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg \
-              CacheExplorer-0.1.0-beta.3-Ubuntu-24.04-x86_64.deb \
-              CacheExplorer-0.1.0-beta.3-Ubuntu-26.04-x86_64.deb \
-              > SHA256SUMS.txt
+            for asset in "${expected_assets[@]}"; do
+              sha256sum "$asset"
+            done > SHA256SUMS.txt
             sha256sum --check SHA256SUMS.txt
           )
 
@@ -90,12 +99,41 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
+          CACHEEXPLORER_VERSION: ${{ steps.version.outputs.display }}
         shell: bash
         run: |
+          expected_tag="v$CACHEEXPLORER_VERSION"
+          if [[ "$RELEASE_TAG" != "$expected_tag" ]]; then
+            echo "Release tag $RELEASE_TAG does not match VERSION ($expected_tag)." >&2
+            exit 1
+          fi
+
+          release_heading="$(awk '/^## / { print substr($0, 4); exit }' RELEASE_NOTES.md)"
+          if [[ "$release_heading" != "$CACHEEXPLORER_VERSION" ]]; then
+            echo "First release-notes section is $release_heading, expected $CACHEEXPLORER_VERSION." >&2
+            exit 1
+          fi
+
+          awk '
+            /^## / {
+              section_count++
+              if (section_count > 1) {
+                exit
+              }
+            }
+            section_count == 1 { print }
+          ' RELEASE_NOTES.md > current-release-notes.md
+
+          release_flags=(
+            --draft
+            --verify-tag
+            --title "CacheExplorer ${RELEASE_TAG#v}"
+            --notes-file current-release-notes.md
+          )
+          if [[ "$CACHEEXPLORER_VERSION" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
+
           gh release create "$RELEASE_TAG" \
-            release-assets/* \
-            --draft \
-            --prerelease \
-            --verify-tag \
-            --title "CacheExplorer ${RELEASE_TAG#v}" \
-            --notes-file RELEASE_NOTES.md
+            "${release_flags[@]}" \
+            release-assets/*

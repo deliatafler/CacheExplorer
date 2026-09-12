@@ -28,6 +28,18 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v7
 
+      - name: Read release version
+        id: version
+        run: |
+          version="$(tr -d '\r\n' < VERSION)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid VERSION value: $version" >&2
+            exit 1
+          fi
+          echo "display=$version" >> "$GITHUB_OUTPUT"
+          echo "bundle=${version%%-*}" >> "$GITHUB_OUTPUT"
+          echo "package_basename=CacheExplorer-$version-macOS-arm64" >> "$GITHUB_OUTPUT"
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -80,21 +92,25 @@ jobs:
             -B artifacts
 
       - name: Test macOS DMG
+        env:
+          BUNDLE_VERSION: ${{ steps.version.outputs.bundle }}
+          DISPLAY_VERSION: ${{ steps.version.outputs.display }}
+          PACKAGE_BASENAME: ${{ steps.version.outputs.package_basename }}
         run: |
           bash scripts/test-qt-macos-package.sh \
-            artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg \
-            0.1.0 \
-            0.1.0-beta.3
+            "artifacts/$PACKAGE_BASENAME.dmg" \
+            "$BUNDLE_VERSION" \
+            "$DISPLAY_VERSION"
           shasum -a 256 \
-            artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg \
-            > artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg.sha256
+            "artifacts/$PACKAGE_BASENAME.dmg" \
+            > "artifacts/$PACKAGE_BASENAME.dmg.sha256"
 
       - name: Upload ad-hoc-signed macOS package
         uses: actions/upload-artifact@v7
         with:
           name: CacheExplorer-macOS-arm64
           path: |
-            artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg
-            artifacts/CacheExplorer-0.1.0-beta.3-macOS-arm64.dmg.sha256
+            artifacts/${{ steps.version.outputs.package_basename }}.dmg
+            artifacts/${{ steps.version.outputs.package_basename }}.dmg.sha256
           if-no-files-found: error
           retention-days: 14

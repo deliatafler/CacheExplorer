@@ -1,8 +1,34 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(CacheExplorer VERSION 0.1.0 LANGUAGES CXX)
+file(STRINGS
+    "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
+    cacheexplorer_display_version
+    LIMIT_COUNT 1)
+string(STRIP
+    "${cacheexplorer_display_version}"
+    cacheexplorer_display_version)
 
-set(CACHEEXPLORER_DISPLAY_VERSION "0.1.0-beta.3")
+if(NOT cacheexplorer_display_version MATCHES
+        "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.-]+)?$")
+    message(FATAL_ERROR
+        "VERSION must contain a semantic version, got: ${cacheexplorer_display_version}")
+endif()
+
+string(REGEX MATCH
+    "^[0-9]+\\.[0-9]+\\.[0-9]+"
+    cacheexplorer_project_version
+    "${cacheexplorer_display_version}")
+
+project(CacheExplorer VERSION ${cacheexplorer_project_version} LANGUAGES CXX)
+
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+
+set(CACHEEXPLORER_DISPLAY_VERSION
+    "${cacheexplorer_display_version}"
+    CACHE INTERNAL
+    "User-facing CacheExplorer version"
+    FORCE)
 
 set(CACHEEXPLORER_LINUX_PACKAGE_TAG
     "Linux"

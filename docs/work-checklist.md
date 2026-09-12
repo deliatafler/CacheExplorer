@@ -1,10 +1,11 @@
 # CacheExplorer work checklist
 
-This is the working list for the Qt beta and the next development rounds. Keep
-it outcome-focused; move finished work to project history or the post-beta
-roadmap rather than letting this become a changelog.
+This is the working list for the first stable Qt release and the next
+development rounds. Keep it outcome-focused; move finished work to project
+history or the post-release roadmap rather than letting this become a
+changelog.
 
-## Before a public beta
+## Initial release foundation
 
 - [x] Add an open-source license and application icon.
 - [x] Run the packaged GUI through the full real-cache checklist on a release
@@ -12,8 +13,8 @@ roadmap rather than letting this become a changelog.
 - [x] Test the shared Qt ZIP on a Windows machine without the developer Qt SDK.
 - [x] Confirm the package version, release notes, and generated checksum match
   the archive being shared.
-- [x] Collect beta feedback and issue reports through GitHub Issues, with the
-  GUI's About diagnostics included when possible.
+- [x] Collect prerelease feedback and issue reports through GitHub Issues, with
+  the GUI's About diagnostics included when possible.
 
 ## Near-term UX
 
@@ -28,7 +29,7 @@ roadmap rather than letting this become a changelog.
 - [x] Start the first-run cache folder picker in the platform's viewer-cache
   root (`%LOCALAPPDATA%` on Windows and `~/Library/Caches` on macOS) when no
   remembered or discovered cache path is available.
-- [x] Refine Gallery tile layout and preview-panel presentation from beta
+- [x] Refine Gallery tile layout and preview-panel presentation from prerelease
   feedback.
 - [x] Remember the main-window geometry and browser/preview divider position.
 - [x] Add platform-native command shortcuts, meaningful accessible control
@@ -50,7 +51,7 @@ roadmap rather than letting this become a changelog.
   reflow after every unavailable thumbnail.
 - [x] Measure real-cache Gallery throughput before considering a bounded
   multi-worker thumbnail queue. An initial 97-entry Windows sample averaged
-  18.0 thumbnail decodes per second, so retain one worker pending broader beta
+  18.0 thumbnail decodes per second, so retain one worker pending broader
   evidence.
 - [ ] Consider persisting successful thumbnail metadata or images only if
   Gallery startup remains a real bottleneck.
@@ -61,7 +62,7 @@ roadmap rather than letting this become a changelog.
   Qt SDKs and document any platform-specific prerequisites.
 - [x] Build the core and prebuilt-Qt GUI configurations on the GitHub Actions
   Windows hosted runner.
-- [x] Produce a repeatable beta ZIP and checksum in GitHub Actions, with a
+- [x] Produce a repeatable release ZIP and checksum in GitHub Actions, with a
   fresh-extraction package smoke test.
 - [x] Produce, ad-hoc sign, and inspect an Apple Silicon `.app`/DMG artifact in
   GitHub Actions, including app-local Qt runpath and mounted-DMG launch checks.
@@ -81,14 +82,24 @@ roadmap rather than letting this become a changelog.
   portable ZIP, including Start menu and uninstall support plus a CI
   install/launch/uninstall smoke test.
 - [ ] Evaluate per-user installation, upgrade behavior, and code signing after
-  beta feedback; retain native macOS DMG and Linux DEB packages rather than
+  release feedback; retain native macOS DMG and Linux DEB packages rather than
   requiring Qt Installer Framework solely for visual consistency.
 - [ ] Revisit static Qt or single-file distribution only after the shared-Qt
-  beta path has proven itself.
+  release path has proven itself.
 
-## Post-beta product work
+## 0.1.0 release preparation
 
-- [ ] Use beta feedback to prioritize search, richer metadata inspection, and
+- [x] Promote the application and package display version to `0.1.0`.
+- [x] Make the root `VERSION` file the source for CMake and CI package naming.
+- [x] Update stable release notes, user documentation, and issue templates.
+- [ ] Run the manual `Assemble Draft Release` workflow and verify all five
+  packages plus `SHA256SUMS.txt`.
+- [ ] Complete final packaged smoke tests before creating `v0.1.0`.
+- [ ] Create `v0.1.0`, inspect the generated draft release, and publish it.
+
+## Post-release product work
+
+- [ ] Use release feedback to prioritize search, richer metadata inspection, and
   bulk-export workflow improvements.
 - [ ] Reassess Gallery filtering/sorting based on real browsing habits.
 - [ ] Keep the Qt-only GUI path; do not reintroduce platform-specific Win32 UI

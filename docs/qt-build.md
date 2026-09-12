@@ -1,7 +1,7 @@
 # Qt GUI build notes
 
-The Qt 6 GUI in `cachegui` is the GUI path for future cross-platform work
-and beta testing.
+The Qt 6 GUI in `cachegui` is the supported interface and the path for future
+cross-platform work.
 
 ## Fast developer build with prebuilt Qt
 
@@ -68,7 +68,7 @@ baseline, restores a vcpkg binary cache, builds and tests the static core
 configuration, then installs the matching prebuilt Qt MSVC 2022 kit to build
 the GUI and run focused GUI-helper regression tests.
 
-The workflow creates the same shared-Qt ZIP used for beta testing, verifies its
+The workflow creates the same shared-Qt ZIP used for releases, verifies its
 checksum and a fresh-extraction launch smoke, and uploads the ZIP plus its
 `.sha256` file as a short-lived workflow artifact. It intentionally does not
 publish GitHub Releases; release publication remains an explicit tagged-release
