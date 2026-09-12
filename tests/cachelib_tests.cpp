@@ -1,5 +1,6 @@
 #include "Structures.h"
 #include "TextureCacheDatabase.h"
+#include "TextureCacheChanges.h"
 #include "TextureExportState.h"
 #include "TextureRebuilder.h"
 #include "TextureSelection.h"
@@ -286,6 +287,55 @@ namespace
         Expect(
             !HasCompleteCachedTexture(invalid),
             "invalid entry is not cached complete");
+    }
+
+    void TestTextureCacheChangesFindsAddedAndUpdatedEntries()
+    {
+        CacheEntry unchanged{};
+        unchanged.uuid =
+            MakeUuid("11111111-2222-3333-4444-555555555555");
+        unchanged.cacheIndex = 10;
+        unchanged.imageSize = 700;
+        unchanged.bodySize = 100;
+        unchanged.timestamp = 1000;
+
+        CacheEntry updated = unchanged;
+        updated.uuid =
+            MakeUuid("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        updated.cacheIndex = 20;
+
+        CacheEntry removed = unchanged;
+        removed.uuid =
+            MakeUuid("99999999-8888-7777-6666-555555555555");
+        removed.cacheIndex = 30;
+
+        CacheEntry currentUpdate = updated;
+        currentUpdate.bodySize = 200;
+        currentUpdate.timestamp = 1001;
+
+        CacheEntry added = unchanged;
+        added.uuid =
+            MakeUuid("66666666-7777-8888-9999-000000000000");
+        added.cacheIndex = 40;
+
+        const std::vector<std::uint32_t> changes = FindChangedCacheIndices(
+            {unchanged, updated, removed},
+            {unchanged, currentUpdate, added});
+
+        Expect(
+            changes == std::vector<std::uint32_t>{20, 40},
+            "cache changes retain current order for updated and added entries");
+
+        CacheEntry moved = unchanged;
+        moved.cacheIndex = 11;
+        Expect(
+            FindChangedCacheIndices({unchanged}, {moved}) ==
+                std::vector<std::uint32_t>{11},
+            "cache changes treat a moved UUID as updated metadata");
+
+        Expect(
+            FindChangedCacheIndices({}, {}).empty(),
+            "cache changes handle empty snapshots");
     }
 
     void TestTextureSelectionUsesFilteredDatabaseOrder()
@@ -617,6 +667,7 @@ int main()
 {
     TestDatabaseFiltersEntriesAndPreservesCacheIndex();
     TestCachedTextureCompletenessHelpers();
+    TestTextureCacheChangesFindsAddedAndUpdatedEntries();
     TestTextureSelectionUsesFilteredDatabaseOrder();
     TestTextureRebuilderUsesRawCacheIndexAndExactBodySize();
     TestTextureRebuilderTrimsSmallHeaderOnlyTexture();

@@ -212,6 +212,13 @@ Also exposes cached-byte helpers so UI code can ask whether the header/body
 bytes cover an entry's advertised image size without duplicating cache-format
 math.
 
+### TextureCacheChanges
+
+Compares two successful reads of the same cache and returns the current
+`cacheIndex` values for entries that were added or whose cache metadata changed.
+Keep this reusable comparison in `cachelib`; the GUI owns only the lifetime of
+the previous snapshot and the presentation of the result.
+
 ### TextureRebuilder
 
 Reconstructs cached JPEG2000 data in memory or exports a `.j2c` file.
@@ -339,9 +346,13 @@ through `TextureCacheDatabase::Find`, selects the matching entry in either view,
 and clears a Gallery-only filter only when that filter hides the result.
 
 Gallery mode hides the Table-only `Try Next Preview` action because thumbnails
-load lazily in the gallery itself. Its `Show` control offers `Everything` and
-`Images only`; sort options include newest, largest body, largest image, cache
-index, and UUID. `Images only` keeps unknown/checking entries visible as quiet
+load lazily in the gallery itself. Its `Show` control offers `Everything`,
+`Images only`, and `Recent changes`; sort options include newest, largest body,
+largest image, cache index, and UUID. `Recent changes` is populated when the
+currently open cache is refreshed and contains entries added or updated since
+the previous successful read of that cache. Opening a different cache clears
+the delta and returns the Gallery to `Everything`. `Images only` keeps
+unknown/checking entries visible as quiet
 placeholders while the existing lazy worker attempts them, retains successful
 thumbnails, and removes terminal no-preview/load-failed entries. Each removal
 refreshes the visible queue so newly exposed entries are attempted without
@@ -358,10 +369,10 @@ Gallery item selection uses a small `QListView` subclass so clicks on either the
 
 `cachegui/GalleryActivityIndicator.*` contains Qt gallery thumbnail activity label state and text.
 
-`cachegui/GalleryFilterProxyModel.*` contains the Gallery-only preview-state
-filtering proxy. Table mode should show all entries even when `Images only` is
-selected. Keep preview-state refiltering explicit so thumbnail updates do not
-cause an expensive dynamic re-sort of the full model.
+`cachegui/GalleryFilterProxyModel.*` contains the Gallery-only preview-state and
+recent-change filtering proxy. Table mode should show all entries regardless of
+the selected Gallery filter. Keep preview-state refiltering explicit so
+thumbnail updates do not cause an expensive dynamic re-sort of the full model.
 
 `cachegui/GalleryListView.*` contains the gallery hit-testing view subclass. Keep this kind of Qt-only UI behavior out of `cachelib`.
 
@@ -404,7 +415,9 @@ the shared Qt archive.
 
 `cachegui/QtActionState.*` contains Qt button enable/disable rules for the main window.
 
-`cachegui/QtFileDialogs.*` contains Qt file/folder dialog helpers for browse/export commands.
+`cachegui/QtFileDialogs.*` contains Qt file/folder dialog helpers for
+browse/export commands. PNG export dialogs start in the last accepted export
+directory and remember a new directory only after the user accepts a dialog.
 
 `cachegui/QtGallerySort.*` contains the Gallery-only sort control options and proxy-model sort application.
 
@@ -429,6 +442,9 @@ are migrated and deduplicated when settings are read.
 When no remembered or discovered cache path exists, the first folder chooser
 starts in the platform's local application-data directory rather than the
 CacheExplorer executable directory.
+The last accepted PNG export directory is also stored in per-user Qt settings.
+If it is absent or no longer exists, export starts in Pictures, Documents, or
+the user's home directory, in that order.
 Opening an already open cache path intentionally rereads the cache, supporting
 testing and normal browsing while a compatible viewer is actively writing
 texture entries.
@@ -477,8 +493,9 @@ the accumulated removals.
 
 `tests/cachelib_tests.cpp` contains the initial CTest-backed cachelib regression
 coverage. It uses synthetic `texture.entries` data to verify usable-entry
-filtering, raw `cacheIndex` preservation, UUID lookup behavior, and
-`TextureSelection` ordering/clamping. It also uses synthetic `texture.cache` and
+filtering, raw `cacheIndex` preservation, UUID lookup behavior,
+`TextureCacheChanges` added/updated detection, and `TextureSelection`
+ordering/clamping. It also uses synthetic `texture.cache` and
 body files to verify `TextureRebuilder` reads headers from `cacheIndex * 600`,
 uses exactly `bodySize` body bytes, trims padded header-only entries, and treats
 undersized body files as errors. It also checks `TextureExportState`
@@ -486,9 +503,10 @@ load/save behavior for incomplete entries, metadata invalidation, succeeded
 entries, and missing state files.
 
 `tests/cachegui_tests.cpp` provides focused CTest coverage for GUI-facing
-helpers: initial Gallery filtering, gallery queue accounting, bounded Try Next
-traversal, and gallery status text. It is built only when the Qt GUI and project
-tests are enabled.
+helpers: Gallery filtering including recent changes, gallery queue accounting,
+bounded Try Next traversal, gallery status text, and per-user PNG export
+directory persistence. It is built only when the Qt GUI and project tests are
+enabled.
 
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 

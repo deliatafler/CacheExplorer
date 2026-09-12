@@ -170,6 +170,14 @@ namespace
             GalleryFilterUpdatedStatus(12, 48) ==
                 QStringLiteral("Gallery filter updated: showing 12 of 48 entries."),
             "filter result uses gallery count text");
+        Expect(
+            RefreshedCacheStatus(48, 64, 1.71f, 1).contains(
+                QStringLiteral("1 entry added or updated")),
+            "refresh status uses a singular recent-change count");
+        Expect(
+            RefreshedCacheStatus(48, 64, 1.71f, 12).contains(
+                QStringLiteral("12 entries added or updated")),
+            "refresh status reports multiple recent changes");
     }
 
     void TestInitialGalleryFilter()
@@ -188,6 +196,10 @@ namespace
                 sourceModel.index(row, 0),
                 static_cast<int>(states[row]),
                 CacheEntryTableModel::PreviewStateRole);
+            sourceModel.setData(
+                sourceModel.index(row, 0),
+                row + 100,
+                CacheEntryTableModel::CacheIndexRole);
         }
 
         GalleryFilterProxyModel proxyModel;
@@ -216,6 +228,31 @@ namespace
         Expect(
             !proxyModel.RefreshForPreviewStateChange(),
             "table mode does not refilter for Gallery preview changes");
+
+        proxyModel.SetGalleryMode(true);
+        proxyModel.SetRecentCacheIndices({101, 104});
+        proxyModel.SetPreviewFilter(GalleryPreviewFilter::RecentChanges);
+        Expect(
+            proxyModel.rowCount() == 2,
+            "recent-changes filter keeps only changed cache indices");
+        Expect(
+            proxyModel.index(0, 0).data(
+                CacheEntryTableModel::CacheIndexRole).toInt() == 101 &&
+                proxyModel.index(1, 0).data(
+                    CacheEntryTableModel::CacheIndexRole).toInt() == 104,
+            "recent-changes filter preserves source ordering");
+
+        proxyModel.SetRecentCacheIndices({103});
+        Expect(
+            proxyModel.rowCount() == 1 &&
+                proxyModel.index(0, 0).data(
+                    CacheEntryTableModel::CacheIndexRole).toInt() == 103,
+            "recent-changes filter refreshes when a new delta is supplied");
+
+        proxyModel.SetGalleryMode(false);
+        Expect(
+            proxyModel.rowCount() == 5,
+            "table mode ignores the recent-changes filter");
     }
 
     void TestCachePathNormalization()
@@ -406,6 +443,59 @@ namespace
             "content splitter state round-trips through Qt settings");
     }
 
+    void TestPngExportDirectoryPersistence()
+    {
+        QTemporaryDir settingsDirectory;
+        QTemporaryDir exportDirectory;
+        Expect(
+            settingsDirectory.isValid() && exportDirectory.isValid(),
+            "temporary export settings directories are available");
+        if (!settingsDirectory.isValid() || !exportDirectory.isValid())
+        {
+            return;
+        }
+
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(
+            QSettings::IniFormat,
+            QSettings::UserScope,
+            settingsDirectory.path());
+        QCoreApplication::setOrganizationName(
+            QStringLiteral("CacheExplorerTests"));
+        QCoreApplication::setApplicationName(
+            QStringLiteral("PngExportDirectoryPersistence"));
+
+        QSettings settings;
+        settings.clear();
+        settings.sync();
+
+        const QString fallbackDirectory = PreferredPngExportDirectory();
+        Expect(
+            !fallbackDirectory.isEmpty(),
+            "PNG export has a platform user-directory fallback");
+
+        const QString expectedDirectory = PathToQString(
+            PathFromQString(exportDirectory.path()).lexically_normal());
+        RememberPngExportDirectory(exportDirectory.path());
+        settings.sync();
+
+        Expect(
+            PreferredPngExportDirectory() == expectedDirectory,
+            "PNG export remembers the last selected directory");
+        Expect(
+            settings.value(QStringLiteral("export/lastDirectory")).toString()
+                == expectedDirectory,
+            "remembered PNG export directory is stored in native form");
+
+        settings.setValue(
+            QStringLiteral("export/lastDirectory"),
+            exportDirectory.path() + QStringLiteral("/missing"));
+        settings.sync();
+        Expect(
+            PreferredPngExportDirectory() == fallbackDirectory,
+            "missing PNG export directories fall back to a user location");
+    }
+
     void TestTextureDetailsText()
     {
         CacheEntry entry{};
@@ -445,6 +535,7 @@ int main(int argc, char* argv[])
     TestRecentCachePathMigration();
     TestCacheFolderDialogStartPath();
     TestWindowStatePersistence();
+    TestPngExportDirectoryPersistence();
     TestTextureDetailsText();
 
     if (gFailures != 0)

@@ -2,7 +2,9 @@
 
 #include "QtHelpers.h"
 
+#include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QWidget>
 
 QString ChooseCacheDirectory(
@@ -19,16 +21,31 @@ QString ChoosePngOutputFile(
     QWidget& parent,
     const QString& defaultName)
 {
-    return QFileDialog::getSaveFileName(
+    const QString outputFile = QFileDialog::getSaveFileName(
         &parent,
         QStringLiteral("Export PNG"),
-        defaultName,
+        QDir(PreferredPngExportDirectory()).filePath(defaultName),
         QStringLiteral("PNG images (*.png)"));
+
+    if (!outputFile.isEmpty())
+    {
+        RememberPngExportDirectory(QFileInfo(outputFile).absolutePath());
+    }
+
+    return outputFile;
 }
 
 QString ChoosePngOutputDirectory(QWidget& parent)
 {
-    return QFileDialog::getExistingDirectory(
+    const QString outputDirectory = QFileDialog::getExistingDirectory(
         &parent,
-        QStringLiteral("Choose PNG export folder"));
+        QStringLiteral("Choose PNG export folder"),
+        PreferredPngExportDirectory());
+
+    if (!outputDirectory.isEmpty())
+    {
+        RememberPngExportDirectory(outputDirectory);
+    }
+
+    return outputDirectory;
 }

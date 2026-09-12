@@ -20,6 +20,7 @@ namespace
         {
             case GalleryPreviewFilter::Everything:
             case GalleryPreviewFilter::ImagesOnly:
+            case GalleryPreviewFilter::RecentChanges:
                 return static_cast<GalleryPreviewFilter>(value);
         }
 
@@ -54,6 +55,19 @@ void GalleryFilterProxyModel::SetPreviewFilter(GalleryPreviewFilter filter)
     BeginFilterUpdate();
     filter_ = filter;
     EndFilterUpdate();
+}
+
+void GalleryFilterProxyModel::SetRecentCacheIndices(
+    const std::vector<std::uint32_t>& cacheIndices)
+{
+    recentCacheIndices_.clear();
+    recentCacheIndices_.insert(cacheIndices.begin(), cacheIndices.end());
+
+    if (galleryMode_ && filter_ == GalleryPreviewFilter::RecentChanges)
+    {
+        BeginFilterUpdate();
+        EndFilterUpdate();
+    }
 }
 
 bool GalleryFilterProxyModel::RefreshForPreviewStateChange()
@@ -114,6 +128,14 @@ bool GalleryFilterProxyModel::filterAcceptsRow(
             return previewState == PreviewState::Unknown ||
                 previewState == PreviewState::Checking ||
                 previewState == PreviewState::Previewable;
+
+        case GalleryPreviewFilter::RecentChanges:
+        {
+            const std::uint32_t cacheIndex = sourceIndex.data(
+                CacheEntryTableModel::CacheIndexRole).toUInt();
+            return recentCacheIndices_.find(cacheIndex) !=
+                recentCacheIndices_.end();
+        }
     }
 
     return true;
@@ -127,6 +149,9 @@ void ConfigureGalleryPreviewFilterControl(QComboBox& comboBox)
     comboBox.addItem(
         QStringLiteral("Images only"),
         ToComboValue(GalleryPreviewFilter::ImagesOnly));
+    comboBox.addItem(
+        QStringLiteral("Recent changes"),
+        ToComboValue(GalleryPreviewFilter::RecentChanges));
 }
 
 GalleryPreviewFilter CurrentGalleryPreviewFilter(const QComboBox& comboBox)

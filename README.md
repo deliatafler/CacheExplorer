@@ -31,8 +31,11 @@ problems, include the diagnostics shown by `About` when possible.
 * Open a compatible viewer `texturecache` folder directly.
 * Browse cache entries in Table or Gallery view.
 * Lazy-load Gallery thumbnails while scrolling.
+* Refresh an open cache and focus the Gallery on entries added or updated
+  since the previous read.
 * Preview decodable textures.
-* Export one or many selected textures as PNG.
+* Export one or many selected textures as PNG, remembering the last export
+  destination.
 * Show basic app, Qt, and cache diagnostics from the GUI.
 * Use the CLI for scan, list, verify, stats, and export workflows.
 

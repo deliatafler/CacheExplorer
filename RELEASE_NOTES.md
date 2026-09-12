@@ -1,5 +1,13 @@
 # CacheExplorer Release Notes
 
+## Next beta
+
+* Added a Gallery `Recent changes` filter. Refreshing the currently open cache
+  reports and exposes entries added or updated since its previous successful
+  read.
+* PNG export dialogs now remember the last selected destination. The first
+  export starts in the platform's Pictures directory when available.
+
 ## 0.1.0-beta.3
 
 CacheExplorer 0.1.0-beta.3 completes the first physical-Mac validation pass,

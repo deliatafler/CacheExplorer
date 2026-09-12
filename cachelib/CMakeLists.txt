@@ -4,6 +4,7 @@ find_package(PNG REQUIRED)
 add_library(cachelib
     UUID.cpp
     TextureCacheDatabase.cpp
+    TextureCacheChanges.cpp
     TextureExportState.cpp
     TextureRebuilder.cpp
     TextureExporter.cpp

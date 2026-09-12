@@ -24,6 +24,7 @@
 #include "QtViewMode.h"
 #include "QtVisualStyle.h"
 #include "QtWindowState.h"
+#include "TextureCacheChanges.h"
 #include "TextureCacheDatabase.h"
 #include "TryNextPreviewState.h"
 #include "UUID.h"
@@ -58,6 +59,7 @@
 #include <QPushButton>
 #include <QScrollBar>
 #include <QResizeEvent>
+#include <QSignalBlocker>
 #include <QShortcut>
 #include <QSplitter>
 #include <QStackedWidget>
@@ -808,6 +810,13 @@ namespace
         {
             const fs::path cacheDirectory =
                 ResolveTextureCacheDirectory(PathFromQString(pathEdit_->text()));
+            const bool refreshingCurrentCache =
+                database_.IsOpen() &&
+                IsSameCachePath(cacheDirectory, database_.CacheDirectory());
+            const std::vector<CacheEntry> previousEntries =
+                refreshingCurrentCache
+                    ? database_.Entries()
+                    : std::vector<CacheEntry>{};
 
             SetBusy(true, QStringLiteral("Opening cache..."));
 
@@ -819,12 +828,16 @@ namespace
                 return;
             }
 
-            HandleOpenCacheSuccess();
+            HandleOpenCacheSuccess(
+                refreshingCurrentCache,
+                previousEntries);
         }
 
         void HandleOpenCacheFailure(CacheError result)
         {
             tableModel_.SetDatabase(nullptr);
+            proxyModel_->SetRecentCacheIndices({});
+            UpdateRecentChangesFilterLabel({});
             previewStateFile_.clear();
             ClearPreviewUiState();
             UpdateGalleryEntryCount();
@@ -835,18 +848,79 @@ namespace
                 + QString::fromUtf8(CacheErrorMessage(result)));
         }
 
-        void HandleOpenCacheSuccess()
+        void HandleOpenCacheSuccess(
+            bool refreshedCurrentCache,
+            const std::vector<CacheEntry>& previousEntries)
         {
+            const std::vector<std::uint32_t> changedCacheIndices =
+                refreshedCurrentCache
+                    ? FindChangedCacheIndices(
+                        previousEntries,
+                        database_.Entries())
+                    : std::vector<std::uint32_t>{};
+
             pathEdit_->setText(PathToQString(database_.CacheDirectory()));
             RememberOpenedCachePath(pathEdit_->text());
             RefreshRecentCacheMenu();
             PopulateTable();
             ClearPreviewUiState();
             LoadPersistentPreviewState();
+            proxyModel_->SetRecentCacheIndices(changedCacheIndices);
+            UpdateRecentChangesFilterLabel(
+                refreshedCurrentCache
+                    ? std::optional<std::size_t>{changedCacheIndices.size()}
+                    : std::nullopt);
+
+            if (!refreshedCurrentCache &&
+                CurrentGalleryPreviewFilter(*galleryFilterCombo_) ==
+                    GalleryPreviewFilter::RecentChanges)
+            {
+                const QSignalBlocker blocker(galleryFilterCombo_);
+                const int everythingFilterIndex = galleryFilterCombo_->findData(
+                    static_cast<int>(GalleryPreviewFilter::Everything));
+                if (everythingFilterIndex >= 0)
+                {
+                    galleryFilterCombo_->setCurrentIndex(
+                        everythingFilterIndex);
+                }
+                proxyModel_->SetPreviewFilter(
+                    GalleryPreviewFilter::Everything);
+            }
+
             UpdateGalleryEntryCount();
             SetBusy(false);
             UpdateOpenButtonText();
+            const CacheHeader& header = database_.Header();
+            statusLabel_->setText(
+                refreshedCurrentCache
+                    ? RefreshedCacheStatus(
+                        database_.Entries().size(),
+                        header.entryCount,
+                        header.version,
+                        changedCacheIndices.size())
+                    : LoadedCacheStatus(
+                        database_.Entries().size(),
+                        header.entryCount,
+                        header.version));
             ScheduleGalleryPreviewSearch();
+        }
+
+        void UpdateRecentChangesFilterLabel(
+            const std::optional<std::size_t>& changedEntryCount)
+        {
+            const int filterIndex = galleryFilterCombo_->findData(
+                static_cast<int>(GalleryPreviewFilter::RecentChanges));
+            if (filterIndex < 0)
+            {
+                return;
+            }
+
+            galleryFilterCombo_->setItemText(
+                filterIndex,
+                changedEntryCount.has_value()
+                    ? QStringLiteral("Recent changes (%1)")
+                        .arg(*changedEntryCount)
+                    : QStringLiteral("Recent changes"));
         }
 
         void UpdateOpenButtonText()
@@ -890,17 +964,8 @@ namespace
 
         void PopulateTable()
         {
-            const auto& entries = database_.Entries();
-
             tableModel_.SetDatabase(&database_);
             table_->sortByColumn(4, Qt::DescendingOrder);
-
-            const CacheHeader& header = database_.Header();
-            statusLabel_->setText(
-                LoadedCacheStatus(
-                    entries.size(),
-                    header.entryCount,
-                    header.version));
         }
 
         const CacheEntry* SelectedEntry() const

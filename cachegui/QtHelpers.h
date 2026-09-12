@@ -38,12 +38,22 @@ QStringList RecentCachePaths();
 
 void ClearRecentCachePaths();
 
+QString PreferredPngExportDirectory();
+
+void RememberPngExportDirectory(const QString& directory);
+
 const char* CacheErrorMessage(CacheError error);
 
 QString LoadedCacheStatus(
     std::size_t validEntryCount,
     std::uint32_t slotCount,
     float cacheVersion);
+
+QString RefreshedCacheStatus(
+    std::size_t validEntryCount,
+    std::uint32_t slotCount,
+    float cacheVersion,
+    std::size_t changedEntryCount);
 
 QString PreviewReadyStatus(
     const std::string& uuidText,

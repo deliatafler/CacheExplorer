@@ -52,31 +52,38 @@ export checks below.
     disappear, and newly exposed entries are checked until the visible area is
     filled or the cache ends. The Gallery count should update as entries are
     removed. Toggle back to `Everything` and confirm all entries return.
-11. Change the Gallery sort control and confirm the gallery reorders and resumes
+11. With the viewer running, cause a texture to be added or updated, then click
+    `Refresh`. Confirm the status bar reports the number added or updated, the
+    `Recent changes` option shows the same count, and selecting it displays only
+    those entries. Refresh again without changing the cache and confirm the
+    count becomes zero. Opening a different cache should return `Show` to
+    `Everything` rather than reusing the old delta.
+12. Change the Gallery sort control and confirm the gallery reorders and resumes
     lazy thumbnail loading without blocking the UI. Slower sorts, especially
     UUID, should update the bottom status bar before the sort completes.
-12. With `Everything` selected, click a Gallery item marked `No preview` or
+13. With `Everything` selected, click a Gallery item marked `No preview` or
     `Load failed` and confirm the bottom status bar and large preview panel
     report that state.
-13. Toggle back to `Table` and confirm columns render normally.
-14. Select an already-previewed item in both `Table` and `Gallery`; confirm the
+14. Toggle back to `Table` and confirm columns render normally and all entries
+    remain visible regardless of the Gallery filter.
+15. Select an already-previewed item in both `Table` and `Gallery`; confirm the
     cached preview appears in the large preview panel without decoding again.
-15. If a preview is visible, confirm the caption beneath it shows the selected
+16. If a preview is visible, confirm the caption beneath it shows the selected
     UUID and decoded dimensions. Resize the window and confirm the preview
     rescales. In `Gallery`, newly exposed tiles should also begin lazy thumbnail
     loading.
-16. Click the information button and confirm the details include the app
+17. Click the information button and confirm the details include the app
     version, Qt runtime, either the open cache path or `Cache: not open`, and
     the current session's Gallery thumbnail sample after visible items have
     been checked.
-17. Ctrl-click or Shift-click multiple entries in both views, switch views, and
+18. Ctrl-click or Shift-click multiple entries in both views, switch views, and
     confirm the selection remains. Confirm the current item still drives the
     large preview panel. In `Gallery`, selected tiles should have a clearly
     visible blue outline and fill.
-18. Use the platform Find shortcut and confirm keyboard focus moves to the UUID
+19. Use the platform Find shortcut and confirm keyboard focus moves to the UUID
     field. Tab through the visible controls and confirm focus follows their
     visual command order without stopping on hidden Gallery/Table controls.
-19. Resize the window, drag the browser/preview divider, close normally, and
+20. Resize the window, drag the browser/preview divider, close normally, and
     relaunch. Confirm the window and divider return to their previous geometry.
 
 ## Export smoke test
@@ -90,6 +97,9 @@ export checks below.
 6. Select multiple entries, click `Export Selected PNGs...`, choose a temporary
    folder, and confirm the UI stays responsive while the final status reports
    exported, incomplete, existing, and failed counts.
+7. Invoke both single and multiple export again and confirm each dialog starts
+   in the last accepted export folder. Canceling a dialog should not replace
+   that remembered destination.
 
 ## When a build-only check is enough
 

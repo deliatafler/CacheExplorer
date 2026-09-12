@@ -33,6 +33,10 @@ roadmap rather than letting this become a changelog.
 - [x] Remember the main-window geometry and browser/preview divider position.
 - [x] Add platform-native command shortcuts, meaningful accessible control
   names, and an intentional keyboard tab order.
+- [x] Add a Gallery `Recent changes` filter for entries added or updated when
+  the currently open cache is refreshed.
+- [x] Remember the last accepted PNG export destination, with a sensible
+  per-user directory on first use.
 
 ## Reliability and performance
 

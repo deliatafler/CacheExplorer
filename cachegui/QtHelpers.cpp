@@ -300,6 +300,55 @@ void ClearRecentCachePaths()
     settings.remove(QStringLiteral("cache/recentPaths"));
 }
 
+QString PreferredPngExportDirectory()
+{
+    QSettings settings;
+    const QString storedDirectory = NormalizeCachePath(
+        settings.value(QStringLiteral("export/lastDirectory")).toString());
+
+    if (!storedDirectory.isEmpty())
+    {
+        std::error_code error;
+        if (std::filesystem::is_directory(
+                PathFromQString(storedDirectory),
+                error) &&
+            !error)
+        {
+            return storedDirectory;
+        }
+    }
+
+    const QStandardPaths::StandardLocation fallbackLocations[] = {
+        QStandardPaths::PicturesLocation,
+        QStandardPaths::DocumentsLocation,
+        QStandardPaths::HomeLocation};
+
+    for (const QStandardPaths::StandardLocation location : fallbackLocations)
+    {
+        const QString directory = QStandardPaths::writableLocation(location);
+        if (!directory.isEmpty())
+        {
+            return NormalizeCachePath(directory);
+        }
+    }
+
+    return {};
+}
+
+void RememberPngExportDirectory(const QString& directory)
+{
+    const QString normalizedDirectory = NormalizeCachePath(directory);
+    if (normalizedDirectory.isEmpty())
+    {
+        return;
+    }
+
+    QSettings settings;
+    settings.setValue(
+        QStringLiteral("export/lastDirectory"),
+        normalizedDirectory);
+}
+
 const char* CacheErrorMessage(CacheError error)
 {
     switch (error)
@@ -332,6 +381,26 @@ QString LoadedCacheStatus(
         .arg(validEntryCount)
         .arg(slotCount)
         .arg(cacheVersion);
+}
+
+QString RefreshedCacheStatus(
+    std::size_t validEntryCount,
+    std::uint32_t slotCount,
+    float cacheVersion,
+    std::size_t changedEntryCount)
+{
+    const QString changeLabel = changedEntryCount == 1
+        ? QStringLiteral("1 entry added or updated")
+        : QStringLiteral("%1 entries added or updated")
+            .arg(changedEntryCount);
+
+    return QStringLiteral(
+        "Refreshed %1 valid texture entries from %2 slots. "
+        "Cache version %3. %4.")
+        .arg(validEntryCount)
+        .arg(slotCount)
+        .arg(cacheVersion)
+        .arg(changeLabel);
 }
 
 QString PreviewReadyStatus(

@@ -182,6 +182,11 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
         return HasCompleteCachedTexture(*entry);
     }
 
+    if (role == CacheIndexRole)
+    {
+        return static_cast<qulonglong>(entry->cacheIndex);
+    }
+
     if (role == Qt::DecorationRole && index.column() == 0)
     {
         return PreviewIcon(*entry);

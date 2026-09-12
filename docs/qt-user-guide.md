@@ -48,7 +48,10 @@ to `Refresh`. If a cache opens successfully, the status bar reports the number
 of valid texture entries and the cache version.
 
 Click `Refresh` for the currently displayed path to reread the cache. This is
-useful while a viewer is running and adding or replacing cached textures.
+useful while a viewer is running and adding or replacing cached textures. The
+status bar reports how many entries were added or updated since the previous
+successful read of that cache, and the Gallery's `Recent changes` option shows
+that set. Opening a different cache establishes a new baseline.
 
 After you open more than one cache, the `Recent` menu beside the path field
 lists up to eight existing cache folders. Choose a path to reopen it immediately
@@ -65,12 +68,15 @@ CacheExplorer remembers terminal `No preview` and `Load failed` states for a
 cache between runs, while still checking the entry metadata before reusing that
 state.
 
-The Gallery `Show` control offers `Everything` and `Images only`. In `Images
-only`, unchecked visible entries briefly remain as quiet placeholders while
-CacheExplorer attempts their thumbnails. Successful images stay in the Gallery;
-entries that cannot produce a thumbnail are removed, and newly exposed entries
-are checked until the visible area is filled or the end of the cache is reached.
-This work remains demand-driven rather than scanning the entire cache up front.
+The Gallery `Show` control offers `Everything`, `Images only`, and `Recent
+changes`. In `Images only`, unchecked visible entries briefly remain as quiet
+placeholders while CacheExplorer attempts their thumbnails. Successful images
+stay in the Gallery; entries that cannot produce a thumbnail are removed, and
+newly exposed entries are checked until the visible area is filled or the end
+of the cache is reached. This work remains demand-driven rather than scanning
+the entire cache up front. `Recent changes` is populated only after refreshing
+the currently open cache and includes entries whose cache metadata was added or
+updated since the previous read. Table mode continues to show every entry.
 
 Use `Table` for debugging and inspection. The table shows UUID, image size, body
 size, raw cache index, timestamp, and preview status. Table sorting is useful
@@ -116,7 +122,10 @@ dimensions when known, cached-size completeness, and the cache timestamp. Use
 If a preview is available, click `Export PNG` and choose an output file.
 Successful exports report the PNG path, decoded dimensions, and cached byte
 count in the status bar. If the cached texture cannot be decoded, export reports
-that the cached data is incomplete or undecodable.
+that the cached data is incomplete or undecodable. CacheExplorer remembers the
+last accepted export folder for both single and multiple exports. Before a
+folder has been chosen, export starts in the platform's Pictures directory when
+available, then falls back to Documents or the home directory.
 
 When multiple entries are selected, the command becomes `Export Selected
 PNGs...`. Choose an output folder and CacheExplorer exports the selected entries

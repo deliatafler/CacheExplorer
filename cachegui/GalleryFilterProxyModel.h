@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstdint>
+#include <unordered_set>
+#include <vector>
+
 #include <QSortFilterProxyModel>
 
 class QComboBox;
@@ -7,7 +11,8 @@ class QComboBox;
 enum class GalleryPreviewFilter
 {
     Everything,
-    ImagesOnly
+    ImagesOnly,
+    RecentChanges
 };
 
 void ConfigureGalleryPreviewFilterControl(QComboBox& comboBox);
@@ -20,6 +25,8 @@ public:
 
     void SetGalleryMode(bool galleryMode);
     void SetPreviewFilter(GalleryPreviewFilter filter);
+    void SetRecentCacheIndices(
+        const std::vector<std::uint32_t>& cacheIndices);
     bool RefreshForPreviewStateChange();
 
 protected:
@@ -33,4 +40,5 @@ private:
 
     bool galleryMode_ = true;
     GalleryPreviewFilter filter_ = GalleryPreviewFilter::Everything;
+    std::unordered_set<std::uint32_t> recentCacheIndices_;
 };

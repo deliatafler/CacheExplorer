@@ -18,6 +18,7 @@ class CacheEntryTableModel final : public QAbstractTableModel
 public:
     static constexpr int PreviewStateRole = Qt::UserRole + 1;
     static constexpr int CachedCompleteRole = Qt::UserRole + 2;
+    static constexpr int CacheIndexRole = Qt::UserRole + 3;
 
     explicit CacheEntryTableModel(QObject* parent = nullptr);
 
