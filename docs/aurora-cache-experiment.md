@@ -104,6 +104,24 @@ Acceptance criteria:
 * Concurrent removal or replacement of cache files is treated as a normal
   cache miss.
 
+Status: complete on the experiment branch. `AuroraCacheFormat` validates the
+28-byte `AUSL` envelope and its 64 KiB chunk/tag sizing without decrypting the
+payload. It also parses plaintext `AUTX` versions 3 through 6, including
+keep-RGBA markers, BC7 mip dimensions and offsets, exact-mask sizing, and
+version-specific metadata checks. An unrecognized `AUS*` magic is reported as
+an unsupported sealed format; unrelated data is reported as invalid.
+
+`AuroraCacheProbe` accepts a cache root, `store`, direct `store/tex`, or a
+user-selected parent containing `AuroraViewerCache/store/tex`. Enumeration
+groups valid `.j2c`, `.part`, and `.bc7` envelopes by their opaque lowercase
+32-hex source key. Files that disappear, cannot be read consistently, or no
+longer match their advertised size are skipped as ordinary cache misses;
+unsupported sealed formats are counted separately for diagnostics.
+
+All fixtures are generated in `cachelib_tests` from independently documented
+byte layouts. This tranche introduces no cryptography, credential access, or
+Aurora runtime dependency.
+
 ### 3. Windows JPEG2000 proof of concept
 
 Read the Aurora cache installation key through Windows Credential Manager,

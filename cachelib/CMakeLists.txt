@@ -2,6 +2,8 @@ find_package(OpenJPEG CONFIG REQUIRED)
 find_package(PNG REQUIRED)
 
 add_library(cachelib
+    AuroraCacheFormat.cpp
+    AuroraCacheProbe.cpp
     UUID.cpp
     LegacyTextureCacheSource.cpp
     TextureCacheSource.cpp

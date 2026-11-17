@@ -114,7 +114,7 @@ changelog.
   source adapter without changing existing CLI or GUI behavior.
 - [x] Migrate the Qt model and preview/export paths to the neutral source
   boundary while preserving the Second Life/Firestorm interface and behavior.
-- [ ] Add synthetic Aurora sealed-file, keyed-name, and BC7-container fixtures
+- [x] Add synthetic Aurora sealed-file, keyed-name, and BC7-container fixtures
   plus cache-root probing tests.
 - [ ] Build a Windows-only JPEG2000 proof of concept using the Aurora key from
   Credential Manager, with no key logging or persistence.

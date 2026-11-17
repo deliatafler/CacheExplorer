@@ -1,3 +1,5 @@
+#include "AuroraCacheFormat.h"
+#include "AuroraCacheProbe.h"
 #include "Structures.h"
 #include "LegacyTextureCacheSource.h"
 #include "TextureCacheDatabase.h"
@@ -15,6 +17,7 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -143,6 +146,128 @@ namespace
         WriteBytes(
             TextureRebuilder::BodyFilePath(cacheDirectory, entry),
             bytes);
+    }
+
+    void SetLittleEndian32(
+        std::vector<std::uint8_t>& bytes,
+        std::size_t offset,
+        std::uint32_t value)
+    {
+        bytes[offset] =
+            static_cast<std::uint8_t>(value & 0xff);
+        bytes[offset + 1] =
+            static_cast<std::uint8_t>((value >> 8) & 0xff);
+        bytes[offset + 2] =
+            static_cast<std::uint8_t>((value >> 16) & 0xff);
+        bytes[offset + 3] =
+            static_cast<std::uint8_t>((value >> 24) & 0xff);
+    }
+
+    void SetLittleEndian64(
+        std::vector<std::uint8_t>& bytes,
+        std::size_t offset,
+        std::uint64_t value)
+    {
+        for (std::size_t i = 0; i < 8; ++i)
+        {
+            bytes[offset + i] =
+                static_cast<std::uint8_t>(
+                    (value >> (i * 8)) & 0xff);
+        }
+    }
+
+    std::uint64_t TestBc7LevelBytes(
+        std::uint32_t width,
+        std::uint32_t height)
+    {
+        return
+            ((static_cast<std::uint64_t>(width) + 3) / 4) *
+            ((static_cast<std::uint64_t>(height) + 3) / 4) *
+            16;
+    }
+
+    std::vector<std::uint8_t> MakeAuroraSealedFixture(
+        std::uint64_t plaintextBytes)
+    {
+        const std::uint64_t chunks =
+            std::max<std::uint64_t>(
+                1,
+                (plaintextBytes / AuroraSealedChunkSize) +
+                    (plaintextBytes % AuroraSealedChunkSize != 0 ? 1 : 0));
+        const std::uint64_t sealedBytes =
+            AuroraSealedHeaderSize +
+            plaintextBytes +
+            chunks * AuroraSealedTagSize;
+
+        std::vector<std::uint8_t> bytes(
+            static_cast<std::size_t>(sealedBytes),
+            0x5a);
+
+        bytes[0] = 'A';
+        bytes[1] = 'U';
+        bytes[2] = 'S';
+        bytes[3] = 'L';
+        SetLittleEndian64(bytes, 20, plaintextBytes);
+        return bytes;
+    }
+
+    std::vector<std::uint8_t> MakeAuroraTranscodedFixture()
+    {
+        const std::vector<std::pair<std::uint32_t, std::uint32_t>> levels = {
+            {16, 8},
+            {8, 4},
+            {4, 2},
+            {2, 1},
+            {1, 1},
+        };
+
+        std::uint64_t dataBytes = 0;
+        for (const auto& level : levels)
+        {
+            dataBytes +=
+                TestBc7LevelBytes(
+                    level.first,
+                    level.second);
+        }
+
+        std::vector<std::uint8_t> bytes(
+            32 + levels.size() * 8 +
+                static_cast<std::size_t>(dataBytes),
+            0x7c);
+
+        bytes[0] = 'A';
+        bytes[1] = 'U';
+        bytes[2] = 'T';
+        bytes[3] = 'X';
+        bytes[4] = 6;
+        bytes[5] = 1;
+        bytes[6] = 2;
+        bytes[7] = 2;
+        bytes[8] = 1;
+        bytes[9] = 4;
+        bytes[10] = 5;
+        bytes[11] =
+            static_cast<std::uint8_t>(levels.size());
+
+        SetLittleEndian32(bytes, 12, 64);
+        SetLittleEndian32(bytes, 16, 32);
+        SetLittleEndian32(bytes, 20, 0);
+        SetLittleEndian32(bytes, 24, 0);
+        SetLittleEndian32(bytes, 28, 0);
+
+        for (std::size_t i = 0; i < levels.size(); ++i)
+        {
+            SetLittleEndian32(
+                bytes,
+                32 + i * 8,
+                levels[i].first);
+            SetLittleEndian32(
+                bytes,
+                32 + i * 8 + 4,
+                levels[i].second);
+        }
+
+        return bytes;
     }
 
     Entry MakeEntry(
@@ -877,6 +1002,328 @@ namespace
         fs::remove_all(directory, removeError);
         Expect(!removeError, "remove missing-state test directory");
     }
+
+    void TestAuroraSealedEnvelopeInspection()
+    {
+        const fs::path directory = MakeTempDirectory();
+        const fs::path validFile = directory / "valid.j2c";
+
+        WriteBytes(
+            validFile,
+            MakeAuroraSealedFixture(
+                AuroraSealedChunkSize + 1));
+
+        AuroraSealedFileInfo info;
+        Expect(
+            InspectAuroraSealedFile(validFile, info) ==
+                AuroraFormatError::None,
+            "inspect a valid Aurora sealed envelope");
+        Expect(
+            info.plaintextBytes == AuroraSealedChunkSize + 1,
+            "sealed envelope preserves plaintext length");
+        Expect(
+            info.chunkCount == 2,
+            "sealed envelope counts chunks across the boundary");
+        Expect(
+            info.sealedBytes ==
+                AuroraSealedHeaderSize +
+                    AuroraSealedChunkSize + 1 +
+                    2 * AuroraSealedTagSize,
+            "sealed envelope validates the stored size");
+
+        const fs::path emptyFile = directory / "empty.j2c";
+        WriteBytes(emptyFile, MakeAuroraSealedFixture(0));
+        Expect(
+            InspectAuroraSealedFile(emptyFile, info) ==
+                AuroraFormatError::None &&
+                info.chunkCount == 1,
+            "empty sealed envelope retains one authentication tag");
+
+        std::vector<std::uint8_t> future =
+            MakeAuroraSealedFixture(8);
+        future[3] = 'X';
+        const fs::path futureFile = directory / "future.j2c";
+        WriteBytes(futureFile, future);
+        Expect(
+            InspectAuroraSealedFile(futureFile, info) ==
+                AuroraFormatError::UnsupportedVersion,
+            "unknown AUS sealed format fails as unsupported");
+
+        std::vector<std::uint8_t> truncated =
+            MakeAuroraSealedFixture(8);
+        truncated.pop_back();
+        const fs::path truncatedFile = directory / "truncated.j2c";
+        WriteBytes(truncatedFile, truncated);
+        Expect(
+            InspectAuroraSealedFile(truncatedFile, info) ==
+                AuroraFormatError::SizeMismatch,
+            "replaced or truncated sealed file reports a size mismatch");
+
+        std::vector<std::uint8_t> unrelated =
+            MakeAuroraSealedFixture(8);
+        unrelated[0] = 'X';
+        const fs::path unrelatedFile = directory / "unrelated.j2c";
+        WriteBytes(unrelatedFile, unrelated);
+        Expect(
+            InspectAuroraSealedFile(unrelatedFile, info) ==
+                AuroraFormatError::InvalidFormat,
+            "unrelated data is not an Aurora sealed envelope");
+
+        Expect(
+            InspectAuroraSealedFile(
+                directory / "removed.j2c",
+                info) == AuroraFormatError::FileNotFound,
+            "a removed Aurora file is reported as a normal missing file");
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove Aurora sealed-envelope test directory");
+    }
+
+    void TestAuroraKeyedTextureNames()
+    {
+        Expect(
+            IsAuroraTextureKey(
+                "0123456789abcdef0123456789abcdef"),
+            "Aurora keyed texture name accepts 32 lowercase hex digits");
+        Expect(
+            !IsAuroraTextureKey(
+                "0123456789ABCDEF0123456789ABCDEF"),
+            "Aurora keyed texture name rejects uppercase hex digits");
+        Expect(
+            !IsAuroraTextureKey(
+                "0123456789abcdef0123456789abcdeg"),
+            "Aurora keyed texture name rejects non-hex digits");
+        Expect(
+            !IsAuroraTextureKey("0123456789abcdef"),
+            "Aurora keyed texture name rejects the wrong length");
+    }
+
+    void TestAuroraTranscodedTextureParsing()
+    {
+        const std::vector<std::uint8_t> valid =
+            MakeAuroraTranscodedFixture();
+
+        AuroraTranscodedTextureInfo info;
+        Expect(
+            ParseAuroraTranscodedTexture(valid, info) ==
+                AuroraFormatError::None,
+            "parse a valid Aurora AUTX fixture");
+        Expect(
+            info.version == 6 &&
+                info.kind == AuroraTranscodedKind::Bc7,
+            "AUTX parser preserves version and BC7 kind");
+        Expect(
+            info.imageWidth == 64 &&
+                info.imageHeight == 32 &&
+                info.finestDiscard == 2,
+            "AUTX parser preserves image metadata");
+        Expect(
+            info.levels.size() == 5,
+            "AUTX parser preserves mip count");
+
+        if (info.levels.size() == 5)
+        {
+            Expect(
+                info.levels.front().width == 16 &&
+                    info.levels.front().height == 8 &&
+                    info.levels.front().offset == 72 &&
+                    info.levels.front().byteCount == 128,
+                "AUTX parser calculates first BC7 level layout");
+            Expect(
+                info.levels.back().width == 1 &&
+                    info.levels.back().height == 1 &&
+                    info.levels.back().byteCount == 16,
+                "AUTX parser calculates final BC7 level layout");
+        }
+
+        std::vector<std::uint8_t> future = valid;
+        future[4] = 7;
+        Expect(
+            ParseAuroraTranscodedTexture(future, info) ==
+                AuroraFormatError::UnsupportedVersion,
+            "unknown AUTX version fails as unsupported");
+
+        std::vector<std::uint8_t> old = valid;
+        old[4] = 2;
+        Expect(
+            ParseAuroraTranscodedTexture(old, info) ==
+                AuroraFormatError::UnsupportedVersion,
+            "obsolete AUTX version fails as unsupported");
+
+        std::vector<std::uint8_t> wrongChain = valid;
+        SetLittleEndian32(wrongChain, 40, 7);
+        Expect(
+            ParseAuroraTranscodedTexture(wrongChain, info) ==
+                AuroraFormatError::InvalidMetadata,
+            "AUTX parser rejects a malformed mip chain");
+
+        std::vector<std::uint8_t> oddTopLevel = valid;
+        SetLittleEndian32(oddTopLevel, 32, 15);
+        Expect(
+            ParseAuroraTranscodedTexture(oddTopLevel, info) ==
+                AuroraFormatError::InvalidMetadata,
+            "AUTX parser rejects a non-block-aligned BC7 top level");
+
+        std::vector<std::uint8_t> truncated = valid;
+        truncated.pop_back();
+        Expect(
+            ParseAuroraTranscodedTexture(truncated, info) ==
+                AuroraFormatError::SizeMismatch,
+            "AUTX parser rejects a truncated BC7 payload");
+
+        std::vector<std::uint8_t> keepRgba(
+            valid.begin(),
+            valid.begin() + 32);
+        keepRgba[5] = 0;
+        keepRgba[11] = 0;
+        Expect(
+            ParseAuroraTranscodedTexture(keepRgba, info) ==
+                AuroraFormatError::None &&
+                info.kind == AuroraTranscodedKind::KeepRgba &&
+                info.levels.empty(),
+            "AUTX parser recognizes the keep-RGBA marker");
+    }
+
+    void TestAuroraTextureStoreProbingAndEnumeration()
+    {
+        const fs::path directory = MakeTempDirectory();
+        const fs::path cacheRoot = directory / "cache";
+        const fs::path textureStore =
+            cacheRoot / "store" / "tex";
+
+        std::error_code createError;
+        fs::create_directories(textureStore, createError);
+        Expect(!createError, "create synthetic Aurora texture store");
+
+        AuroraTextureStoreProbe probe;
+        const TextureCacheOpenError rootProbeError =
+            ProbeAuroraTextureStore(cacheRoot, probe);
+        std::error_code equivalentError;
+        const bool equivalentStore =
+            fs::equivalent(
+                probe.textureStore,
+                textureStore,
+                equivalentError);
+        Expect(
+            rootProbeError == TextureCacheOpenError::None &&
+                !equivalentError &&
+                equivalentStore,
+            "probe Aurora cache root");
+        Expect(
+            ProbeAuroraTextureStore(
+                cacheRoot / "store",
+                probe) == TextureCacheOpenError::None,
+            "probe Aurora store directory");
+        Expect(
+            ProbeAuroraTextureStore(textureStore, probe) ==
+                TextureCacheOpenError::None,
+            "probe direct Aurora texture store");
+
+        const fs::path customParent = directory / "custom";
+        const fs::path customStore =
+            customParent /
+            "AuroraViewerCache" /
+            "store" /
+            "tex";
+        fs::create_directories(customStore, createError);
+        Expect(!createError, "create custom Aurora texture store");
+        Expect(
+            ProbeAuroraTextureStore(customParent, probe) ==
+                TextureCacheOpenError::None &&
+                probe.cacheRoot.filename() == "AuroraViewerCache",
+            "probe user-selected Aurora cache parent");
+
+        const fs::path legacyOnly = directory / "legacy";
+        fs::create_directories(legacyOnly, createError);
+        Expect(!createError, "create unrelated legacy cache directory");
+        WriteBytes(legacyOnly / "texture.entries", {0, 1, 2, 3});
+        Expect(
+            ProbeAuroraTextureStore(legacyOnly, probe) ==
+                TextureCacheOpenError::InvalidFormat,
+            "Aurora probing does not weaken legacy path validation");
+        Expect(
+            ProbeAuroraTextureStore(
+                directory / "missing",
+                probe) == TextureCacheOpenError::FileNotFound,
+            "missing Aurora cache root reports file not found");
+
+        const std::string firstKey(32, 'a');
+        const std::string secondKey(32, 'b');
+        const std::string futureKey(32, 'c');
+        const std::string replacedKey(32, 'd');
+
+        WriteBytes(
+            textureStore / (firstKey + ".j2c"),
+            MakeAuroraSealedFixture(100));
+        WriteBytes(
+            textureStore / (firstKey + ".part"),
+            MakeAuroraSealedFixture(50));
+        WriteBytes(
+            textureStore / (secondKey + ".bc7"),
+            MakeAuroraSealedFixture(280));
+
+        std::vector<std::uint8_t> future =
+            MakeAuroraSealedFixture(10);
+        future[3] = 'X';
+        WriteBytes(
+            textureStore / (futureKey + ".j2c"),
+            future);
+
+        std::vector<std::uint8_t> replaced =
+            MakeAuroraSealedFixture(10);
+        replaced.pop_back();
+        WriteBytes(
+            textureStore / (replacedKey + ".part"),
+            replaced);
+
+        WriteBytes(
+            textureStore /
+                "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeg.j2c",
+            MakeAuroraSealedFixture(10));
+        WriteBytes(
+            textureStore / "notes.txt",
+            {1, 2, 3});
+
+        AuroraTextureStoreScan scan;
+        Expect(
+            EnumerateAuroraTextureStore(cacheRoot, scan) ==
+                TextureCacheOpenError::None,
+            "enumerate Aurora keyed texture files");
+        Expect(
+            scan.records.size() == 2,
+            "enumeration groups valid files by opaque source key");
+        Expect(
+            scan.cacheMissCount == 1,
+            "replacement-sized file is a normal cache miss");
+        Expect(
+            scan.unsupportedFileCount == 1,
+            "unknown sealed format is counted separately");
+        Expect(
+            scan.ignoredFileCount == 2,
+            "enumeration ignores unrelated and invalidly named files");
+
+        if (scan.records.size() == 2)
+        {
+            const AuroraTextureRecord& first = scan.records[0];
+            const AuroraTextureRecord& second = scan.records[1];
+
+            Expect(
+                first.sourceKey == firstKey &&
+                    first.completeJpeg2000.has_value() &&
+                    first.partialJpeg2000.has_value() &&
+                    !first.transcodedBc7.has_value(),
+                "enumeration groups complete and partial J2C files");
+            Expect(
+                second.sourceKey == secondKey &&
+                    second.transcodedBc7.has_value(),
+                "enumeration records a sealed BC7 file");
+        }
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove Aurora probing test directory");
+    }
 }
 
 int main()
@@ -891,6 +1338,10 @@ int main()
     TestTextureRebuilderRejectsUndersizedBodyFile();
     TestTextureExportStatePersistsIncompleteEntries();
     TestTextureExportStateLoadHandlesMissingFile();
+    TestAuroraSealedEnvelopeInspection();
+    TestAuroraKeyedTextureNames();
+    TestAuroraTranscodedTextureParsing();
+    TestAuroraTextureStoreProbingAndEnumeration();
 
     if (gFailures != 0)
     {

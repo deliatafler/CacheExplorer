@@ -250,6 +250,20 @@ Legacy database access remains temporarily exposed only for legacy refresh
 diagnostics and preview-state compatibility. The CLI still uses
 `TextureCacheDatabase` directly.
 
+### Aurora cache format experiment
+
+`AuroraCacheFormat` validates Aurora's `AUSL` sealed-file envelope without
+decrypting it and parses supported plaintext `AUTX` transcoded texture
+metadata. It recognizes the current sealed magic, validates chunk/tag sizes,
+accepts `AUTX` versions 3 through 6, and rejects unsupported versions or
+malformed BC7 mip layouts clearly.
+
+`AuroraCacheProbe` recognizes a cache root, `store`, direct `store/tex`, or a
+user-selected parent containing `AuroraViewerCache/store/tex`. It enumerates
+32-character lowercase keyed names, groups `.j2c`, `.part`, and `.bc7` files,
+and treats files removed or replaced during a scan as cache misses. It does
+not read credentials, decrypt payloads, or weaken legacy cache validation.
+
 ### TextureRebuilder
 
 Reconstructs cached JPEG2000 data in memory or exports a `.j2c` file.
@@ -535,6 +549,10 @@ entries, and missing state files. The neutral-source coverage verifies that
 `LegacyTextureCacheSource` preserves catalog order and metadata, reconstructs
 JPEG2000 payloads, maps open/read failures, clears state on close, and creates
 detached payload requests that remain valid after the source closes.
+The same suite generates synthetic Aurora `AUSL`, opaque keyed-name, and
+plaintext `AUTX` fixtures to verify format bounds, unsupported versions,
+cache-root probing, grouped texture-file enumeration, and stale-file handling
+without using Aurora code, keys, or real cache data.
 
 `tests/cachegui_tests.cpp` provides focused CTest coverage for GUI-facing
 helpers: Gallery filtering including recent changes, gallery queue accounting,
