@@ -2,6 +2,7 @@
 
 #include "TextureRebuilder.h"
 
+#include <memory>
 #include <utility>
 
 namespace
@@ -55,6 +56,40 @@ namespace
 
         return TexturePayloadError::ReadError;
     }
+
+    class LegacyTexturePayloadRequest final : public TexturePayloadRequest
+    {
+    public:
+        LegacyTexturePayloadRequest(
+            std::filesystem::path cacheDirectory,
+            CacheEntry entry)
+            : cacheDirectory_(std::move(cacheDirectory)),
+              entry_(std::move(entry))
+        {
+        }
+
+        TexturePayloadError Read(TexturePayload& output) const override
+        {
+            output = {};
+
+            TextureRebuilder rebuilder;
+            const RebuildError error =
+                rebuilder.Rebuild(cacheDirectory_, entry_, output.bytes);
+
+            if (error != RebuildError::None)
+            {
+                output.bytes.clear();
+                return MapRebuildError(error);
+            }
+
+            output.format = TexturePayloadFormat::Jpeg2000;
+            return TexturePayloadError::None;
+        }
+
+    private:
+        std::filesystem::path cacheDirectory_;
+        CacheEntry entry_;
+    };
 }
 
 TextureCacheOpenError LegacyTextureCacheSource::Open(
@@ -70,6 +105,7 @@ TextureCacheOpenError LegacyTextureCacheSource::Open(
     }
 
     entries_.reserve(database_.Entries().size());
+    entryIndices_.reserve(database_.Entries().size());
 
     for (const CacheEntry& legacyEntry : database_.Entries())
     {
@@ -77,6 +113,7 @@ TextureCacheOpenError LegacyTextureCacheSource::Open(
         entry.sourceKey = legacyEntry.uuid.ToString();
         entry.uuid = legacyEntry.uuid;
         entry.cachedBytes = CachedTextureByteCount(legacyEntry);
+        entry.sourceIndex = legacyEntry.cacheIndex;
 
         if (legacyEntry.imageSize > 0)
         {
@@ -84,8 +121,15 @@ TextureCacheOpenError LegacyTextureCacheSource::Open(
                 static_cast<std::uint64_t>(legacyEntry.imageSize);
         }
 
+        if (legacyEntry.bodySize >= 0)
+        {
+            entry.payloadBytes =
+                static_cast<std::uint64_t>(legacyEntry.bodySize);
+        }
+
         entry.timestamp = legacyEntry.timestamp;
 
+        entryIndices_.emplace(entry.sourceKey, entries_.size());
         entries_.push_back(std::move(entry));
     }
 
@@ -94,6 +138,7 @@ TextureCacheOpenError LegacyTextureCacheSource::Open(
 
 void LegacyTextureCacheSource::Close()
 {
+    entryIndices_.clear();
     entries_.clear();
     database_.Close();
 }
@@ -101,14 +146,7 @@ void LegacyTextureCacheSource::Close()
 const TextureCatalogEntry* LegacyTextureCacheSource::FindByUuid(
     const UUID& uuid) const
 {
-    const CacheEntry* legacyEntry = database_.Find(uuid);
-
-    if (legacyEntry == nullptr)
-    {
-        return nullptr;
-    }
-
-    return FindBySourceKey(legacyEntry->uuid.ToString());
+    return FindBySourceKey(uuid.ToString());
 }
 
 TexturePayloadError LegacyTextureCacheSource::ReadPayload(
@@ -122,23 +160,19 @@ TexturePayloadError LegacyTextureCacheSource::ReadPayload(
         return TexturePayloadError::SourceNotOpen;
     }
 
-    const TextureCatalogEntry* entry = FindBySourceKey(sourceKey);
+    const auto entryIndex = entryIndices_.find(sourceKey);
 
-    if (entry == nullptr || !entry->uuid.has_value())
+    if (entryIndex == entryIndices_.end() ||
+        entryIndex->second >= database_.Entries().size())
     {
         return TexturePayloadError::EntryNotFound;
     }
 
-    const CacheEntry* legacyEntry = database_.Find(*entry->uuid);
-
-    if (legacyEntry == nullptr)
-    {
-        return TexturePayloadError::EntryNotFound;
-    }
+    const CacheEntry& legacyEntry = database_.Entries()[entryIndex->second];
 
     TextureRebuilder rebuilder;
     const RebuildError error =
-        rebuilder.Rebuild(database_, *legacyEntry, output.bytes);
+        rebuilder.Rebuild(database_, legacyEntry, output.bytes);
 
     if (error != RebuildError::None)
     {
@@ -150,16 +184,40 @@ TexturePayloadError LegacyTextureCacheSource::ReadPayload(
     return TexturePayloadError::None;
 }
 
+std::unique_ptr<TexturePayloadRequest>
+LegacyTextureCacheSource::CreatePayloadRequest(
+    const std::string& sourceKey) const
+{
+    if (!database_.IsOpen())
+    {
+        return {};
+    }
+
+    const auto entryIndex = entryIndices_.find(sourceKey);
+
+    if (entryIndex == entryIndices_.end() ||
+        entryIndex->second >= database_.Entries().size())
+    {
+        return {};
+    }
+
+    const CacheEntry& legacyEntry = database_.Entries()[entryIndex->second];
+
+    return std::make_unique<LegacyTexturePayloadRequest>(
+        database_.CacheDirectory(),
+        legacyEntry);
+}
+
 const TextureCatalogEntry* LegacyTextureCacheSource::FindBySourceKey(
     const std::string& sourceKey) const
 {
-    for (const TextureCatalogEntry& entry : entries_)
+    const auto entryIndex = entryIndices_.find(sourceKey);
+
+    if (entryIndex == entryIndices_.end() ||
+        entryIndex->second >= entries_.size())
     {
-        if (entry.sourceKey == sourceKey)
-        {
-            return &entry;
-        }
+        return nullptr;
     }
 
-    return nullptr;
+    return &entries_[entryIndex->second];
 }

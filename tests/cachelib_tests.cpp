@@ -498,6 +498,14 @@ namespace
                 firstEntry.cachedBytes == 700,
                 "legacy catalog exposes reconstructed cached byte count");
             Expect(
+                firstEntry.payloadBytes.has_value() &&
+                    *firstEntry.payloadBytes == 100,
+                "legacy catalog exposes payload-file byte count");
+            Expect(
+                firstEntry.sourceIndex.has_value() &&
+                    *firstEntry.sourceIndex == 0,
+                "legacy catalog exposes raw source sequence");
+            Expect(
                 firstEntry.expectedBytes.has_value() &&
                     *firstEntry.expectedBytes == 700,
                 "legacy catalog exposes advertised texture size");
@@ -514,6 +522,14 @@ namespace
             Expect(
                 secondEntry.cachedBytes == 600,
                 "legacy catalog handles header-only cached byte count");
+            Expect(
+                secondEntry.payloadBytes.has_value() &&
+                    *secondEntry.payloadBytes == 0,
+                "legacy catalog preserves a zero-byte payload file");
+            Expect(
+                secondEntry.sourceIndex.has_value() &&
+                    *secondEntry.sourceIndex == 2,
+                "legacy catalog source sequence skips filtered slots");
             Expect(
                 secondEntry.HasCompletePayload(),
                 "legacy catalog reports complete header-only payload");
@@ -554,6 +570,24 @@ namespace
                 "legacy source appends exact body bytes");
         }
 
+        std::unique_ptr<TexturePayloadRequest> request =
+            source.CreatePayloadRequest(first.ToString());
+        Expect(
+            request != nullptr,
+            "legacy source creates an immutable payload request");
+        source.Close();
+        Expect(
+            request != nullptr &&
+                request->Read(payload) == TexturePayloadError::None,
+            "payload request survives closing its source");
+        Expect(
+            payload.bytes.size() == 700,
+            "detached payload request retains copied legacy metadata");
+
+        Expect(
+            source.Open(directory) == TextureCacheOpenError::None,
+            "reopen legacy source after detached payload request");
+
         std::error_code bodyRemoveError;
         fs::remove(
             TextureRebuilder::BodyFilePath(directory, bodyEntry),
@@ -565,6 +599,11 @@ namespace
             source.ReadPayload(first.ToString(), payload) ==
                 TexturePayloadError::MissingData,
             "neutral source reports a body removed after cataloging");
+        Expect(
+            std::string(TexturePayloadErrorMessage(
+                TexturePayloadError::MissingData)) ==
+                "The cached texture data is no longer available.",
+            "neutral source provides a user-facing payload error");
         Expect(
             payload.bytes.empty(),
             "missing source payload clears partial reconstructed bytes");

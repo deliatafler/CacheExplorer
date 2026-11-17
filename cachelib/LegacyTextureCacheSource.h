@@ -3,6 +3,10 @@
 #include "TextureCacheDatabase.h"
 #include "TextureCacheSource.h"
 
+#include <cstddef>
+#include <string>
+#include <unordered_map>
+
 class LegacyTextureCacheSource final : public TextureCacheSource
 {
 public:
@@ -38,10 +42,21 @@ public:
         const std::string& sourceKey,
         TexturePayload& output) const override;
 
+    std::unique_ptr<TexturePayloadRequest> CreatePayloadRequest(
+        const std::string& sourceKey) const override;
+
+    // Temporary compatibility view for legacy-only diagnostics and persisted
+    // state while Qt callers migrate to TextureCatalogEntry.
+    const TextureCacheDatabase& LegacyDatabase() const
+    {
+        return database_;
+    }
+
 private:
     const TextureCatalogEntry* FindBySourceKey(
         const std::string& sourceKey) const;
 
     TextureCacheDatabase database_;
     std::vector<TextureCatalogEntry> entries_;
+    std::unordered_map<std::string, std::size_t> entryIndices_;
 };

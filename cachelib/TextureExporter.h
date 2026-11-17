@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 
 class TextureExportState;
 
@@ -90,6 +91,21 @@ public:
     BulkExportResults ExportPngEntries(
         const TextureCacheDatabase& database,
         const std::vector<const CacheEntry*>& entries,
+        const std::filesystem::path& outputDirectory,
+        const TextureExportOptions& options = {},
+        TextureExportProgressCallback progressCallback = {}) const;
+
+    TexturePngExportResult ExportPngEntry(
+        const TextureCacheSource& source,
+        const TextureCatalogEntry& entry,
+        const std::filesystem::path& outputFile,
+        const TextureExportOptions& options = {}) const;
+
+    // Source-neutral export state persistence will be added separately. The
+    // source overload currently ignores options.exportState.
+    BulkExportResults ExportPngEntries(
+        const TextureCacheSource& source,
+        const std::vector<const TextureCatalogEntry*>& entries,
         const std::filesystem::path& outputDirectory,
         const TextureExportOptions& options = {},
         TextureExportProgressCallback progressCallback = {}) const;

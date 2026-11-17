@@ -31,6 +31,21 @@ namespace
             entry.uuid.ToString() + ": " + message);
     }
 
+    void RecordMessage(
+        BulkExportResults& results,
+        const TextureCatalogEntry& entry,
+        const std::string& message,
+        std::size_t maximumStoredMessages)
+    {
+        if (results.messages.size() >= maximumStoredMessages)
+        {
+            return;
+        }
+
+        results.messages.push_back(
+            entry.DisplayIdentifier() + ": " + message);
+    }
+
     void ReportProgress(
         const BulkExportResults& results,
         std::size_t processed,
@@ -256,6 +271,167 @@ BulkExportResults TextureExporter::ExportPngEntries(
                     *entry,
                     std::string("PNG write failed: ")
                         + exportResult.message,
+                    options.maximumStoredMessages);
+                break;
+        }
+
+        ReportProgress(results, processed, progressCallback);
+    }
+
+    return results;
+}
+
+TexturePngExportResult TextureExporter::ExportPngEntry(
+    const TextureCacheSource& source,
+    const TextureCatalogEntry& entry,
+    const fs::path& outputFile,
+    const TextureExportOptions& options) const
+{
+    TexturePngExportResult result;
+    result.outputFile = outputFile;
+
+    if (!options.overwriteExisting)
+    {
+        std::error_code existsError;
+
+        if (fs::exists(outputFile, existsError) && !existsError)
+        {
+            result.status = TexturePngExportStatus::SkippedExisting;
+            result.message = StatusMessage(result.status);
+            return result;
+        }
+    }
+
+    TexturePayload payload;
+    const TexturePayloadError payloadResult =
+        source.ReadPayload(entry.sourceKey, payload);
+
+    if (payloadResult != TexturePayloadError::None)
+    {
+        result.status = TexturePngExportStatus::RebuildFailed;
+        result.message = TexturePayloadErrorMessage(payloadResult);
+        return result;
+    }
+
+    if (payload.format != TexturePayloadFormat::Jpeg2000)
+    {
+        result.status = TexturePngExportStatus::RebuildFailed;
+        result.message = TexturePayloadErrorMessage(
+            TexturePayloadError::UnsupportedFormat);
+        return result;
+    }
+
+    result.cachedBytes = payload.bytes.size();
+
+    J2CDecoder decoder;
+    DecodedImage decodedImage;
+    const DecodeError decodeResult = decoder.Decode(
+        payload.bytes,
+        decodedImage,
+        options.verboseDecoderErrors);
+
+    if (decodeResult != DecodeError::None)
+    {
+        result.status = TexturePngExportStatus::Incomplete;
+        result.message = J2CDecoder::ErrorMessage(decodeResult);
+        return result;
+    }
+
+    PngWriter writer;
+    const PngWriteError writeResult = writer.Write(outputFile, decodedImage);
+
+    if (writeResult != PngWriteError::None)
+    {
+        result.status = TexturePngExportStatus::WriteFailed;
+        result.message = PngWriter::ErrorMessage(writeResult);
+        return result;
+    }
+
+    result.status = TexturePngExportStatus::Exported;
+    result.message = StatusMessage(result.status);
+    result.width = decodedImage.width;
+    result.height = decodedImage.height;
+    return result;
+}
+
+BulkExportResults TextureExporter::ExportPngEntries(
+    const TextureCacheSource& source,
+    const std::vector<const TextureCatalogEntry*>& entries,
+    const fs::path& outputDirectory,
+    const TextureExportOptions& options,
+    TextureExportProgressCallback progressCallback) const
+{
+    BulkExportResults results;
+    results.totalEntries = entries.size();
+
+    std::error_code directoryError;
+    fs::create_directories(outputDirectory, directoryError);
+
+    if (directoryError)
+    {
+        results.writeFailures = entries.size();
+        results.messages.push_back(
+            "Could not create output directory: " +
+            outputDirectory.string());
+        ReportProgress(results, entries.size(), progressCallback);
+        return results;
+    }
+
+    std::size_t processed = 0;
+
+    for (const TextureCatalogEntry* entry : entries)
+    {
+        ++processed;
+
+        if (entry == nullptr)
+        {
+            ++results.rebuildFailures;
+            ReportProgress(results, processed, progressCallback);
+            continue;
+        }
+
+        const fs::path outputFile =
+            outputDirectory / (entry->DisplayIdentifier() + ".png");
+        const TexturePngExportResult exportResult =
+            ExportPngEntry(source, *entry, outputFile, options);
+
+        switch (exportResult.status)
+        {
+            case TexturePngExportStatus::Exported:
+                ++results.exported;
+                break;
+
+            case TexturePngExportStatus::SkippedExisting:
+                ++results.skippedExisting;
+                break;
+
+            case TexturePngExportStatus::Incomplete:
+                ++results.incompleteTextures;
+                RecordMessage(
+                    results,
+                    *entry,
+                    std::string("not decodable from cached data: ") +
+                        exportResult.message,
+                    options.maximumStoredMessages);
+                break;
+
+            case TexturePngExportStatus::RebuildFailed:
+                ++results.rebuildFailures;
+                RecordMessage(
+                    results,
+                    *entry,
+                    std::string("payload read failed: ") +
+                        exportResult.message,
+                    options.maximumStoredMessages);
+                break;
+
+            case TexturePngExportStatus::WriteFailed:
+                ++results.writeFailures;
+                RecordMessage(
+                    results,
+                    *entry,
+                    std::string("PNG write failed: ") +
+                        exportResult.message,
                     options.maximumStoredMessages);
                 break;
         }
