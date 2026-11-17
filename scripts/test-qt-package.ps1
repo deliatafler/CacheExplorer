@@ -298,11 +298,26 @@ if ($Launch -or $ExtractAndLaunch) {
     finally {
         if ($null -ne $process -and -not $process.HasExited) {
             Stop-Process -Id $process.Id -Force
+            if (-not $process.WaitForExit(5000)) {
+                throw "Packaged CacheExplorer did not stop within 5 seconds after the launch smoke test."
+            }
         }
 
         if ($extractionDirectory.Length -gt 0 -and
             (Test-Path -LiteralPath $extractionDirectory -PathType Container)) {
-            Remove-Item -LiteralPath $extractionDirectory -Recurse -Force
+            for ($attempt = 1; $attempt -le 5; $attempt++) {
+                try {
+                    Remove-Item -LiteralPath $extractionDirectory -Recurse -Force -ErrorAction Stop
+                    break
+                }
+                catch {
+                    if ($attempt -eq 5) {
+                        throw
+                    }
+
+                    Start-Sleep -Milliseconds 250
+                }
+            }
         }
     }
 }
