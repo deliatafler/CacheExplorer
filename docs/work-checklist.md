@@ -104,3 +104,18 @@ changelog.
 - [ ] Reassess Gallery filtering/sorting based on real browsing habits.
 - [ ] Keep the Qt-only GUI path; do not reintroduce platform-specific Win32 UI
   code.
+
+## Experimental Aurora Viewer support
+
+- [x] Inspect Aurora's current cache implementation and a populated Windows
+  cache; record the format, security boundary, UUID limitation, and live file
+  mix in `docs/aurora-cache-experiment.md`.
+- [ ] Introduce a backend-neutral cache source/catalog boundary while keeping
+  the Second Life/Firestorm implementation and GUI behavior unchanged.
+- [ ] Add synthetic Aurora sealed-file, keyed-name, and BC7-container fixtures
+  plus cache-root probing tests.
+- [ ] Build a Windows-only JPEG2000 proof of concept using the Aurora key from
+  Credential Manager, with no key logging or persistence.
+- [ ] Add Aurora BC7 preview decoding after the JPEG2000 path is proven.
+- [ ] Add macOS Keychain and Linux Secret Service providers and validate
+  platform packaging before considering Aurora support non-experimental.

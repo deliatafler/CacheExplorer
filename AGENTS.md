@@ -25,6 +25,14 @@ The project direction is Qt 6 for GUI development, releases, and cross-platform
 support. The native Win32 GUI prototype has been removed; useful follow-up ideas
 from it are parked in `docs/post-release-roadmap.md`.
 
+Experimental Aurora Viewer cache support is being developed separately from
+the released Second Life/Firestorm path. See
+`docs/aurora-cache-experiment.md`. Aurora's current cache is a keyed, sealed
+per-asset store rather than the legacy `texture.entries`/`texture.cache`
+layout. Keep format-specific parsing, cryptography, and catalog construction in
+`cachelib`; do not put them in the Qt GUI. Preserve the existing legacy backend
+until Aurora support has independent tests and real-cache validation.
+
 ## Platform and build
 
 Primary platform:
