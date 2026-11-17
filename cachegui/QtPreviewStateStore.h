@@ -5,19 +5,19 @@
 #include <QString>
 
 class PreviewCache;
-class TextureCacheDatabase;
+class LegacyTextureCacheSource;
 
 std::filesystem::path PreviewStateFilePath(
     const std::filesystem::path& cacheDirectory);
 
 bool LoadPreviewState(
     const std::filesystem::path& stateFile,
-    const TextureCacheDatabase& database,
+    const LegacyTextureCacheSource& source,
     PreviewCache& previewCache,
     QString& errorMessage);
 
 bool SavePreviewState(
     const std::filesystem::path& stateFile,
-    const TextureCacheDatabase& database,
+    const LegacyTextureCacheSource& source,
     const PreviewCache& previewCache,
     QString& errorMessage);

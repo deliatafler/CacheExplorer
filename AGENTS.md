@@ -235,15 +235,20 @@ the previous snapshot and the presentation of the result.
 ### TextureCacheSource
 
 Defines the backend-neutral read-only catalog and encoded-payload boundary for
-viewer cache implementations. `TextureCatalogEntry` uses a stable source key,
-an optional UUID, cached/expected byte counts, and a timestamp so formats with
-one-way keyed filenames can be represented honestly.
+viewer cache implementations. `TextureCatalogEntry` uses a stable,
+filesystem-safe source key, an optional UUID, cached/expected/payload byte
+counts, an optional source index, and a timestamp so formats with one-way keyed
+filenames can be represented honestly. `TexturePayloadRequest` is an immutable
+read request that remains valid if the UI refreshes or closes its source while
+a preview worker is active.
 
 `LegacyTextureCacheSource` is the first adapter. It owns the existing
 `TextureCacheDatabase`, maps its entries into the neutral catalog, and uses
-`TextureRebuilder` to return JPEG2000 payload bytes. Existing CLI and GUI paths
-still use `TextureCacheDatabase` directly while the adapter is proven and the
-Qt migration remains a separate behavior-preserving step.
+`TextureRebuilder` to return JPEG2000 payload bytes. The Qt table, Gallery,
+selection, preview workers, and PNG export now consume this neutral boundary.
+Legacy database access remains temporarily exposed only for legacy refresh
+diagnostics and preview-state compatibility. The CLI still uses
+`TextureCacheDatabase` directly.
 
 ### TextureRebuilder
 
@@ -528,13 +533,14 @@ undersized body files as errors. It also checks `TextureExportState`
 load/save behavior for incomplete entries, metadata invalidation, succeeded
 entries, and missing state files. The neutral-source coverage verifies that
 `LegacyTextureCacheSource` preserves catalog order and metadata, reconstructs
-JPEG2000 payloads, maps open/read failures, and clears state on close.
+JPEG2000 payloads, maps open/read failures, clears state on close, and creates
+detached payload requests that remain valid after the source closes.
 
 `tests/cachegui_tests.cpp` provides focused CTest coverage for GUI-facing
 helpers: Gallery filtering including recent changes, gallery queue accounting,
-bounded Try Next traversal, gallery status text, and per-user PNG export
-directory persistence. It is built only when the Qt GUI and project tests are
-enabled.
+bounded Try Next traversal, gallery status text, neutral catalog model mapping,
+and per-user PNG export directory persistence. It is built only when the Qt GUI
+and project tests are enabled.
 
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 

@@ -23,7 +23,10 @@
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -38,10 +41,80 @@ namespace
         }
     }
 
-    CacheEntry MakeEntry(std::uint32_t cacheIndex)
+    class TestTextureCacheSource final : public TextureCacheSource
     {
-        CacheEntry entry{};
-        entry.cacheIndex = cacheIndex;
+    public:
+        TextureCacheOpenError Open(
+            const std::filesystem::path& cacheDirectory) override
+        {
+            cacheDirectory_ = cacheDirectory;
+            open_ = true;
+            return TextureCacheOpenError::None;
+        }
+
+        void Close() override
+        {
+            open_ = false;
+            entries.clear();
+        }
+
+        bool IsOpen() const override
+        {
+            return open_;
+        }
+
+        TextureCacheFormat Format() const override
+        {
+            return TextureCacheFormat::LegacyViewer;
+        }
+
+        const std::filesystem::path& CacheDirectory() const override
+        {
+            return cacheDirectory_;
+        }
+
+        const std::vector<TextureCatalogEntry>& Entries() const override
+        {
+            return entries;
+        }
+
+        const TextureCatalogEntry* FindByUuid(
+            const UUID& uuid) const override
+        {
+            for (const TextureCatalogEntry& entry : entries)
+            {
+                if (entry.uuid.has_value() && *entry.uuid == uuid)
+                {
+                    return &entry;
+                }
+            }
+
+            return nullptr;
+        }
+
+        TexturePayloadError ReadPayload(
+            const std::string&,
+            TexturePayload&) const override
+        {
+            return TexturePayloadError::UnsupportedFormat;
+        }
+
+        std::unique_ptr<TexturePayloadRequest> CreatePayloadRequest(
+            const std::string&) const override
+        {
+            return {};
+        }
+
+        bool open_ = true;
+        std::filesystem::path cacheDirectory_;
+        std::vector<TextureCatalogEntry> entries;
+    };
+
+    TextureCatalogEntry MakeEntry(std::uint32_t sourceIndex)
+    {
+        TextureCatalogEntry entry{};
+        entry.sourceKey = std::to_string(sourceIndex);
+        entry.sourceIndex = sourceIndex;
         return entry;
     }
 
@@ -53,11 +126,15 @@ namespace
         Expect(queue.HasEntries(), "queue has replaced entries");
         Expect(queue.Total() == 2, "queue records total entries");
         Expect(queue.Completed() == 0, "queue starts with no completed entries");
-        Expect(queue.TakeNext().cacheIndex == 4, "queue preserves entry order");
+        Expect(
+            queue.TakeNext().sourceIndex == 4,
+            "queue preserves entry order");
 
         queue.MarkCompleted();
         Expect(queue.Completed() == 1, "queue increments completed entries");
-        Expect(queue.TakeNext().cacheIndex == 7, "queue returns second entry");
+        Expect(
+            queue.TakeNext().sourceIndex == 7,
+            "queue returns second entry");
         Expect(!queue.HasEntries(), "queue becomes empty after taking entries");
 
         queue.MarkCompleted();
@@ -73,6 +150,66 @@ namespace
         Expect(queue.Total() == 0, "clear resets total entries");
         Expect(queue.Completed() == 0, "clear resets completed entries");
         Expect(!queue.RefreshPending(), "clear removes pending refresh");
+    }
+
+    void TestCacheEntryTableModelUsesNeutralCatalog()
+    {
+        const std::optional<UUID> uuid = UUID::FromString(
+            "11111111-2222-3333-4444-555555555555");
+        Expect(uuid.has_value(), "table model test UUID parses");
+
+        TextureCatalogEntry legacyEntry;
+        legacyEntry.sourceKey = uuid.has_value()
+            ? uuid->ToString()
+            : std::string("legacy-entry");
+        legacyEntry.uuid = uuid;
+        legacyEntry.expectedBytes = 700;
+        legacyEntry.cachedBytes = 700;
+        legacyEntry.payloadBytes = 100;
+        legacyEntry.sourceIndex = 12;
+        legacyEntry.timestamp = 1000;
+
+        TextureCatalogEntry anonymousEntry;
+        anonymousEntry.sourceKey = "0123456789abcdef0123456789abcdef";
+        anonymousEntry.cachedBytes = 4096;
+        anonymousEntry.payloadBytes = 4096;
+
+        TestTextureCacheSource source;
+        source.entries = {legacyEntry, anonymousEntry};
+
+        CacheEntryTableModel model;
+        model.SetSource(&source);
+
+        Expect(model.rowCount() == 2, "table model reads neutral entry count");
+        Expect(
+            model.index(0, 0).data(Qt::DisplayRole).toString() ==
+                QStringLiteral("11111111-2222-3333-4444-555555555555"),
+            "table model displays a known UUID");
+        Expect(
+            model.index(0, 1).data(Qt::DisplayRole).toULongLong() == 700,
+            "table model preserves legacy image size");
+        Expect(
+            model.index(0, 2).data(Qt::DisplayRole).toULongLong() == 100,
+            "table model preserves legacy body size");
+        Expect(
+            model.index(0, 3).data(CacheEntryTableModel::CacheIndexRole)
+                .toULongLong() == 12,
+            "table model preserves legacy cache index role");
+        Expect(
+            model.index(0, 0).data(
+                CacheEntryTableModel::CachedCompleteRole).toBool(),
+            "table model reports complete neutral payload metadata");
+        Expect(
+            model.index(1, 0).data(Qt::DisplayRole).toString() ==
+                QStringLiteral("0123456789abcdef0123456789abcdef"),
+            "table model displays an opaque source identifier");
+        Expect(
+            !model.index(1, 3).data(
+                CacheEntryTableModel::CacheIndexRole).isValid(),
+            "table model leaves unavailable source sequence blank");
+        Expect(
+            model.RowForEntry(anonymousEntry) == 1,
+            "table model finds entries by stable source key");
     }
 
     void TestGalleryPreviewMetrics()
@@ -498,9 +635,10 @@ namespace
 
     void TestTextureDetailsText()
     {
-        CacheEntry entry{};
-        entry.imageSize = 700;
-        entry.bodySize = 100;
+        TextureCatalogEntry entry{};
+        entry.expectedBytes = 700;
+        entry.cachedBytes = 700;
+        entry.payloadBytes = 100;
         entry.timestamp = 0;
 
         Expect(
@@ -509,8 +647,9 @@ namespace
                     "Cached 700 B of 700 B | Complete\nTime unavailable"),
             "texture details describe complete cached data");
 
-        entry.imageSize = 2048;
-        entry.bodySize = 400;
+        entry.expectedBytes = 2048;
+        entry.cachedBytes = 1000;
+        entry.payloadBytes = 400;
         const QString partialDetails = TextureDetailsText(entry, 512, 256);
         Expect(
             partialDetails.startsWith(QStringLiteral("512 x 256 pixels\n")),
@@ -527,6 +666,7 @@ int main(int argc, char* argv[])
     QCoreApplication app(argc, argv);
 
     TestGalleryPreviewQueue();
+    TestCacheEntryTableModelUsesNeutralCatalog();
     TestGalleryPreviewMetrics();
     TestTryNextPreviewState();
     TestGalleryStatusText();

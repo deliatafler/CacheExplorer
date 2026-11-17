@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 
 #include <deque>
 
@@ -9,7 +9,7 @@ class QListView;
 class PreviewCache;
 class QSortFilterProxyModel;
 
-std::deque<CacheEntry> BuildVisibleGalleryPreviewQueue(
+std::deque<TextureCatalogEntry> BuildVisibleGalleryPreviewQueue(
     const QListView& galleryView,
     const QSortFilterProxyModel& proxyModel,
     const CacheEntryTableModel& tableModel,

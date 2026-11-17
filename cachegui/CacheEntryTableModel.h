@@ -1,8 +1,8 @@
 #pragma once
 
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 
-#include <cstdint>
+#include <string>
 #include <vector>
 
 #include <QAbstractTableModel>
@@ -22,10 +22,10 @@ public:
 
     explicit CacheEntryTableModel(QObject* parent = nullptr);
 
-    void SetDatabase(const TextureCacheDatabase* database);
+    void SetSource(const TextureCacheSource* source);
     void SetPreviewCache(const PreviewCache* previewCache);
     void NotifyAllPreviewStatusesChanged();
-    void NotifyPreviewStatusChanged(std::uint32_t cacheIndex);
+    void NotifyPreviewStatusChanged(const std::string& sourceKey);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     int columnCount(const QModelIndex& parent = {}) const override;
@@ -35,29 +35,29 @@ public:
         Qt::Orientation orientation,
         int role) const override;
 
-    const CacheEntry* EntryAt(int row) const;
-    int RowForEntry(const CacheEntry& entry) const;
+    const TextureCatalogEntry* EntryAt(int row) const;
+    int RowForEntry(const TextureCatalogEntry& entry) const;
 
 private:
     struct RowDisplayCache
     {
-        QString uuid;
+        QString identifier;
         QString timestamp;
     };
 
     void RebuildDisplayCache();
     const RowDisplayCache* DisplayCacheAt(int row) const;
-    int PreviewStateValue(const CacheEntry& entry) const;
-    QString PreviewStatusText(const CacheEntry& entry) const;
-    int PreviewStatusRank(const CacheEntry& entry) const;
-    QVariant PreviewIcon(const CacheEntry& entry) const;
+    int PreviewStateValue(const TextureCatalogEntry& entry) const;
+    QString PreviewStatusText(const TextureCatalogEntry& entry) const;
+    int PreviewStatusRank(const TextureCatalogEntry& entry) const;
+    QVariant PreviewIcon(const TextureCatalogEntry& entry) const;
     QPixmap PlaceholderPixmap(
         const QColor& background,
         const QColor& foreground,
         const QString& label) const;
-    int RowForCacheIndex(std::uint32_t cacheIndex) const;
+    int RowForSourceKey(const std::string& sourceKey) const;
 
-    const TextureCacheDatabase* database_ = nullptr;
+    const TextureCacheSource* source_ = nullptr;
     const PreviewCache* previewCache_ = nullptr;
     std::vector<RowDisplayCache> displayCache_;
 };

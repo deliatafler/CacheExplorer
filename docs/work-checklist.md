@@ -112,7 +112,7 @@ changelog.
   mix in `docs/aurora-cache-experiment.md`.
 - [x] Add a backend-neutral cache catalog/payload contract and a tested legacy
   source adapter without changing existing CLI or GUI behavior.
-- [ ] Migrate the Qt model and preview/export paths to the neutral source
+- [x] Migrate the Qt model and preview/export paths to the neutral source
   boundary while preserving the Second Life/Firestorm interface and behavior.
 - [ ] Add synthetic Aurora sealed-file, keyed-name, and BC7-container fixtures
   plus cache-root probing tests.

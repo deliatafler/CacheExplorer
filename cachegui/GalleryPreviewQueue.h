@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 
 #include <cstddef>
 #include <deque>
@@ -10,11 +10,11 @@ class GalleryPreviewQueue
 public:
     void Clear();
 
-    void Replace(std::deque<CacheEntry> entries);
+    void Replace(std::deque<TextureCatalogEntry> entries);
 
     bool HasEntries() const;
 
-    CacheEntry TakeNext();
+    TextureCatalogEntry TakeNext();
 
     void MarkCompleted();
 
@@ -29,7 +29,7 @@ public:
     std::size_t Completed() const;
 
 private:
-    std::deque<CacheEntry> entries_;
+    std::deque<TextureCatalogEntry> entries_;
     std::size_t total_ = 0;
     std::size_t completed_ = 0;
     bool refreshPending_ = false;

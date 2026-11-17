@@ -5,6 +5,7 @@
 #include "GalleryListView.h"
 #include "GalleryPreviewController.h"
 #include "GalleryPreviewScanner.h"
+#include "LegacyTextureCacheSource.h"
 #include "PreviewCache.h"
 #include "PreviewDecodeWorker.h"
 #include "PreviewPanel.h"
@@ -25,7 +26,6 @@
 #include "QtVisualStyle.h"
 #include "QtWindowState.h"
 #include "TextureCacheChanges.h"
-#include "TextureCacheDatabase.h"
 #include "TryNextPreviewState.h"
 #include "UUID.h"
 
@@ -123,9 +123,9 @@ namespace
             pathEdit_->setText(cachePath);
             OpenCache();
 
-            return database_.IsOpen()
+            return source_.IsOpen()
                 && static_cast<std::size_t>(tableModel_.rowCount())
-                    == database_.Entries().size();
+                    == source_.Entries().size();
         }
 
     protected:
@@ -590,7 +590,7 @@ namespace
                 {
                     ShowAboutDialog(
                         *this,
-                        database_,
+                        source_.LegacyDatabase(),
                         galleryPreviewController_.MetricsSnapshot());
                 });
 
@@ -627,13 +627,13 @@ namespace
                 this,
                 [this]()
                 {
-                    const CacheEntry* entry = SelectedEntry();
-                    if (entry == nullptr)
+                    const TextureCatalogEntry* entry = SelectedEntry();
+                    if (entry == nullptr || !entry->uuid.has_value())
                     {
                         return;
                     }
 
-                    const QString uuid = ToQString(entry->uuid.ToString());
+                    const QString uuid = ToQString(entry->uuid->ToString());
                     QApplication::clipboard()->setText(uuid);
                     statusLabel_->setText(
                         QStringLiteral("Copied UUID: %1").arg(uuid));
@@ -811,18 +811,18 @@ namespace
             const fs::path cacheDirectory =
                 ResolveTextureCacheDirectory(PathFromQString(pathEdit_->text()));
             const bool refreshingCurrentCache =
-                database_.IsOpen() &&
-                IsSameCachePath(cacheDirectory, database_.CacheDirectory());
+                source_.IsOpen() &&
+                IsSameCachePath(cacheDirectory, source_.CacheDirectory());
             const std::vector<CacheEntry> previousEntries =
                 refreshingCurrentCache
-                    ? database_.Entries()
+                    ? source_.LegacyDatabase().Entries()
                     : std::vector<CacheEntry>{};
 
             SetBusy(true, QStringLiteral("Opening cache..."));
 
-            const CacheError result = database_.Open(cacheDirectory);
+            const TextureCacheOpenError result = source_.Open(cacheDirectory);
 
-            if (result != CacheError::None)
+            if (result != TextureCacheOpenError::None)
             {
                 HandleOpenCacheFailure(result);
                 return;
@@ -833,9 +833,9 @@ namespace
                 previousEntries);
         }
 
-        void HandleOpenCacheFailure(CacheError result)
+        void HandleOpenCacheFailure(TextureCacheOpenError result)
         {
-            tableModel_.SetDatabase(nullptr);
+            tableModel_.SetSource(nullptr);
             proxyModel_->SetRecentCacheIndices({});
             UpdateRecentChangesFilterLabel({});
             previewStateFile_.clear();
@@ -845,7 +845,7 @@ namespace
             UpdateOpenButtonText();
             statusLabel_->setText(
                 QStringLiteral("Could not open cache: ")
-                + QString::fromUtf8(CacheErrorMessage(result)));
+                + QString::fromUtf8(TextureCacheOpenErrorMessage(result)));
         }
 
         void HandleOpenCacheSuccess(
@@ -856,10 +856,10 @@ namespace
                 refreshedCurrentCache
                     ? FindChangedCacheIndices(
                         previousEntries,
-                        database_.Entries())
+                        source_.LegacyDatabase().Entries())
                     : std::vector<std::uint32_t>{};
 
-            pathEdit_->setText(PathToQString(database_.CacheDirectory()));
+            pathEdit_->setText(PathToQString(source_.CacheDirectory()));
             RememberOpenedCachePath(pathEdit_->text());
             RefreshRecentCacheMenu();
             PopulateTable();
@@ -890,16 +890,16 @@ namespace
             UpdateGalleryEntryCount();
             SetBusy(false);
             UpdateOpenButtonText();
-            const CacheHeader& header = database_.Header();
+            const CacheHeader& header = source_.LegacyDatabase().Header();
             statusLabel_->setText(
                 refreshedCurrentCache
                     ? RefreshedCacheStatus(
-                        database_.Entries().size(),
+                        source_.Entries().size(),
                         header.entryCount,
                         header.version,
                         changedCacheIndices.size())
                     : LoadedCacheStatus(
-                        database_.Entries().size(),
+                        source_.Entries().size(),
                         header.entryCount,
                         header.version));
             ScheduleGalleryPreviewSearch();
@@ -928,8 +928,8 @@ namespace
             const fs::path suppliedPath =
                 ResolveTextureCacheDirectory(PathFromQString(pathEdit_->text()));
             const bool reopeningCurrentCache =
-                database_.IsOpen() &&
-                IsSameCachePath(suppliedPath, database_.CacheDirectory());
+                source_.IsOpen() &&
+                IsSameCachePath(suppliedPath, source_.CacheDirectory());
 
             openButton_->setText(
                 reopeningCurrentCache
@@ -953,22 +953,22 @@ namespace
         }
 
         void UpdatePreviewCaption(
-            const CacheEntry& entry,
+            const TextureCatalogEntry& entry,
             std::uint32_t width = 0,
             std::uint32_t height = 0)
         {
-            previewCaption_->setText(ToQString(entry.uuid.ToString()));
+            previewCaption_->setText(ToQString(entry.DisplayIdentifier()));
             previewDetails_->setText(
                 TextureDetailsText(entry, width, height));
         }
 
         void PopulateTable()
         {
-            tableModel_.SetDatabase(&database_);
+            tableModel_.SetSource(&source_);
             table_->sortByColumn(4, Qt::DescendingOrder);
         }
 
-        const CacheEntry* SelectedEntry() const
+        const TextureCatalogEntry* SelectedEntry() const
         {
             return ::SelectedEntry(
                 galleryMode_,
@@ -978,14 +978,15 @@ namespace
                 tableModel_);
         }
 
-        std::vector<const CacheEntry*> SelectedEntries() const
+        std::vector<const TextureCatalogEntry*> SelectedEntries() const
         {
             return ::SelectedEntries(*table_, *proxyModel_, tableModel_);
         }
 
         void UpdateActionState()
         {
-            const std::vector<const CacheEntry*> selectedEntries = SelectedEntries();
+            const std::vector<const TextureCatalogEntry*> selectedEntries =
+                SelectedEntries();
 
             ApplyMainActionState(
                 MainActionState{
@@ -993,7 +994,7 @@ namespace
                     !selectedEntries.empty(),
                     previewWorker_.IsActive(),
                     tryNextPreview_.IsActive(),
-                    database_.IsOpen(),
+                    source_.IsOpen(),
                     galleryMode_},
                 *tryNextButton_,
                 *exportButton_,
@@ -1004,11 +1005,15 @@ namespace
                     ? QStringLiteral("Export Selected PNGs...")
                     : QStringLiteral("Export PNG"));
 
-            const bool lookupAvailable = !busy_ && database_.IsOpen();
+            const bool lookupAvailable = !busy_ && source_.IsOpen();
             uuidLookupEdit_->setEnabled(lookupAvailable);
             findUuidButton_->setEnabled(
                 lookupAvailable && !uuidLookupEdit_->text().trimmed().isEmpty());
-            copyUuidButton_->setEnabled(!busy_ && SelectedEntry() != nullptr);
+            const TextureCatalogEntry* selectedEntry = SelectedEntry();
+            copyUuidButton_->setEnabled(
+                !busy_ &&
+                selectedEntry != nullptr &&
+                selectedEntry->uuid.has_value());
         }
 
         void SetBusy(bool busy, const QString& message = {})
@@ -1035,7 +1040,7 @@ namespace
 
         }
 
-        bool SelectEntry(const CacheEntry& entry)
+        bool SelectEntry(const TextureCatalogEntry& entry)
         {
             return ::SelectEntry(
                 entry,
@@ -1090,7 +1095,7 @@ namespace
 
         void FindUuid()
         {
-            if (!database_.IsOpen() || busy_)
+            if (!source_.IsOpen() || busy_)
             {
                 return;
             }
@@ -1110,7 +1115,7 @@ namespace
                 return;
             }
 
-            const CacheEntry* entry = database_.Find(*uuid);
+            const TextureCatalogEntry* entry = source_.FindByUuid(*uuid);
 
             if (entry == nullptr)
             {
@@ -1139,31 +1144,29 @@ namespace
             statusLabel_->setText(
                 filterCleared
                     ? QStringLiteral("Found texture and cleared the Gallery filter: %1")
-                        .arg(ToQString(entry->uuid.ToString()))
+                        .arg(ToQString(entry->DisplayIdentifier()))
                     : QStringLiteral("Found texture: %1")
-                        .arg(ToQString(entry->uuid.ToString())));
+                        .arg(ToQString(entry->DisplayIdentifier())));
             ScheduleGalleryPreviewSearch();
         }
 
         void StartPreviewRequest(
-            const CacheEntry& entry,
+            const TextureCatalogEntry& entry,
             PreviewRequestKind requestKind)
         {
-            if (previewWorker_.IsActive() || !database_.IsOpen())
+            if (previewWorker_.IsActive() || !source_.IsOpen())
             {
                 return;
             }
 
             const std::uint64_t requestId = nextPreviewRequestId_++;
-            const fs::path cacheDirectory = database_.CacheDirectory();
-
             activePreviewRequestKind_ = requestKind;
             SetPreviewChecking(previewCache_, tableModel_, entry);
             UpdateActionState();
 
             previewWorker_.StartDecode(
                 requestId,
-                cacheDirectory,
+                source_.CreatePayloadRequest(entry.sourceKey),
                 entry);
 
             if (!previewPollTimer_->isActive())
@@ -1173,7 +1176,7 @@ namespace
 
             statusLabel_->setText(
                 QStringLiteral("Checking preview %1...")
-                    .arg(ToQString(entry.uuid.ToString())));
+                    .arg(ToQString(entry.DisplayIdentifier())));
         }
 
         void PollPreviewWorker()
@@ -1207,10 +1210,10 @@ namespace
         {
             const PreviewRequestKind requestKind = activePreviewRequestKind_;
             activePreviewRequestKind_ = PreviewRequestKind::TableSelection;
-            const CacheEntry* selectedEntry = SelectedEntry();
+            const TextureCatalogEntry* selectedEntry = SelectedEntry();
             const bool resultIsSelected =
                 selectedEntry != nullptr &&
-                selectedEntry->cacheIndex == result.entry.cacheIndex;
+                selectedEntry->sourceKey == result.entry.sourceKey;
 
             if (!result.succeeded)
             {
@@ -1272,7 +1275,7 @@ namespace
                 tryNextPreview_.Stop();
                 statusLabel_->setText(
                     PreviewReadyStatus(
-                        result.entry.uuid.ToString(),
+                        result.entry.DisplayIdentifier(),
                         result.image.width,
                         result.image.height));
             }
@@ -1285,7 +1288,7 @@ namespace
                     result.image.height);
                 statusLabel_->setText(
                     PreviewReadyStatus(
-                        result.entry.uuid.ToString(),
+                        result.entry.DisplayIdentifier(),
                         result.image.width,
                         result.image.height));
             }
@@ -1317,22 +1320,20 @@ namespace
                 });
         }
 
-        void StartGalleryPreviewRequest(const CacheEntry& entry)
+        void StartGalleryPreviewRequest(const TextureCatalogEntry& entry)
         {
-            if (galleryPreviewWorker_.IsActive() || !database_.IsOpen())
+            if (galleryPreviewWorker_.IsActive() || !source_.IsOpen())
             {
                 return;
             }
 
             const std::uint64_t requestId = nextPreviewRequestId_++;
-            const fs::path cacheDirectory = database_.CacheDirectory();
-
             SetPreviewChecking(previewCache_, tableModel_, entry);
             UpdateGalleryActivity();
 
             galleryPreviewWorker_.StartDecode(
                 requestId,
-                cacheDirectory,
+                source_.CreatePayloadRequest(entry.sourceKey),
                 entry);
 
             if (!galleryPreviewPollTimer_->isActive())
@@ -1403,10 +1404,10 @@ namespace
             }
 
             SavePersistentPreviewState();
-            const CacheEntry* selectedEntry = SelectedEntry();
+            const TextureCatalogEntry* selectedEntry = SelectedEntry();
 
             if (selectedEntry != nullptr &&
-                selectedEntry->cacheIndex == result.entry.cacheIndex)
+                selectedEntry->sourceKey == result.entry.sourceKey)
             {
                 previewPanel_.SetPixmap(pixmap);
                 UpdatePreviewCaption(
@@ -1443,7 +1444,7 @@ namespace
 
         void ShowCachedPreviewForSelection()
         {
-            const CacheEntry* entry = SelectedEntry();
+            const TextureCatalogEntry* entry = SelectedEntry();
 
             if (entry == nullptr)
             {
@@ -1491,13 +1492,13 @@ namespace
         void ScheduleTableSelectionPreview()
         {
             if (galleryMode_ ||
-                !database_.IsOpen() ||
+                !source_.IsOpen() ||
                 tryNextPreview_.IsActive())
             {
                 return;
             }
 
-            const CacheEntry* entry = SelectedEntry();
+            const TextureCatalogEntry* entry = SelectedEntry();
 
             if (entry != nullptr && previewCache_.ShouldAttemptPreview(*entry))
             {
@@ -1507,7 +1508,7 @@ namespace
 
         void StartSelectedTablePreview()
         {
-            if (galleryMode_ || !database_.IsOpen() || tryNextPreview_.IsActive())
+            if (galleryMode_ || !source_.IsOpen() || tryNextPreview_.IsActive())
             {
                 return;
             }
@@ -1518,7 +1519,7 @@ namespace
                 return;
             }
 
-            const CacheEntry* entry = SelectedEntry();
+            const TextureCatalogEntry* entry = SelectedEntry();
 
             if (entry != nullptr && previewCache_.ShouldAttemptPreview(*entry))
             {
@@ -1528,7 +1529,7 @@ namespace
 
         void StartTryNextPreview()
         {
-            if (!database_.IsOpen() || tryNextPreview_.IsActive())
+            if (!source_.IsOpen() || tryNextPreview_.IsActive())
             {
                 return;
             }
@@ -1556,7 +1557,7 @@ namespace
                 return;
             }
 
-            const CacheEntry* entry =
+            const TextureCatalogEntry* entry =
                 TakeNextTryNextEntry(
                     tryNextPreview_,
                     *proxyModel_,
@@ -1631,7 +1632,7 @@ namespace
         {
             if (!galleryPreviewController_.CanScheduleSearch(
                     galleryMode_,
-                    database_.IsOpen()))
+                    source_.IsOpen()))
             {
                 return;
             }
@@ -1646,7 +1647,7 @@ namespace
                     const GallerySearchAction action =
                         galleryPreviewController_.FinishScheduledSearch(
                             galleryMode_,
-                            database_.IsOpen(),
+                            source_.IsOpen(),
                             galleryPreviewWorker_.IsActive());
 
                     if (action == GallerySearchAction::Clear)
@@ -1674,7 +1675,7 @@ namespace
         {
             if (!galleryPreviewController_.CanStartQueuedPreview(
                     galleryMode_,
-                    database_.IsOpen(),
+                    source_.IsOpen(),
                     busy_,
                     galleryPreviewWorker_.IsActive(),
                     tryNextPreview_.IsActive()))
@@ -1688,7 +1689,7 @@ namespace
                 return;
             }
 
-            const std::optional<CacheEntry> entry =
+            const std::optional<TextureCatalogEntry> entry =
                 galleryPreviewController_.TakeNextAttemptableEntry(previewCache_);
 
             if (entry.has_value())
@@ -1719,20 +1720,20 @@ namespace
 
         void LoadPersistentPreviewState()
         {
-            if (!database_.IsOpen())
+            if (!source_.IsOpen())
             {
                 previewStateFile_.clear();
                 return;
             }
 
             previewStateFile_ =
-                PreviewStateFilePath(database_.CacheDirectory());
+                PreviewStateFilePath(source_.CacheDirectory());
 
             QString errorMessage;
             const bool loaded =
                 LoadPreviewState(
                     previewStateFile_,
-                    database_,
+                    source_,
                     previewCache_,
                     errorMessage);
 
@@ -1746,7 +1747,7 @@ namespace
 
         void SavePersistentPreviewState()
         {
-            if (!database_.IsOpen() || previewStateFile_.empty())
+            if (!source_.IsOpen() || previewStateFile_.empty())
             {
                 return;
             }
@@ -1754,7 +1755,7 @@ namespace
             QString errorMessage;
             SavePreviewState(
                 previewStateFile_,
-                database_,
+                source_,
                 previewCache_,
                 errorMessage);
         }
@@ -1764,7 +1765,7 @@ namespace
             galleryActivityIndicator_.Update(
                 galleryPreviewController_.ActivityState(
                     galleryMode_,
-                    database_.IsOpen(),
+                    source_.IsOpen(),
                     galleryPreviewWorker_.IsActive()));
         }
 
@@ -1778,7 +1779,8 @@ namespace
 
         void ExportSelected()
         {
-            const std::vector<const CacheEntry*> entries = SelectedEntries();
+            const std::vector<const TextureCatalogEntry*> entries =
+                SelectedEntries();
 
             if (entries.empty())
             {
@@ -1791,7 +1793,7 @@ namespace
                 return;
             }
 
-            const CacheEntry& entry = *entries.front();
+            const TextureCatalogEntry& entry = *entries.front();
 
             const QString outputFile =
                 ChoosePngOutputFile(
@@ -1805,7 +1807,7 @@ namespace
 
             const TexturePngExportResult result =
                 ExportTexturePng(
-                    database_,
+                    source_,
                     entry,
                     PathFromQString(outputFile),
                     true);
@@ -1813,7 +1815,8 @@ namespace
             statusLabel_->setText(PngExportStatusText(result, outputFile));
         }
 
-        void StartBatchPngExport(const std::vector<const CacheEntry*>& entries)
+        void StartBatchPngExport(
+            const std::vector<const TextureCatalogEntry*>& entries)
         {
             const QString outputDirectory = ChoosePngOutputDirectory(*this);
 
@@ -1822,7 +1825,7 @@ namespace
                 return;
             }
 
-            const TextureCacheDatabase* database = &database_;
+            const TextureCacheSource* source = &source_;
             const std::filesystem::path outputPath =
                 PathFromQString(outputDirectory);
 
@@ -1830,10 +1833,10 @@ namespace
             {
                 batchExportFuture_ = std::async(
                     std::launch::async,
-                    [database, entries, outputPath]()
+                    [source, entries, outputPath]()
                     {
                         return ExportTexturePngs(
-                            *database,
+                            *source,
                             entries,
                             outputPath);
                     });
@@ -1936,7 +1939,7 @@ namespace
         QTimer* galleryFilterRefreshTimer_ = nullptr;
         QTimer* batchExportPollTimer_ = nullptr;
         GalleryPreviewController galleryPreviewController_;
-        TextureCacheDatabase database_;
+        LegacyTextureCacheSource source_;
         std::filesystem::path previewStateFile_;
         bool busy_ = false;
         PreviewWorkerState previewWorker_;

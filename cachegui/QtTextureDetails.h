@@ -4,9 +4,9 @@
 
 #include <QString>
 
-struct CacheEntry;
+struct TextureCatalogEntry;
 
 QString TextureDetailsText(
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     std::uint32_t width = 0,
     std::uint32_t height = 0);

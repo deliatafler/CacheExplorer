@@ -8,7 +8,7 @@
 class CacheEntryTableModel;
 struct DecodedImage;
 class PreviewCache;
-struct CacheEntry;
+struct TextureCatalogEntry;
 
 void ClearPreviewStatuses(
     PreviewCache& previewCache,
@@ -17,24 +17,24 @@ void ClearPreviewStatuses(
 void SetPreviewChecking(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry);
+    const TextureCatalogEntry& entry);
 
 void SetPreviewUnavailable(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const QString& message);
 
 void SetPreviewLoadFailed(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const QString& message);
 
 void SetPreviewable(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const QPixmap& pixmap,
     std::uint32_t width,
     std::uint32_t height);
@@ -42,7 +42,7 @@ void SetPreviewable(
 bool StoreDecodedPreview(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const DecodedImage& decodedImage,
     QPixmap& pixmap,
     QString& errorMessage);

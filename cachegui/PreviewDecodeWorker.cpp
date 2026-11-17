@@ -1,7 +1,5 @@
 #include "PreviewDecodeWorker.h"
 
-#include "TextureRebuilder.h"
-
 #include <cstdint>
 #include <chrono>
 #include <vector>
@@ -19,31 +17,38 @@ namespace
 
 PreviewDecodeResult DecodePreview(
     std::uint64_t requestId,
-    const std::filesystem::path& cacheDirectory,
-    const CacheEntry& entry)
+    const TexturePayloadRequest& payloadRequest,
+    const TextureCatalogEntry& entry)
 {
     const auto startedAt = std::chrono::steady_clock::now();
     PreviewDecodeResult result;
     result.requestId = requestId;
     result.entry = entry;
 
-    TextureRebuilder rebuilder;
-    std::vector<std::uint8_t> encodedData;
+    TexturePayload payload;
 
-    const RebuildError rebuildResult =
-        rebuilder.Rebuild(cacheDirectory, entry, encodedData);
+    const TexturePayloadError payloadResult = payloadRequest.Read(payload);
 
-    if (rebuildResult != RebuildError::None)
+    if (payloadResult != TexturePayloadError::None)
     {
         result.status = PreviewDecodeStatus::RebuildFailed;
-        result.message = TextureRebuilder::ErrorMessage(rebuildResult);
+        result.message = TexturePayloadErrorMessage(payloadResult);
+        FinishDecodeTiming(result, startedAt);
+        return result;
+    }
+
+    if (payload.format != TexturePayloadFormat::Jpeg2000)
+    {
+        result.status = PreviewDecodeStatus::RebuildFailed;
+        result.message = TexturePayloadErrorMessage(
+            TexturePayloadError::UnsupportedFormat);
         FinishDecodeTiming(result, startedAt);
         return result;
     }
 
     J2CDecoder decoder;
     const DecodeError decodeResult =
-        decoder.Decode(encodedData, result.image, false);
+        decoder.Decode(payload.bytes, result.image, false);
 
     if (decodeResult != DecodeError::None)
     {

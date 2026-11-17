@@ -68,17 +68,19 @@ bool GalleryPreviewController::ConsumeRefreshRequest()
     return queue_.ConsumeRefreshRequest();
 }
 
-void GalleryPreviewController::ReplaceQueue(std::deque<CacheEntry> entries)
+void GalleryPreviewController::ReplaceQueue(
+    std::deque<TextureCatalogEntry> entries)
 {
     queue_.Replace(std::move(entries));
 }
 
-std::optional<CacheEntry> GalleryPreviewController::TakeNextAttemptableEntry(
+std::optional<TextureCatalogEntry>
+GalleryPreviewController::TakeNextAttemptableEntry(
     const PreviewCache& previewCache)
 {
     while (queue_.HasEntries())
     {
-        const CacheEntry entry = queue_.TakeNext();
+        const TextureCatalogEntry entry = queue_.TakeNext();
 
         if (previewCache.ShouldAttemptPreview(entry))
         {

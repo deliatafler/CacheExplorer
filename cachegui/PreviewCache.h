@@ -1,13 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 #include <QPixmap>
 #include <QString>
 
-struct CacheEntry;
+struct TextureCatalogEntry;
 
 enum class PreviewState
 {
@@ -29,7 +30,7 @@ struct PreviewRecord
 
 struct StoredPreviewRecord
 {
-    std::uint32_t cacheIndex = 0;
+    std::string sourceKey;
     PreviewState state = PreviewState::Unknown;
     QString message;
 };
@@ -38,21 +39,25 @@ class PreviewCache
 {
 public:
     void Clear();
-    void SetChecking(const CacheEntry& entry);
-    void SetUnavailable(const CacheEntry& entry, const QString& message);
-    void SetLoadFailed(const CacheEntry& entry, const QString& message);
+    void SetChecking(const TextureCatalogEntry& entry);
+    void SetUnavailable(
+        const TextureCatalogEntry& entry,
+        const QString& message);
+    void SetLoadFailed(
+        const TextureCatalogEntry& entry,
+        const QString& message);
     void SetPreviewable(
-        const CacheEntry& entry,
+        const TextureCatalogEntry& entry,
         const QPixmap& pixmap,
         std::uint32_t width,
         std::uint32_t height);
 
-    const PreviewRecord* Find(const CacheEntry& entry) const;
-    bool ShouldAttemptPreview(const CacheEntry& entry) const;
-    QString StatusText(const CacheEntry& entry) const;
-    int StatusRank(const CacheEntry& entry) const;
+    const PreviewRecord* Find(const TextureCatalogEntry& entry) const;
+    bool ShouldAttemptPreview(const TextureCatalogEntry& entry) const;
+    QString StatusText(const TextureCatalogEntry& entry) const;
+    int StatusRank(const TextureCatalogEntry& entry) const;
     std::vector<StoredPreviewRecord> TerminalRecords() const;
 
 private:
-    std::unordered_map<std::uint32_t, PreviewRecord> records_;
+    std::unordered_map<std::string, PreviewRecord> records_;
 };

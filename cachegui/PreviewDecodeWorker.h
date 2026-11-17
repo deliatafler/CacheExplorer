@@ -1,11 +1,10 @@
 #pragma once
 
 #include "J2CDecoder.h"
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 
 #include <cstdint>
 #include <chrono>
-#include <filesystem>
 #include <string>
 
 enum class PreviewDecodeStatus
@@ -18,7 +17,7 @@ enum class PreviewDecodeStatus
 struct PreviewDecodeResult
 {
     std::uint64_t requestId = 0;
-    CacheEntry entry;
+    TextureCatalogEntry entry;
     bool succeeded = false;
     PreviewDecodeStatus status = PreviewDecodeStatus::Incomplete;
     std::string message;
@@ -28,5 +27,5 @@ struct PreviewDecodeResult
 
 PreviewDecodeResult DecodePreview(
     std::uint64_t requestId,
-    const std::filesystem::path& cacheDirectory,
-    const CacheEntry& entry);
+    const TexturePayloadRequest& payloadRequest,
+    const TextureCatalogEntry& entry);

@@ -71,7 +71,7 @@ namespace
     }
 
     void AddAttemptableEntry(
-        std::deque<CacheEntry>& entries,
+        std::deque<TextureCatalogEntry>& entries,
         int proxyRow,
         const QSortFilterProxyModel& proxyModel,
         const CacheEntryTableModel& tableModel,
@@ -85,7 +85,8 @@ namespace
         }
 
         const QModelIndex sourceIndex = proxyModel.mapToSource(proxyIndex);
-        const CacheEntry* entry = tableModel.EntryAt(sourceIndex.row());
+        const TextureCatalogEntry* entry =
+            tableModel.EntryAt(sourceIndex.row());
 
         if (entry != nullptr && previewCache.ShouldAttemptPreview(*entry))
         {
@@ -94,13 +95,13 @@ namespace
     }
 }
 
-std::deque<CacheEntry> BuildVisibleGalleryPreviewQueue(
+std::deque<TextureCatalogEntry> BuildVisibleGalleryPreviewQueue(
     const QListView& galleryView,
     const QSortFilterProxyModel& proxyModel,
     const CacheEntryTableModel& tableModel,
     const PreviewCache& previewCache)
 {
-    std::deque<CacheEntry> entries;
+    std::deque<TextureCatalogEntry> entries;
 
     const int rowCount = proxyModel.rowCount();
 

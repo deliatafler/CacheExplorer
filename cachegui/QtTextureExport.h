@@ -1,23 +1,23 @@
 #pragma once
 
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 #include "TextureExporter.h"
 
 #include <filesystem>
 
 #include <QString>
 
-QString DefaultPngExportFileName(const CacheEntry& entry);
+QString DefaultPngExportFileName(const TextureCatalogEntry& entry);
 
 TexturePngExportResult ExportTexturePng(
-    const TextureCacheDatabase& database,
-    const CacheEntry& entry,
+    const TextureCacheSource& source,
+    const TextureCatalogEntry& entry,
     const std::filesystem::path& outputFile,
     bool overwriteExisting);
 
 BulkExportResults ExportTexturePngs(
-    const TextureCacheDatabase& database,
-    const std::vector<const CacheEntry*>& entries,
+    const TextureCacheSource& source,
+    const std::vector<const TextureCatalogEntry*>& entries,
     const std::filesystem::path& outputDirectory);
 
 QString PngExportStatusText(

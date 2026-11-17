@@ -33,14 +33,14 @@ namespace
     }
 }
 
-QString DefaultPngExportFileName(const CacheEntry& entry)
+QString DefaultPngExportFileName(const TextureCatalogEntry& entry)
 {
-    return ToQString(entry.uuid.ToString()) + QStringLiteral(".png");
+    return ToQString(entry.DisplayIdentifier()) + QStringLiteral(".png");
 }
 
 TexturePngExportResult ExportTexturePng(
-    const TextureCacheDatabase& database,
-    const CacheEntry& entry,
+    const TextureCacheSource& source,
+    const TextureCatalogEntry& entry,
     const std::filesystem::path& outputFile,
     bool overwriteExisting)
 {
@@ -50,15 +50,15 @@ TexturePngExportResult ExportTexturePng(
 
     TextureExporter exporter;
     return exporter.ExportPngEntry(
-        database,
+        source,
         entry,
         outputFile,
         options);
 }
 
 BulkExportResults ExportTexturePngs(
-    const TextureCacheDatabase& database,
-    const std::vector<const CacheEntry*>& entries,
+    const TextureCacheSource& source,
+    const std::vector<const TextureCatalogEntry*>& entries,
     const std::filesystem::path& outputDirectory)
 {
     TextureExportOptions options;
@@ -67,7 +67,7 @@ BulkExportResults ExportTexturePngs(
 
     TextureExporter exporter;
     return exporter.ExportPngEntries(
-        database,
+        source,
         entries,
         outputDirectory,
         options);

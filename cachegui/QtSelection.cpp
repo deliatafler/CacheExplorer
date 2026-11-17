@@ -39,7 +39,7 @@ QModelIndex SelectedProxyIndex(
     return {};
 }
 
-const CacheEntry* SelectedEntry(
+const TextureCatalogEntry* SelectedEntry(
     bool galleryMode,
     const QTableView& table,
     const QListView& galleryView,
@@ -60,12 +60,12 @@ const CacheEntry* SelectedEntry(
     return tableModel.EntryAt(sourceIndex.row());
 }
 
-std::vector<const CacheEntry*> SelectedEntries(
+std::vector<const TextureCatalogEntry*> SelectedEntries(
     const QTableView& table,
     const QSortFilterProxyModel& proxyModel,
     const CacheEntryTableModel& tableModel)
 {
-    std::vector<const CacheEntry*> entries;
+    std::vector<const TextureCatalogEntry*> entries;
     const QItemSelectionModel* selectionModel = table.selectionModel();
 
     if (selectionModel == nullptr)
@@ -93,7 +93,8 @@ std::vector<const CacheEntry*> SelectedEntries(
     for (const QModelIndex& proxyIndex : selectedRows)
     {
         const QModelIndex sourceIndex = proxyModel.mapToSource(proxyIndex);
-        const CacheEntry* entry = tableModel.EntryAt(sourceIndex.row());
+        const TextureCatalogEntry* entry =
+            tableModel.EntryAt(sourceIndex.row());
 
         if (entry != nullptr)
         {
@@ -105,7 +106,7 @@ std::vector<const CacheEntry*> SelectedEntries(
 }
 
 bool SelectEntry(
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const CacheEntryTableModel& tableModel,
     const QSortFilterProxyModel& proxyModel,
     QTableView& table,
@@ -164,7 +165,7 @@ void SyncActiveViewSelection(
 }
 
 CachedSelectionPreview CachedPreviewForSelection(
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const PreviewCache& previewCache)
 {
     const PreviewRecord* record = previewCache.Find(entry);
@@ -175,7 +176,7 @@ CachedSelectionPreview CachedPreviewForSelection(
         CachedSelectionPreview preview;
         preview.statusText =
             QStringLiteral("Preview not loaded yet: ")
-            + ToQString(entry.uuid.ToString());
+            + ToQString(entry.DisplayIdentifier());
         preview.panelMessage =
             QStringLiteral("Preview not loaded yet.");
         return preview;
@@ -186,7 +187,7 @@ CachedSelectionPreview CachedPreviewForSelection(
         CachedSelectionPreview preview;
         preview.statusText =
             QStringLiteral("Checking preview: ")
-            + ToQString(entry.uuid.ToString());
+            + ToQString(entry.DisplayIdentifier());
         preview.panelMessage =
             QStringLiteral("Checking preview...");
         return preview;
@@ -197,7 +198,7 @@ CachedSelectionPreview CachedPreviewForSelection(
         CachedSelectionPreview preview;
         preview.statusText =
             QStringLiteral("No preview available: ")
-            + ToQString(entry.uuid.ToString());
+            + ToQString(entry.DisplayIdentifier());
         preview.panelMessage =
             QStringLiteral("No preview available.");
         return preview;
@@ -208,7 +209,7 @@ CachedSelectionPreview CachedPreviewForSelection(
         CachedSelectionPreview preview;
         preview.statusText =
             QStringLiteral("Preview file could not be loaded: ")
-            + ToQString(entry.uuid.ToString());
+            + ToQString(entry.DisplayIdentifier());
         preview.panelMessage =
             QStringLiteral("Preview could not be loaded.");
         preview.panelMessageIsError = true;
@@ -220,7 +221,7 @@ CachedSelectionPreview CachedPreviewForSelection(
         CachedSelectionPreview preview;
         preview.statusText =
             QStringLiteral("Preview not loaded yet: ")
-            + ToQString(entry.uuid.ToString());
+            + ToQString(entry.DisplayIdentifier());
         preview.panelMessage =
             QStringLiteral("Preview not loaded yet.");
         return preview;
@@ -231,7 +232,7 @@ CachedSelectionPreview CachedPreviewForSelection(
     preview.pixmap = record->pixmap;
     preview.statusText =
         PreviewReadyStatus(
-            entry.uuid.ToString(),
+            entry.DisplayIdentifier(),
             record->width,
             record->height);
     return preview;

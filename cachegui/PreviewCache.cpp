@@ -1,41 +1,41 @@
 #include "PreviewCache.h"
 
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 
 void PreviewCache::Clear()
 {
     records_.clear();
 }
 
-void PreviewCache::SetChecking(const CacheEntry& entry)
+void PreviewCache::SetChecking(const TextureCatalogEntry& entry)
 {
     PreviewRecord record;
     record.state = PreviewState::Checking;
-    records_[entry.cacheIndex] = record;
+    records_[entry.sourceKey] = record;
 }
 
 void PreviewCache::SetUnavailable(
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const QString& message)
 {
     PreviewRecord record;
     record.state = PreviewState::Unavailable;
     record.message = message;
-    records_[entry.cacheIndex] = record;
+    records_[entry.sourceKey] = record;
 }
 
 void PreviewCache::SetLoadFailed(
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const QString& message)
 {
     PreviewRecord record;
     record.state = PreviewState::LoadFailed;
     record.message = message;
-    records_[entry.cacheIndex] = record;
+    records_[entry.sourceKey] = record;
 }
 
 void PreviewCache::SetPreviewable(
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const QPixmap& pixmap,
     std::uint32_t width,
     std::uint32_t height)
@@ -45,12 +45,13 @@ void PreviewCache::SetPreviewable(
     record.pixmap = pixmap;
     record.width = width;
     record.height = height;
-    records_[entry.cacheIndex] = record;
+    records_[entry.sourceKey] = record;
 }
 
-const PreviewRecord* PreviewCache::Find(const CacheEntry& entry) const
+const PreviewRecord* PreviewCache::Find(
+    const TextureCatalogEntry& entry) const
 {
-    const auto record = records_.find(entry.cacheIndex);
+    const auto record = records_.find(entry.sourceKey);
 
     if (record == records_.end())
     {
@@ -60,13 +61,14 @@ const PreviewRecord* PreviewCache::Find(const CacheEntry& entry) const
     return &record->second;
 }
 
-bool PreviewCache::ShouldAttemptPreview(const CacheEntry& entry) const
+bool PreviewCache::ShouldAttemptPreview(
+    const TextureCatalogEntry& entry) const
 {
     const PreviewRecord* record = Find(entry);
     return record == nullptr || record->state == PreviewState::Unknown;
 }
 
-QString PreviewCache::StatusText(const CacheEntry& entry) const
+QString PreviewCache::StatusText(const TextureCatalogEntry& entry) const
 {
     const PreviewRecord* record = Find(entry);
 
@@ -96,7 +98,7 @@ QString PreviewCache::StatusText(const CacheEntry& entry) const
     return {};
 }
 
-int PreviewCache::StatusRank(const CacheEntry& entry) const
+int PreviewCache::StatusRank(const TextureCatalogEntry& entry) const
 {
     const PreviewRecord* record = Find(entry);
 

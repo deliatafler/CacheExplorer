@@ -36,10 +36,10 @@ CacheEntryTableModel::CacheEntryTableModel(QObject* parent)
 {
 }
 
-void CacheEntryTableModel::SetDatabase(const TextureCacheDatabase* database)
+void CacheEntryTableModel::SetSource(const TextureCacheSource* source)
 {
     beginResetModel();
-    database_ = database;
+    source_ = source;
     RebuildDisplayCache();
     endResetModel();
 }
@@ -67,9 +67,10 @@ void CacheEntryTableModel::NotifyAllPreviewStatusesChanged()
     }
 }
 
-void CacheEntryTableModel::NotifyPreviewStatusChanged(std::uint32_t cacheIndex)
+void CacheEntryTableModel::NotifyPreviewStatusChanged(
+    const std::string& sourceKey)
 {
-    const int row = RowForCacheIndex(cacheIndex);
+    const int row = RowForSourceKey(sourceKey);
 
     if (row >= 0)
     {
@@ -87,12 +88,12 @@ void CacheEntryTableModel::NotifyPreviewStatusChanged(std::uint32_t cacheIndex)
 
 int CacheEntryTableModel::rowCount(const QModelIndex& parent) const
 {
-    if (parent.isValid() || database_ == nullptr)
+    if (parent.isValid() || source_ == nullptr)
     {
         return 0;
     }
 
-    return static_cast<int>(database_->Entries().size());
+    return static_cast<int>(source_->Entries().size());
 }
 
 int CacheEntryTableModel::columnCount(const QModelIndex& parent) const
@@ -102,12 +103,12 @@ int CacheEntryTableModel::columnCount(const QModelIndex& parent) const
 
 QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
 {
-    if (!index.isValid() || database_ == nullptr)
+    if (!index.isValid() || source_ == nullptr)
     {
         return {};
     }
 
-    const CacheEntry* entry = EntryAt(index.row());
+    const TextureCatalogEntry* entry = EntryAt(index.row());
 
     if (entry == nullptr)
     {
@@ -121,16 +122,25 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
         switch (index.column())
         {
             case 0:
-                return display == nullptr ? QString{} : display->uuid;
+                return display == nullptr ? QString{} : display->identifier;
 
             case 1:
-                return entry->imageSize;
+                return entry->expectedBytes.has_value()
+                    ? QVariant::fromValue(
+                        static_cast<qulonglong>(*entry->expectedBytes))
+                    : QVariant{};
 
             case 2:
-                return entry->bodySize;
+                return entry->payloadBytes.has_value()
+                    ? QVariant::fromValue(
+                        static_cast<qulonglong>(*entry->payloadBytes))
+                    : QVariant{};
 
             case 3:
-                return static_cast<qulonglong>(entry->cacheIndex);
+                return entry->sourceIndex.has_value()
+                    ? QVariant::fromValue(
+                        static_cast<qulonglong>(*entry->sourceIndex))
+                    : QVariant{};
 
             case 4:
                 return display == nullptr ? QString{} : display->timestamp;
@@ -150,16 +160,25 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
         switch (index.column())
         {
             case 0:
-                return display == nullptr ? QString{} : display->uuid;
+                return display == nullptr ? QString{} : display->identifier;
 
             case 1:
-                return entry->imageSize;
+                return entry->expectedBytes.has_value()
+                    ? QVariant::fromValue(
+                        static_cast<qulonglong>(*entry->expectedBytes))
+                    : QVariant{};
 
             case 2:
-                return entry->bodySize;
+                return entry->payloadBytes.has_value()
+                    ? QVariant::fromValue(
+                        static_cast<qulonglong>(*entry->payloadBytes))
+                    : QVariant{};
 
             case 3:
-                return static_cast<qulonglong>(entry->cacheIndex);
+                return entry->sourceIndex.has_value()
+                    ? QVariant::fromValue(
+                        static_cast<qulonglong>(*entry->sourceIndex))
+                    : QVariant{};
 
             case 4:
                 return static_cast<qlonglong>(entry->timestamp);
@@ -179,12 +198,15 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
 
     if (role == CachedCompleteRole)
     {
-        return HasCompleteCachedTexture(*entry);
+        return entry->HasCompletePayload();
     }
 
     if (role == CacheIndexRole)
     {
-        return static_cast<qulonglong>(entry->cacheIndex);
+        return entry->sourceIndex.has_value()
+            ? QVariant::fromValue(
+                static_cast<qulonglong>(*entry->sourceIndex))
+            : QVariant{};
     }
 
     if (role == Qt::DecorationRole && index.column() == 0)
@@ -230,14 +252,14 @@ QVariant CacheEntryTableModel::headerData(
     }
 }
 
-const CacheEntry* CacheEntryTableModel::EntryAt(int row) const
+const TextureCatalogEntry* CacheEntryTableModel::EntryAt(int row) const
 {
-    if (database_ == nullptr || row < 0)
+    if (source_ == nullptr || row < 0)
     {
         return nullptr;
     }
 
-    const auto& entries = database_->Entries();
+    const auto& entries = source_->Entries();
     const auto index = static_cast<std::size_t>(row);
 
     if (index >= entries.size())
@@ -252,19 +274,22 @@ void CacheEntryTableModel::RebuildDisplayCache()
 {
     displayCache_.clear();
 
-    if (database_ == nullptr)
+    if (source_ == nullptr)
     {
         return;
     }
 
-    const auto& entries = database_->Entries();
+    const auto& entries = source_->Entries();
     displayCache_.reserve(entries.size());
 
-    for (const CacheEntry& entry : entries)
+    for (const TextureCatalogEntry& entry : entries)
     {
+        const std::string identifier = entry.uuid.has_value()
+            ? entry.uuid->ToString()
+            : entry.sourceKey;
         displayCache_.push_back(
             RowDisplayCache{
-                ToQString(entry.uuid.ToString()),
+                ToQString(identifier),
                 FormatTime(entry.timestamp)});
     }
 }
@@ -287,12 +312,14 @@ CacheEntryTableModel::DisplayCacheAt(int row) const
     return &displayCache_[index];
 }
 
-int CacheEntryTableModel::RowForEntry(const CacheEntry& entry) const
+int CacheEntryTableModel::RowForEntry(
+    const TextureCatalogEntry& entry) const
 {
-    return RowForCacheIndex(entry.cacheIndex);
+    return RowForSourceKey(entry.sourceKey);
 }
 
-QString CacheEntryTableModel::PreviewStatusText(const CacheEntry& entry) const
+QString CacheEntryTableModel::PreviewStatusText(
+    const TextureCatalogEntry& entry) const
 {
     if (previewCache_ == nullptr)
     {
@@ -302,7 +329,8 @@ QString CacheEntryTableModel::PreviewStatusText(const CacheEntry& entry) const
     return previewCache_->StatusText(entry);
 }
 
-int CacheEntryTableModel::PreviewStatusRank(const CacheEntry& entry) const
+int CacheEntryTableModel::PreviewStatusRank(
+    const TextureCatalogEntry& entry) const
 {
     if (previewCache_ == nullptr)
     {
@@ -312,7 +340,8 @@ int CacheEntryTableModel::PreviewStatusRank(const CacheEntry& entry) const
     return previewCache_->StatusRank(entry);
 }
 
-int CacheEntryTableModel::PreviewStateValue(const CacheEntry& entry) const
+int CacheEntryTableModel::PreviewStateValue(
+    const TextureCatalogEntry& entry) const
 {
     if (previewCache_ == nullptr)
     {
@@ -329,7 +358,8 @@ int CacheEntryTableModel::PreviewStateValue(const CacheEntry& entry) const
     return static_cast<int>(record->state);
 }
 
-QVariant CacheEntryTableModel::PreviewIcon(const CacheEntry& entry) const
+QVariant CacheEntryTableModel::PreviewIcon(
+    const TextureCatalogEntry& entry) const
 {
     if (previewCache_ == nullptr)
     {
@@ -427,18 +457,19 @@ QPixmap CacheEntryTableModel::PlaceholderPixmap(
     return pixmap;
 }
 
-int CacheEntryTableModel::RowForCacheIndex(std::uint32_t cacheIndex) const
+int CacheEntryTableModel::RowForSourceKey(
+    const std::string& sourceKey) const
 {
-    if (database_ == nullptr)
+    if (source_ == nullptr)
     {
         return -1;
     }
 
-    const auto& entries = database_->Entries();
+    const auto& entries = source_->Entries();
 
     for (std::size_t row = 0; row < entries.size(); ++row)
     {
-        if (entries[row].cacheIndex == cacheIndex)
+        if (entries[row].sourceKey == sourceKey)
         {
             return static_cast<int>(row);
         }

@@ -1,6 +1,6 @@
 #include "QtTextureDetails.h"
 
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 
 #include <QDateTime>
 #include <QStringList>
@@ -41,7 +41,7 @@ namespace
 }
 
 QString TextureDetailsText(
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     std::uint32_t width,
     std::uint32_t height)
 {
@@ -53,16 +53,22 @@ QString TextureDetailsText(
             QStringLiteral("%1 x %2 pixels").arg(width).arg(height));
     }
 
-    const std::uint64_t advertisedBytes = entry.imageSize > 0
-        ? static_cast<std::uint64_t>(entry.imageSize)
-        : 0;
-    details.push_back(
-        QStringLiteral("Cached %1 of %2 | %3")
-            .arg(FormatByteCount(CachedTextureByteCount(entry)))
-            .arg(FormatByteCount(advertisedBytes))
-            .arg(HasCompleteCachedTexture(entry)
-                ? QStringLiteral("Complete")
-                : QStringLiteral("Partial")));
+    if (entry.expectedBytes.has_value())
+    {
+        details.push_back(
+            QStringLiteral("Cached %1 of %2 | %3")
+                .arg(FormatByteCount(entry.cachedBytes))
+                .arg(FormatByteCount(*entry.expectedBytes))
+                .arg(entry.HasCompletePayload()
+                    ? QStringLiteral("Complete")
+                    : QStringLiteral("Partial")));
+    }
+    else
+    {
+        details.push_back(
+            QStringLiteral("Cached %1 | Complete size unavailable")
+                .arg(FormatByteCount(entry.cachedBytes)));
+    }
     details.push_back(FormatTimestamp(entry.timestamp));
 
     return details.join(QStringLiteral("\n"));

@@ -24,16 +24,32 @@ void PreviewWorkerState::Start(
 
 void PreviewWorkerState::StartDecode(
     std::uint64_t requestId,
-    const std::filesystem::path& cacheDirectory,
-    const CacheEntry& entry)
+    std::unique_ptr<TexturePayloadRequest> payloadRequest,
+    const TextureCatalogEntry& entry)
 {
     Start(
         requestId,
         std::async(
             std::launch::async,
-            [requestId, cacheDirectory, entry]()
+            [requestId,
+             payloadRequest = std::move(payloadRequest),
+             entry]()
             {
-                return DecodePreview(requestId, cacheDirectory, entry);
+                if (!payloadRequest)
+                {
+                    PreviewDecodeResult result;
+                    result.requestId = requestId;
+                    result.entry = entry;
+                    result.status = PreviewDecodeStatus::RebuildFailed;
+                    result.message = TexturePayloadErrorMessage(
+                        TexturePayloadError::EntryNotFound);
+                    return result;
+                }
+
+                return DecodePreview(
+                    requestId,
+                    *payloadRequest,
+                    entry);
             }));
 }
 

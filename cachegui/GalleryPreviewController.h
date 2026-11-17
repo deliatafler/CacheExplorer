@@ -38,8 +38,8 @@ public:
     void RequestRefresh();
     bool ConsumeRefreshRequest();
 
-    void ReplaceQueue(std::deque<CacheEntry> entries);
-    std::optional<CacheEntry> TakeNextAttemptableEntry(
+    void ReplaceQueue(std::deque<TextureCatalogEntry> entries);
+    std::optional<TextureCatalogEntry> TakeNextAttemptableEntry(
         const PreviewCache& previewCache);
     void MarkCompleted(std::chrono::milliseconds duration, bool succeeded);
     void ResetMetrics();

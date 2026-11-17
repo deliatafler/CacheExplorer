@@ -10,7 +10,8 @@ void GalleryPreviewQueue::Clear()
     refreshPending_ = false;
 }
 
-void GalleryPreviewQueue::Replace(std::deque<CacheEntry> entries)
+void GalleryPreviewQueue::Replace(
+    std::deque<TextureCatalogEntry> entries)
 {
     entries_ = std::move(entries);
     total_ = entries_.size();
@@ -22,9 +23,9 @@ bool GalleryPreviewQueue::HasEntries() const
     return !entries_.empty();
 }
 
-CacheEntry GalleryPreviewQueue::TakeNext()
+TextureCatalogEntry GalleryPreviewQueue::TakeNext()
 {
-    CacheEntry entry = entries_.front();
+    TextureCatalogEntry entry = entries_.front();
     entries_.pop_front();
     return entry;
 }

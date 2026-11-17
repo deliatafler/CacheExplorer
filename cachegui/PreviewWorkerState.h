@@ -3,8 +3,8 @@
 #include "PreviewDecodeWorker.h"
 
 #include <cstdint>
-#include <filesystem>
 #include <future>
+#include <memory>
 
 class PreviewWorkerState
 {
@@ -17,8 +17,8 @@ public:
         std::future<PreviewDecodeResult>&& future);
     void StartDecode(
         std::uint64_t requestId,
-        const std::filesystem::path& cacheDirectory,
-        const CacheEntry& entry);
+        std::unique_ptr<TexturePayloadRequest> payloadRequest,
+        const TextureCatalogEntry& entry);
 
     bool IsReady() const;
     PreviewDecodeResult TakeResult();

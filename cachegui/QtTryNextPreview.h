@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 #include "TryNextPreviewState.h"
 
 #include <QString>
@@ -11,11 +11,11 @@ class QSortFilterProxyModel;
 
 int FirstTryNextProxyRow(const QModelIndex& selectedIndex);
 
-const CacheEntry* TakeNextTryNextEntry(
+const TextureCatalogEntry* TakeNextTryNextEntry(
     TryNextPreviewState& state,
     QSortFilterProxyModel& proxyModel,
     CacheEntryTableModel& tableModel);
 
 QString TryNextSearchStartedStatus();
 QString TryNextSearchExhaustedStatus(int attempts);
-QString TryingPreviewStatus(const CacheEntry& entry);
+QString TryingPreviewStatus(const TextureCatalogEntry& entry);

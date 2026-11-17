@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 
 #include <QModelIndex>
 #include <QPixmap>
@@ -28,20 +28,20 @@ QModelIndex SelectedProxyIndex(
     const QTableView& table,
     const QListView& galleryView);
 
-const CacheEntry* SelectedEntry(
+const TextureCatalogEntry* SelectedEntry(
     bool galleryMode,
     const QTableView& table,
     const QListView& galleryView,
     const QSortFilterProxyModel& proxyModel,
     const CacheEntryTableModel& tableModel);
 
-std::vector<const CacheEntry*> SelectedEntries(
+std::vector<const TextureCatalogEntry*> SelectedEntries(
     const QTableView& table,
     const QSortFilterProxyModel& proxyModel,
     const CacheEntryTableModel& tableModel);
 
 bool SelectEntry(
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const CacheEntryTableModel& tableModel,
     const QSortFilterProxyModel& proxyModel,
     QTableView& table,
@@ -54,5 +54,5 @@ void SyncActiveViewSelection(
     QListView& galleryView);
 
 CachedSelectionPreview CachedPreviewForSelection(
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const PreviewCache& previewCache);

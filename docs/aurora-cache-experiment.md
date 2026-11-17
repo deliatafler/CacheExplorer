@@ -85,6 +85,11 @@ Acceptance criteria:
 * A real Second Life/Firestorm cache behaves exactly as it does in 0.1.0.
 * No Aurora dependency, cryptography, or credential access is introduced yet.
 
+Status: complete on the experiment branch. The Qt catalog model, selection,
+Gallery queue, asynchronous preview workers, and PNG export use the neutral
+source contract. Legacy refresh diagnostics and persisted preview-state
+validation retain a narrow compatibility view of `TextureCacheDatabase`.
+
 ### 2. Aurora format fixtures and probing
 
 Add synthetic `AUSL`, keyed-name, and `AUTX` fixtures generated solely for

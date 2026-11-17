@@ -3,7 +3,7 @@
 #include "CacheEntryTableModel.h"
 #include "PreviewImage.h"
 #include "PreviewCache.h"
-#include "TextureCacheDatabase.h"
+#include "TextureCacheSource.h"
 
 void ClearPreviewStatuses(
     PreviewCache& previewCache,
@@ -16,36 +16,36 @@ void ClearPreviewStatuses(
 void SetPreviewChecking(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry)
+    const TextureCatalogEntry& entry)
 {
     previewCache.SetChecking(entry);
-    tableModel.NotifyPreviewStatusChanged(entry.cacheIndex);
+    tableModel.NotifyPreviewStatusChanged(entry.sourceKey);
 }
 
 void SetPreviewUnavailable(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const QString& message)
 {
     previewCache.SetUnavailable(entry, message);
-    tableModel.NotifyPreviewStatusChanged(entry.cacheIndex);
+    tableModel.NotifyPreviewStatusChanged(entry.sourceKey);
 }
 
 void SetPreviewLoadFailed(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const QString& message)
 {
     previewCache.SetLoadFailed(entry, message);
-    tableModel.NotifyPreviewStatusChanged(entry.cacheIndex);
+    tableModel.NotifyPreviewStatusChanged(entry.sourceKey);
 }
 
 void SetPreviewable(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const QPixmap& pixmap,
     std::uint32_t width,
     std::uint32_t height)
@@ -55,13 +55,13 @@ void SetPreviewable(
         pixmap,
         width,
         height);
-    tableModel.NotifyPreviewStatusChanged(entry.cacheIndex);
+    tableModel.NotifyPreviewStatusChanged(entry.sourceKey);
 }
 
 bool StoreDecodedPreview(
     PreviewCache& previewCache,
     CacheEntryTableModel& tableModel,
-    const CacheEntry& entry,
+    const TextureCatalogEntry& entry,
     const DecodedImage& decodedImage,
     QPixmap& pixmap,
     QString& errorMessage)

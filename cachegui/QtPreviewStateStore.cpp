@@ -1,8 +1,8 @@
 #include "QtPreviewStateStore.h"
 
 #include "PreviewCache.h"
+#include "LegacyTextureCacheSource.h"
 #include "QtHelpers.h"
-#include "TextureCacheDatabase.h"
 #include "UUID.h"
 
 #include <charconv>
@@ -140,21 +140,6 @@ namespace
         return true;
     }
 
-    const CacheEntry* FindByCacheIndex(
-        const TextureCacheDatabase& database,
-        std::uint32_t cacheIndex)
-    {
-        for (const CacheEntry& entry : database.Entries())
-        {
-            if (entry.cacheIndex == cacheIndex)
-            {
-                return &entry;
-            }
-        }
-
-        return nullptr;
-    }
-
     const char* StateName(PreviewState state)
     {
         switch (state)
@@ -229,7 +214,7 @@ std::filesystem::path PreviewStateFilePath(
 
 bool LoadPreviewState(
     const std::filesystem::path& stateFile,
-    const TextureCacheDatabase& database,
+    const LegacyTextureCacheSource& source,
     PreviewCache& previewCache,
     QString& errorMessage)
 {
@@ -295,12 +280,15 @@ bool LoadPreviewState(
             return false;
         }
 
-        const CacheEntry* entry = database.Find(*uuid);
+        const CacheEntry* legacyEntry =
+            source.LegacyDatabase().Find(*uuid);
+        const TextureCatalogEntry* entry = source.FindByUuid(*uuid);
 
-        if (entry == nullptr ||
-            entry->cacheIndex != cacheIndex ||
-            entry->imageSize != imageSize ||
-            entry->bodySize != bodySize)
+        if (legacyEntry == nullptr ||
+            entry == nullptr ||
+            legacyEntry->cacheIndex != cacheIndex ||
+            legacyEntry->imageSize != imageSize ||
+            legacyEntry->bodySize != bodySize)
         {
             continue;
         }
@@ -322,7 +310,7 @@ bool LoadPreviewState(
 
 bool SavePreviewState(
     const std::filesystem::path& stateFile,
-    const TextureCacheDatabase& database,
+    const LegacyTextureCacheSource& source,
     const PreviewCache& previewCache,
     QString& errorMessage)
 {
@@ -365,8 +353,11 @@ bool SavePreviewState(
     for (const StoredPreviewRecord& record :
          previewCache.TerminalRecords())
     {
-        const CacheEntry* entry =
-            FindByCacheIndex(database, record.cacheIndex);
+        const std::optional<UUID> uuid =
+            UUID::FromString(record.sourceKey);
+        const CacheEntry* entry = uuid.has_value()
+            ? source.LegacyDatabase().Find(*uuid)
+            : nullptr;
 
         if (entry == nullptr)
         {

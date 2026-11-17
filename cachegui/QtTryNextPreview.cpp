@@ -16,7 +16,7 @@ int FirstTryNextProxyRow(const QModelIndex& selectedIndex)
     return selectedIndex.row() + 1;
 }
 
-const CacheEntry* TakeNextTryNextEntry(
+const TextureCatalogEntry* TakeNextTryNextEntry(
     TryNextPreviewState& state,
     QSortFilterProxyModel& proxyModel,
     CacheEntryTableModel& tableModel)
@@ -40,8 +40,8 @@ QString TryNextSearchExhaustedStatus(int attempts)
         .arg(attempts);
 }
 
-QString TryingPreviewStatus(const CacheEntry& entry)
+QString TryingPreviewStatus(const TextureCatalogEntry& entry)
 {
     return QStringLiteral("Trying preview %1...")
-        .arg(ToQString(entry.uuid.ToString()));
+        .arg(ToQString(entry.DisplayIdentifier()));
 }
