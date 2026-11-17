@@ -110,8 +110,10 @@ changelog.
 - [x] Inspect Aurora's current cache implementation and a populated Windows
   cache; record the format, security boundary, UUID limitation, and live file
   mix in `docs/aurora-cache-experiment.md`.
-- [ ] Introduce a backend-neutral cache source/catalog boundary while keeping
-  the Second Life/Firestorm implementation and GUI behavior unchanged.
+- [x] Add a backend-neutral cache catalog/payload contract and a tested legacy
+  source adapter without changing existing CLI or GUI behavior.
+- [ ] Migrate the Qt model and preview/export paths to the neutral source
+  boundary while preserving the Second Life/Firestorm interface and behavior.
 - [ ] Add synthetic Aurora sealed-file, keyed-name, and BC7-container fixtures
   plus cache-root probing tests.
 - [ ] Build a Windows-only JPEG2000 proof of concept using the Aurora key from

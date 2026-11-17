@@ -232,6 +232,19 @@ Compares two successful reads of the same cache and returns the current
 Keep this reusable comparison in `cachelib`; the GUI owns only the lifetime of
 the previous snapshot and the presentation of the result.
 
+### TextureCacheSource
+
+Defines the backend-neutral read-only catalog and encoded-payload boundary for
+viewer cache implementations. `TextureCatalogEntry` uses a stable source key,
+an optional UUID, cached/expected byte counts, and a timestamp so formats with
+one-way keyed filenames can be represented honestly.
+
+`LegacyTextureCacheSource` is the first adapter. It owns the existing
+`TextureCacheDatabase`, maps its entries into the neutral catalog, and uses
+`TextureRebuilder` to return JPEG2000 payload bytes. Existing CLI and GUI paths
+still use `TextureCacheDatabase` directly while the adapter is proven and the
+Qt migration remains a separate behavior-preserving step.
+
 ### TextureRebuilder
 
 Reconstructs cached JPEG2000 data in memory or exports a `.j2c` file.
@@ -513,7 +526,9 @@ body files to verify `TextureRebuilder` reads headers from `cacheIndex * 600`,
 uses exactly `bodySize` body bytes, trims padded header-only entries, and treats
 undersized body files as errors. It also checks `TextureExportState`
 load/save behavior for incomplete entries, metadata invalidation, succeeded
-entries, and missing state files.
+entries, and missing state files. The neutral-source coverage verifies that
+`LegacyTextureCacheSource` preserves catalog order and metadata, reconstructs
+JPEG2000 payloads, maps open/read failures, and clears state on close.
 
 `tests/cachegui_tests.cpp` provides focused CTest coverage for GUI-facing
 helpers: Gallery filtering including recent changes, gallery queue accounting,

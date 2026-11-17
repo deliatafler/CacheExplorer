@@ -1,4 +1,5 @@
 #include "Structures.h"
+#include "LegacyTextureCacheSource.h"
 #include "TextureCacheDatabase.h"
 #include "TextureCacheChanges.h"
 #include "TextureExportState.h"
@@ -411,6 +412,182 @@ namespace
         Expect(!removeError, "remove selection test directory");
     }
 
+    void TestLegacyTextureCacheSourceProvidesNeutralCatalogAndPayload()
+    {
+        const UUID first =
+            MakeUuid("11111111-2222-3333-4444-555555555555");
+        const UUID second =
+            MakeUuid("66666666-7777-8888-9999-000000000000");
+        const UUID missing =
+            MakeUuid("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+
+        const fs::path directory = MakeTempDirectory();
+
+        WriteTextureEntries(
+            directory,
+            {
+                MakeEntry(first, 700, 100, 3000),
+                MakeEntry(missing, -1, 0, 3001),
+                MakeEntry(second, 600, 0, 3002),
+            });
+
+        std::vector<std::uint8_t> headerBytes(
+            TextureRebuilder::HeaderBlockSize * 3,
+            0);
+
+        for (std::size_t index = 0;
+             index < TextureRebuilder::HeaderBlockSize;
+             ++index)
+        {
+            headerBytes[index] =
+                static_cast<std::uint8_t>(index % 251);
+        }
+
+        WriteTextureCache(directory, headerBytes);
+
+        CacheEntry bodyEntry{};
+        bodyEntry.uuid = first;
+
+        std::vector<std::uint8_t> bodyBytes(100, 0x7c);
+        WriteBodyFile(directory, bodyEntry, bodyBytes);
+
+        LegacyTextureCacheSource source;
+        TexturePayload payload;
+        payload.bytes = {1, 2, 3};
+
+        Expect(
+            source.ReadPayload(first.ToString(), payload) ==
+                TexturePayloadError::SourceNotOpen,
+            "legacy source rejects payload reads before open");
+        Expect(
+            payload.bytes.empty(),
+            "failed source payload read clears prior output");
+
+        Expect(
+            source.Open(directory / "missing") ==
+                TextureCacheOpenError::FileNotFound,
+            "legacy source maps missing texture.entries");
+        Expect(!source.IsOpen(), "failed source open remains closed");
+
+        Expect(
+            source.Open(directory) == TextureCacheOpenError::None,
+            "open legacy cache through neutral source");
+        Expect(source.IsOpen(), "neutral legacy source is open");
+        Expect(
+            source.Format() == TextureCacheFormat::LegacyViewer,
+            "neutral source identifies legacy format");
+        Expect(
+            source.CacheDirectory() == directory,
+            "neutral source retains cache directory");
+        Expect(
+            source.Entries().size() == 2,
+            "neutral source preserves filtered legacy entry count");
+
+        if (source.Entries().size() == 2)
+        {
+            const TextureCatalogEntry& firstEntry = source.Entries()[0];
+            const TextureCatalogEntry& secondEntry = source.Entries()[1];
+
+            Expect(
+                firstEntry.sourceKey == first.ToString(),
+                "legacy catalog uses canonical UUID source key");
+            Expect(
+                firstEntry.uuid.has_value() && *firstEntry.uuid == first,
+                "legacy catalog exposes known UUID");
+            Expect(
+                firstEntry.cachedBytes == 700,
+                "legacy catalog exposes reconstructed cached byte count");
+            Expect(
+                firstEntry.expectedBytes.has_value() &&
+                    *firstEntry.expectedBytes == 700,
+                "legacy catalog exposes advertised texture size");
+            Expect(
+                firstEntry.HasCompletePayload(),
+                "legacy catalog reports complete body-backed payload");
+            Expect(
+                firstEntry.timestamp == 3000,
+                "legacy catalog preserves timestamp");
+
+            Expect(
+                secondEntry.sourceKey == second.ToString(),
+                "legacy catalog preserves filtered database order");
+            Expect(
+                secondEntry.cachedBytes == 600,
+                "legacy catalog handles header-only cached byte count");
+            Expect(
+                secondEntry.HasCompletePayload(),
+                "legacy catalog reports complete header-only payload");
+        }
+
+        const TextureCatalogEntry* found = source.FindByUuid(first);
+        Expect(found != nullptr, "neutral source finds known legacy UUID");
+        if (found != nullptr)
+        {
+            Expect(
+                found->sourceKey == first.ToString(),
+                "neutral UUID lookup returns matching catalog entry");
+        }
+
+        Expect(
+            source.FindByUuid(missing) == nullptr,
+            "neutral source does not expose filtered legacy UUID");
+
+        Expect(
+            source.ReadPayload(first.ToString(), payload) ==
+                TexturePayloadError::None,
+            "neutral source reconstructs legacy JPEG2000 payload");
+        Expect(
+            payload.format == TexturePayloadFormat::Jpeg2000,
+            "legacy source labels reconstructed payload as JPEG2000");
+        Expect(
+            payload.bytes.size() == 700,
+            "legacy source returns exact header and body byte count");
+        if (payload.bytes.size() == 700)
+        {
+            Expect(
+                payload.bytes[599] ==
+                    static_cast<std::uint8_t>(599 % 251),
+                "legacy source preserves final header byte");
+            Expect(
+                payload.bytes[600] == 0x7c &&
+                    payload.bytes.back() == 0x7c,
+                "legacy source appends exact body bytes");
+        }
+
+        std::error_code bodyRemoveError;
+        fs::remove(
+            TextureRebuilder::BodyFilePath(directory, bodyEntry),
+            bodyRemoveError);
+        Expect(
+            !bodyRemoveError,
+            "remove body fixture before missing-data source test");
+        Expect(
+            source.ReadPayload(first.ToString(), payload) ==
+                TexturePayloadError::MissingData,
+            "neutral source reports a body removed after cataloging");
+        Expect(
+            payload.bytes.empty(),
+            "missing source payload clears partial reconstructed bytes");
+
+        Expect(
+            source.ReadPayload("not-a-source-key", payload) ==
+                TexturePayloadError::EntryNotFound,
+            "neutral source rejects unknown source key");
+        Expect(
+            payload.bytes.empty(),
+            "unknown source key clears prior payload output");
+
+        source.Close();
+        Expect(!source.IsOpen(), "neutral source closes legacy database");
+        Expect(
+            source.Entries().empty(),
+            "neutral source clears catalog entries on close");
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove neutral source test directory");
+    }
+
     void TestTextureRebuilderUsesRawCacheIndexAndExactBodySize()
     {
         const UUID uuid =
@@ -669,6 +846,7 @@ int main()
     TestCachedTextureCompletenessHelpers();
     TestTextureCacheChangesFindsAddedAndUpdatedEntries();
     TestTextureSelectionUsesFilteredDatabaseOrder();
+    TestLegacyTextureCacheSourceProvidesNeutralCatalogAndPayload();
     TestTextureRebuilderUsesRawCacheIndexAndExactBodySize();
     TestTextureRebuilderTrimsSmallHeaderOnlyTexture();
     TestTextureRebuilderRejectsUndersizedBodyFile();
