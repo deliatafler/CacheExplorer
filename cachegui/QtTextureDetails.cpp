@@ -38,6 +38,34 @@ namespace
             .toLocalTime()
             .toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
     }
+
+    QString FormatCacheData(const TextureCatalogEntry& entry)
+    {
+        QStringList formats;
+
+        if (entry.hasCompleteJpeg2000)
+        {
+            formats.push_back(QStringLiteral("Complete JPEG2000"));
+        }
+
+        if (entry.hasPartialJpeg2000)
+        {
+            formats.push_back(QStringLiteral("partial JPEG2000"));
+        }
+
+        if (entry.hasBc7)
+        {
+            formats.push_back(
+                formats.empty()
+                    ? QStringLiteral("BC7 only")
+                    : QStringLiteral("BC7"));
+        }
+
+        return formats.empty()
+            ? QString()
+            : QStringLiteral("Cache data: %1")
+                .arg(formats.join(QStringLiteral(" + ")));
+    }
 }
 
 QString TextureDetailsText(
@@ -51,6 +79,12 @@ QString TextureDetailsText(
     {
         details.push_back(
             QStringLiteral("%1 x %2 pixels").arg(width).arg(height));
+    }
+
+    const QString cacheData = FormatCacheData(entry);
+    if (!cacheData.isEmpty())
+    {
+        details.push_back(cacheData);
     }
 
     if (entry.expectedBytes.has_value())

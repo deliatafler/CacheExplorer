@@ -57,6 +57,12 @@ struct TextureCatalogEntry
     std::optional<std::uint64_t> payloadBytes;
     std::optional<std::uint64_t> sourceIndex;
 
+    // Payload variants observed while cataloging. Sources should report
+    // availability without opening or decoding payload bytes.
+    bool hasCompleteJpeg2000 = false;
+    bool hasPartialJpeg2000 = false;
+    bool hasBc7 = false;
+
     std::time_t timestamp = 0;
 
     bool HasCompletePayload() const

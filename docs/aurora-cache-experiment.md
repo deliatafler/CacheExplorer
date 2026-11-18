@@ -137,8 +137,8 @@ Acceptance criteria:
 * Find UUID calculates the keyed name and locates matching files.
 * Aurora Viewer can remain open while CacheExplorer reads and refreshes.
 
-Status: implementation complete on the experiment branch; final human
-validation is pending. `AuroraTextureCacheSource` reads the 32-byte key from
+Status: complete on the experiment branch, including human validation against
+a live Windows Aurora cache. `AuroraTextureCacheSource` reads the 32-byte key from
 Windows Credential Manager target
 `disk cache key v1.Aurora Viewer cache`, derives file and naming keys with
 HKDF-SHA256, calculates opaque filenames with HMAC-SHA256, and opens chunked
@@ -149,21 +149,31 @@ destruction, and is neither logged nor persisted by CacheExplorer.
 The Qt GUI recognizes Aurora roots, remembers them in Recent caches, opens
 large stores on a worker thread, and reuses the existing lazy Gallery,
 large-preview, Find UUID, and PNG-export paths. A real Windows Aurora cache
-loaded 104,815 grouped records; multiple real J2C files decrypted into Gallery
-thumbnails and the large preview. BC7-only entries currently show `No preview`,
-as expected before tranche 4.
-
-Remaining human checks for this tranche:
-
-* Find a texture UUID known to be present in the Aurora cache.
-* Export one and multiple Aurora J2C-backed textures as PNG.
-* Refresh while Aurora Viewer is running and writing the cache.
+loaded roughly 105,000 grouped records. Gallery browsing, large previews, UUID
+lookup, single and multiple PNG export, and refresh while Aurora remained open
+all passed human validation.
 
 ### 4. BC7 thumbnails
 
 Parse supported `AUTX` versions and decode a suitable cached mip level to RGBA.
 This is expected to provide previews for textures whose JPEG2000 cache is only
 partial or no longer present.
+
+Status: complete on the experiment branch. `Bc7Decoder` parses the existing
+`AUTX` metadata and decodes ordinary BC7 blocks through the pinned MIT-licensed
+bcdec 0.985 implementation. Gallery and large-preview requests choose the
+first cached mip no larger than 256 pixels when available; PNG export decodes
+the finest cached mip. `TextureDecoder` provides a source-neutral J2C/BC7
+dispatch point used by both preview and export.
+
+Aurora payload selection prefers complete JPEG2000, then BC7, then partial
+JPEG2000, so a stale or incomplete `.part` file cannot hide an available BC7
+texture. Catalog entries retain all observed variants. The selected-texture
+details identify `BC7 only`, `partial JPEG2000 + BC7`, and complete-JPEG2000
+combinations without requiring users to infer the source from filenames.
+Synthetic mode-6 BC7 fixtures cover mip selection, alpha handling, dispatch,
+and candidate priority. Real-cache validation showed additional Aurora
+thumbnails and successful large previews from records with BC7 data.
 
 ### 5. Cross-platform credential providers
 

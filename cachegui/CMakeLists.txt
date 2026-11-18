@@ -180,7 +180,12 @@ if(APPLE)
         "${PROJECT_SOURCE_DIR}/README.md"
         "${PROJECT_SOURCE_DIR}/RELEASE_NOTES.md"
         "${PROJECT_SOURCE_DIR}/LICENSE"
+        "${PROJECT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
         DESTINATION .
+    )
+    install(FILES
+        "${PROJECT_SOURCE_DIR}/third_party/bcdec/LICENSE"
+        DESTINATION licenses/bcdec
     )
     install(FILES
         "${PROJECT_SOURCE_DIR}/docs/qt-user-guide.md"
@@ -207,7 +212,12 @@ elseif(WIN32)
         "${PROJECT_SOURCE_DIR}/README.md"
         "${PROJECT_SOURCE_DIR}/RELEASE_NOTES.md"
         "${PROJECT_SOURCE_DIR}/LICENSE"
+        "${PROJECT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
         DESTINATION .
+    )
+    install(FILES
+        "${PROJECT_SOURCE_DIR}/third_party/bcdec/LICENSE"
+        DESTINATION licenses/bcdec
     )
     install(FILES
         "${PROJECT_SOURCE_DIR}/docs/qt-user-guide.md"
@@ -231,7 +241,12 @@ elseif(UNIX)
         "${PROJECT_SOURCE_DIR}/README.md"
         "${PROJECT_SOURCE_DIR}/RELEASE_NOTES.md"
         "${PROJECT_SOURCE_DIR}/LICENSE"
+        "${PROJECT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
         "${PROJECT_SOURCE_DIR}/docs/qt-user-guide.md"
         DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/doc/cacheexplorer"
+    )
+    install(FILES
+        "${PROJECT_SOURCE_DIR}/third_party/bcdec/LICENSE"
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/doc/cacheexplorer/licenses/bcdec"
     )
 endif()

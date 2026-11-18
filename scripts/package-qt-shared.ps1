@@ -209,6 +209,14 @@ Copy-PackageFile `
     -Destination (Join-Path $resolvedOutputDir "LICENSE")
 
 Copy-PackageFile `
+    -Source (Join-Path $repoRoot "THIRD_PARTY_NOTICES.md") `
+    -Destination (Join-Path $resolvedOutputDir "THIRD_PARTY_NOTICES.md")
+
+Copy-PackageFile `
+    -Source (Join-Path $repoRoot "third_party/bcdec/LICENSE") `
+    -Destination (Join-Path $resolvedOutputDir "licenses/bcdec/LICENSE")
+
+Copy-PackageFile `
     -Source (Join-Path $repoRoot "cachegui/resources/cacheexplorer.png") `
     -Destination (Join-Path $resolvedOutputDir "cachegui/resources/cacheexplorer.png")
 
@@ -226,7 +234,7 @@ $packageInfo = @(
     "Packaged at: $((Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))"
     ""
     "Run CacheExplorer.exe to open the Qt GUI."
-    "See README.md, RELEASE_NOTES.md, LICENSE, and docs/qt-user-guide.md for release notes."
+    "See README.md, RELEASE_NOTES.md, LICENSE, THIRD_PARTY_NOTICES.md, and docs/qt-user-guide.md for release notes."
 )
 
 Set-Content `
@@ -238,6 +246,8 @@ Write-Host "Included package notes:"
 Write-Host "  README.md"
 Write-Host "  RELEASE_NOTES.md"
 Write-Host "  LICENSE"
+Write-Host "  THIRD_PARTY_NOTICES.md"
+Write-Host "  licenses/bcdec/LICENSE"
 Write-Host "  cachegui/resources/cacheexplorer.png"
 Write-Host "  docs/qt-user-guide.md"
 Write-Host "  PACKAGE_INFO.txt"

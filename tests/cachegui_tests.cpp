@@ -680,16 +680,22 @@ namespace
         entry.cachedBytes = 700;
         entry.payloadBytes = 100;
         entry.timestamp = 0;
+        entry.hasCompleteJpeg2000 = true;
 
         Expect(
             TextureDetailsText(entry) ==
                 QStringLiteral(
-                    "Cached 700 B of 700 B | Complete\nTime unavailable"),
+                    "Cache data: Complete JPEG2000\n"
+                    "Cached 700 B of 700 B | Complete\n"
+                    "Time unavailable"),
             "texture details describe complete cached data");
 
         entry.expectedBytes = 2048;
         entry.cachedBytes = 1000;
         entry.payloadBytes = 400;
+        entry.hasCompleteJpeg2000 = false;
+        entry.hasPartialJpeg2000 = true;
+        entry.hasBc7 = true;
         const QString partialDetails = TextureDetailsText(entry, 512, 256);
         Expect(
             partialDetails.startsWith(QStringLiteral("512 x 256 pixels\n")),
@@ -698,6 +704,17 @@ namespace
             partialDetails.contains(
                 QStringLiteral("Cached 1000 B of 2.0 KiB | Partial")),
             "texture details describe partial cached data");
+        Expect(
+            partialDetails.contains(
+                QStringLiteral(
+                    "Cache data: partial JPEG2000 + BC7")),
+            "texture details describe mixed Aurora cache data");
+
+        entry.hasPartialJpeg2000 = false;
+        Expect(
+            TextureDetailsText(entry).startsWith(
+                QStringLiteral("Cache data: BC7 only\n")),
+            "texture details identify BC7-only entries");
     }
 }
 

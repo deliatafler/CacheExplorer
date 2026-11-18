@@ -43,8 +43,9 @@ bash scripts/test-qt-macos-package.sh \
 ```
 
 The DMG contains `CacheExplorer.app`, its app-local Qt frameworks and Cocoa
-platform plugin, plus `README.md`, `RELEASE_NOTES.md`, `LICENSE`, and the Qt
-user guide. The package test mounts the image read-only, verifies those files,
+platform plugin, plus `README.md`, `RELEASE_NOTES.md`, `LICENSE`,
+`THIRD_PARTY_NOTICES.md`, third-party license texts, and the Qt user guide. The
+package test mounts the image read-only, verifies those files,
 checks bundle metadata and ARM64 architecture, confirms the executable resolves
 Qt through bundled `@rpath` frameworks, and rejects an unexpected Qt Network
 framework. It asserts that the executable's `LC_RPATH` includes the app-local
@@ -178,8 +179,9 @@ If `windeployqt.exe` is already on `PATH`, omit `-QtBinDir`.
 
 The package directory contains `CacheExplorer.exe`, Qt DLLs and plugin folders
 copied by `windeployqt`, app-local Visual C++ runtime DLLs, `README.md`,
-`RELEASE_NOTES.md`, `LICENSE`, the CacheExplorer icon used by the packaged
-README, and `docs/qt-user-guide.md`. It also writes
+`RELEASE_NOTES.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`, third-party license
+texts, the CacheExplorer icon used by the packaged README, and
+`docs/qt-user-guide.md`. It also writes
 `PACKAGE_INFO.txt` with the package version and build/deployment details for
 support reports. With `-Zip`, the
 script also creates

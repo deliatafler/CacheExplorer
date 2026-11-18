@@ -4,10 +4,12 @@
 #include "AuroraSealedFile.h"
 #include "AuroraTextureCacheSource.h"
 #include "AuroraTextureKey.h"
+#include "Bc7Decoder.h"
 #include "Structures.h"
 #include "LegacyTextureCacheSource.h"
 #include "TextureCacheDatabase.h"
 #include "TextureCacheChanges.h"
+#include "TextureDecoder.h"
 #include "TextureExportState.h"
 #include "TextureRebuilder.h"
 #include "TextureSelection.h"
@@ -271,6 +273,48 @@ namespace
                 bytes,
                 32 + i * 8 + 4,
                 levels[i].second);
+        }
+
+        return bytes;
+    }
+
+    std::vector<std::uint8_t> MakeAuroraBc7DecodeFixture(
+        bool hasAlphaChannel)
+    {
+        const std::vector<std::pair<std::uint32_t, std::uint32_t>> levels = {
+            {4, 4},
+            {2, 2},
+        };
+        const std::size_t levelTableBytes = levels.size() * 8;
+        const std::size_t dataOffset = 32 + levelTableBytes;
+        std::vector<std::uint8_t> bytes(
+            dataOffset + levels.size() * 16,
+            0);
+
+        bytes[0] = 'A';
+        bytes[1] = 'U';
+        bytes[2] = 'T';
+        bytes[3] = 'X';
+        bytes[4] = 6;
+        bytes[5] = 1;
+        bytes[6] = 0;
+        bytes[7] = hasAlphaChannel ? 2 : 0;
+        bytes[8] = hasAlphaChannel ? 1 : 0;
+        bytes[9] = hasAlphaChannel ? 4 : 3;
+        bytes[10] = 2;
+        bytes[11] = static_cast<std::uint8_t>(levels.size());
+
+        SetLittleEndian32(bytes, 12, 4);
+        SetLittleEndian32(bytes, 16, 4);
+
+        for (std::size_t i = 0; i < levels.size(); ++i)
+        {
+            SetLittleEndian32(bytes, 32 + i * 8, levels[i].first);
+            SetLittleEndian32(bytes, 36 + i * 8, levels[i].second);
+
+            // BC7 mode 6 with zero endpoints and indices decodes to a
+            // transparent black block before the no-alpha override.
+            bytes[dataOffset + i * 16] = 0x40;
         }
 
         return bytes;
@@ -717,6 +761,11 @@ namespace
             Expect(
                 firstEntry.HasCompletePayload(),
                 "legacy catalog reports complete body-backed payload");
+            Expect(
+                firstEntry.hasCompleteJpeg2000 &&
+                    !firstEntry.hasPartialJpeg2000 &&
+                    !firstEntry.hasBc7,
+                "legacy catalog reports complete JPEG2000 availability");
             Expect(
                 firstEntry.timestamp == 3000,
                 "legacy catalog preserves timestamp");
@@ -1275,6 +1324,7 @@ namespace
         const std::string jpegKey =
             "1136455863d312914e3ab2909f07a316";
         const std::string bc7Key(32, 'b');
+        const std::string combinedKey(32, 'c');
         const std::vector<std::uint8_t> sealed =
             KnownAuroraSealedFixture();
         const std::vector<std::uint8_t> plaintext =
@@ -1285,6 +1335,12 @@ namespace
             sealed);
         WriteBytes(
             textureStore / (bc7Key + ".bc7"),
+            sealed);
+        WriteBytes(
+            textureStore / (combinedKey + ".part"),
+            sealed);
+        WriteBytes(
+            textureStore / (combinedKey + ".bc7"),
             sealed);
 
         const auto keyLoader =
@@ -1303,7 +1359,7 @@ namespace
             source.Format() == TextureCacheFormat::Aurora,
             "Aurora texture source reports its format");
         Expect(
-            source.Entries().size() == 2,
+            source.Entries().size() == 3,
             "Aurora texture source exposes keyed catalog entries");
 
         const UUID knownUuid =
@@ -1321,6 +1377,12 @@ namespace
                 found->HasCompletePayload() &&
                 found->timestamp > 0,
             "complete Aurora J2C entry has size and timestamp metadata");
+        Expect(
+            found != nullptr &&
+                found->hasCompleteJpeg2000 &&
+                !found->hasPartialJpeg2000 &&
+                !found->hasBc7,
+            "Aurora catalog reports a complete JPEG2000-only entry");
 
         TexturePayload payload;
         Expect(
@@ -1340,6 +1402,40 @@ namespace
             payload.format == TexturePayloadFormat::Bc7 &&
                 payload.bytes == plaintext,
             "Aurora BC7 payload is explicitly typed");
+
+        Expect(
+            source.ReadPayload(combinedKey, payload) ==
+                TexturePayloadError::None &&
+                payload.format == TexturePayloadFormat::Bc7,
+            "Aurora source prefers a complete BC7 cache over partial JPEG2000");
+
+        const auto bc7OnlyEntry = std::find_if(
+            source.Entries().begin(),
+            source.Entries().end(),
+            [&bc7Key](const TextureCatalogEntry& entry)
+            {
+                return entry.sourceKey == bc7Key;
+            });
+        Expect(
+            bc7OnlyEntry != source.Entries().end() &&
+                !bc7OnlyEntry->hasCompleteJpeg2000 &&
+                !bc7OnlyEntry->hasPartialJpeg2000 &&
+                bc7OnlyEntry->hasBc7,
+            "Aurora catalog identifies a BC7-only entry");
+
+        const auto mixedEntry = std::find_if(
+            source.Entries().begin(),
+            source.Entries().end(),
+            [&combinedKey](const TextureCatalogEntry& entry)
+            {
+                return entry.sourceKey == combinedKey;
+            });
+        Expect(
+            mixedEntry != source.Entries().end() &&
+                !mixedEntry->hasCompleteJpeg2000 &&
+                mixedEntry->hasPartialJpeg2000 &&
+                mixedEntry->hasBc7,
+            "Aurora catalog identifies mixed BC7 and partial JPEG2000 data");
 
         ViewerTextureCacheSource detectedSource(keyLoader);
         Expect(
@@ -1481,6 +1577,74 @@ namespace
                 info.kind == AuroraTranscodedKind::KeepRgba &&
                 info.levels.empty(),
             "AUTX parser recognizes the keep-RGBA marker");
+    }
+
+    void TestAuroraBc7Decoding()
+    {
+        const std::vector<std::uint8_t> opaque =
+            MakeAuroraBc7DecodeFixture(false);
+        Bc7Decoder decoder;
+        DecodedImage image;
+
+        Expect(
+            decoder.Decode(opaque, image) == Bc7DecodeError::None,
+            "decode the finest Aurora BC7 mip");
+        Expect(
+            image.width == 4 &&
+                image.height == 4 &&
+                image.rgba.size() == 4 * 4 * 4,
+            "Aurora BC7 decode preserves finest mip dimensions");
+        bool opaquePixels = true;
+        for (std::size_t i = 0; i < image.rgba.size(); ++i)
+        {
+            opaquePixels = opaquePixels &&
+                (i % 4 == 3
+                    ? image.rgba[i] == 255
+                    : image.rgba[i] == 0);
+        }
+        Expect(
+            opaquePixels,
+            "Aurora BC7 decode forces opaque alpha when no alpha channel exists");
+
+        Expect(
+            decoder.Decode(opaque, image, 2) == Bc7DecodeError::None &&
+                image.width == 2 &&
+                image.height == 2,
+            "Aurora BC7 preview selects a bounded cached mip");
+
+        const std::vector<std::uint8_t> alpha =
+            MakeAuroraBc7DecodeFixture(true);
+        Expect(
+            decoder.Decode(alpha, image) == Bc7DecodeError::None &&
+                std::all_of(
+                    image.rgba.begin(),
+                    image.rgba.end(),
+                    [](std::uint8_t value)
+                    {
+                        return value == 0;
+                    }),
+            "Aurora BC7 decode preserves stored alpha pixels");
+
+        TexturePayload payload;
+        payload.format = TexturePayloadFormat::Bc7;
+        payload.bytes = opaque;
+        TextureDecodeOptions options;
+        options.maximumDimension = 2;
+        TextureDecoder payloadDecoder;
+        const TextureDecodeResult payloadResult =
+            payloadDecoder.Decode(payload, image, options);
+        Expect(
+            payloadResult.Succeeded() &&
+                image.width == 2 &&
+                image.height == 2,
+            "source-neutral decoder dispatches Aurora BC7 previews");
+
+        std::vector<std::uint8_t> keepRgba = opaque;
+        keepRgba[5] = 0;
+        Expect(
+            decoder.Decode(keepRgba, image) ==
+                Bc7DecodeError::UnsupportedTextureKind,
+            "Aurora keep-RGBA markers do not claim cached BC7 pixels");
     }
 
     void TestAuroraTextureStoreProbingAndEnumeration()
@@ -1647,6 +1811,7 @@ int main()
     TestAuroraKnownAnswerCrypto();
     TestAuroraTextureCacheSourceProvidesNeutralPayloads();
     TestAuroraTranscodedTextureParsing();
+    TestAuroraBc7Decoding();
     TestAuroraTextureStoreProbingAndEnumeration();
 
     if (gFailures != 0)

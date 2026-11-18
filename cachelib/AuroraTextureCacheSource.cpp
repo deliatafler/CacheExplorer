@@ -109,18 +109,18 @@ namespace
                 TexturePayloadFormat::Jpeg2000});
         }
 
-        if (record.partialJpeg2000)
-        {
-            candidates.push_back({
-                record.partialJpeg2000->path,
-                TexturePayloadFormat::Jpeg2000});
-        }
-
         if (record.transcodedBc7)
         {
             candidates.push_back({
                 record.transcodedBc7->path,
                 TexturePayloadFormat::Bc7});
+        }
+
+        if (record.partialJpeg2000)
+        {
+            candidates.push_back({
+                record.partialJpeg2000->path,
+                TexturePayloadFormat::Jpeg2000});
         }
     }
 
@@ -132,13 +132,13 @@ namespace
             return &*record.completeJpeg2000;
         }
 
-        if (record.partialJpeg2000)
+        if (record.transcodedBc7)
         {
-            return &*record.partialJpeg2000;
+            return &*record.transcodedBc7;
         }
 
-        return record.transcodedBc7
-            ? &*record.transcodedBc7
+        return record.partialJpeg2000
+            ? &*record.partialJpeg2000
             : nullptr;
     }
 
@@ -242,9 +242,13 @@ TextureCacheOpenError AuroraTextureCacheSource::Open(
             preferred->sealedBytes);
         entry.payloadBytes = preferred->plaintextBytes;
         entry.timestamp = MostRecentTime(record);
+        entry.hasCompleteJpeg2000 =
+            record.completeJpeg2000.has_value();
+        entry.hasPartialJpeg2000 =
+            record.partialJpeg2000.has_value();
+        entry.hasBc7 = record.transcodedBc7.has_value();
 
-        if (record.completeJpeg2000 ||
-            (!record.partialJpeg2000 && record.transcodedBc7))
+        if (record.completeJpeg2000 || record.transcodedBc7)
         {
             entry.expectedBytes = preferred->plaintextBytes;
         }

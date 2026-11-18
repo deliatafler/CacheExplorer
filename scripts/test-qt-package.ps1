@@ -135,6 +135,8 @@ $requiredFiles = @(
     "README.md",
     "RELEASE_NOTES.md",
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "licenses/bcdec/LICENSE",
     "cachegui/resources/cacheexplorer.png",
     "docs/qt-user-guide.md",
     "platforms/qwindows.dll"

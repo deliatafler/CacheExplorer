@@ -127,6 +127,15 @@ TextureCacheOpenError LegacyTextureCacheSource::Open(
                 static_cast<std::uint64_t>(legacyEntry.bodySize);
         }
 
+        if (entry.HasCompletePayload())
+        {
+            entry.hasCompleteJpeg2000 = true;
+        }
+        else
+        {
+            entry.hasPartialJpeg2000 = true;
+        }
+
         entry.timestamp = legacyEntry.timestamp;
 
         entryIndices_.emplace(entry.sourceKey, entries_.size());

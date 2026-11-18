@@ -4,6 +4,7 @@
 
 #include "J2CDecoder.h"
 #include "PngWriter.h"
+#include "TextureDecoder.h"
 #include "TextureRebuilder.h"
 
 #include <cstdint>
@@ -313,27 +314,22 @@ TexturePngExportResult TextureExporter::ExportPngEntry(
         return result;
     }
 
-    if (payload.format != TexturePayloadFormat::Jpeg2000)
-    {
-        result.status = TexturePngExportStatus::RebuildFailed;
-        result.message = TexturePayloadErrorMessage(
-            TexturePayloadError::UnsupportedFormat);
-        return result;
-    }
-
     result.cachedBytes = payload.bytes.size();
 
-    J2CDecoder decoder;
+    TextureDecoder decoder;
     DecodedImage decodedImage;
-    const DecodeError decodeResult = decoder.Decode(
-        payload.bytes,
+    TextureDecodeOptions decodeOptions;
+    decodeOptions.verboseJpeg2000Errors =
+        options.verboseDecoderErrors;
+    const TextureDecodeResult decodeResult = decoder.Decode(
+        payload,
         decodedImage,
-        options.verboseDecoderErrors);
+        decodeOptions);
 
-    if (decodeResult != DecodeError::None)
+    if (!decodeResult.Succeeded())
     {
         result.status = TexturePngExportStatus::Incomplete;
-        result.message = J2CDecoder::ErrorMessage(decodeResult);
+        result.message = decodeResult.message;
         return result;
     }
 

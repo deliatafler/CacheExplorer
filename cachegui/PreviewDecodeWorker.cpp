@@ -1,5 +1,7 @@
 #include "PreviewDecodeWorker.h"
 
+#include "TextureDecoder.h"
+
 #include <cstdint>
 #include <chrono>
 #include <vector>
@@ -37,23 +39,16 @@ PreviewDecodeResult DecodePreview(
         return result;
     }
 
-    if (payload.format != TexturePayloadFormat::Jpeg2000)
-    {
-        result.status = PreviewDecodeStatus::RebuildFailed;
-        result.message = TexturePayloadErrorMessage(
-            TexturePayloadError::UnsupportedFormat);
-        FinishDecodeTiming(result, startedAt);
-        return result;
-    }
+    TextureDecoder decoder;
+    TextureDecodeOptions options;
+    options.maximumDimension = 256;
+    const TextureDecodeResult decodeResult =
+        decoder.Decode(payload, result.image, options);
 
-    J2CDecoder decoder;
-    const DecodeError decodeResult =
-        decoder.Decode(payload.bytes, result.image, false);
-
-    if (decodeResult != DecodeError::None)
+    if (!decodeResult.Succeeded())
     {
         result.status = PreviewDecodeStatus::Incomplete;
-        result.message = J2CDecoder::ErrorMessage(decodeResult);
+        result.message = decodeResult.message;
         FinishDecodeTiming(result, startedAt);
         return result;
     }

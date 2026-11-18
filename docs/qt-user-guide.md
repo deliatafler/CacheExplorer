@@ -116,8 +116,12 @@ preview panel. `Try Next Preview` is hidden because Gallery loads thumbnails
 itself.
 
 Below the large preview, CacheExplorer shows the full selectable UUID, decoded
-dimensions when known, cached-size completeness, and the cache timestamp. Use
-`Copy UUID` to place the selected texture UUID on the clipboard.
+dimensions when known, cached-size completeness, source-format information when
+available, and the cache timestamp. Experimental Aurora entries identify
+whether the cache contains complete or partial JPEG2000 data, BC7 data, or a
+combination; `BC7 only` is the direct way to identify a BC7-only texture. Use
+`Copy UUID` to place the selected texture UUID on the clipboard when one is
+available.
 
 If a preview is available, click `Export PNG` and choose an output file.
 Successful exports report the PNG path, decoded dimensions, and cached byte

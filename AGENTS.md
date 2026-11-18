@@ -57,6 +57,7 @@ Dependencies:
 * OpenJPEG
 * libpng
 * OpenSSL (Aurora sealed-cache cryptography)
+* bcdec 0.985 (vendored MIT-licensed Aurora BC7 block decoder)
 
 The root `VERSION` file is the single source for the user-facing application
 version and package filenames. CMake derives its numeric project version from
@@ -276,8 +277,9 @@ when a payload is requested.
 Credential Manager target `disk cache key v1.Aurora Viewer cache`, keeps it in
 memory only, derives keyed texture names with HKDF-SHA256/HMAC-SHA256, and
 opens `AUSL` files with AES-256-GCM through OpenSSL. Real-cache Gallery and
-large-preview validation has passed for Aurora JPEG2000 files. BC7-only
-records remain unsupported and show the normal unavailable-preview state.
+large-preview validation has passed for Aurora JPEG2000 and BC7 data. It
+prefers complete JPEG2000, then BC7, then partial JPEG2000 when choosing a
+payload, while catalog metadata retains every observed variant.
 
 ### TextureRebuilder
 
@@ -297,6 +299,18 @@ Supports:
 `Decode` accepts a verbose flag. In normal and bulk operation, OpenJPEG information, warning, and error output should be quiet. Single-image debugging may enable warning and error diagnostics.
 
 Temporary decoder tracing such as `Decoder: calling opj_decode` should not remain.
+
+### Bc7Decoder and TextureDecoder
+
+`Bc7Decoder` parses Aurora `AUTX` metadata and decodes ordinary BC7 blocks
+through the pinned bcdec 0.985 single-header implementation. Preview requests
+choose the first mip no larger than 256 pixels when possible; PNG export uses
+the finest cached mip. Textures marked keep-RGBA are rejected clearly because
+their payload is not BC7.
+
+`TextureDecoder` is the source-neutral decoder dispatch used by GUI previews
+and `TextureExporter`. Keep format selection here rather than branching on
+payload format in callers.
 
 ### PngWriter
 
@@ -449,7 +463,11 @@ preview states. It stores no-preview/load-failed records outside the Firestorm
 cache directory and validates UUID/cacheIndex/image/body metadata before
 restoring them into `PreviewCache`.
 
-`cachegui/PreviewDecodeWorker.*` contains the Qt GUI async preview decode wrapper around `TextureRebuilder` and `J2CDecoder`. Keep reusable reconstruction and decoding behavior in `cachelib`; this wrapper should only package copied request data/results for the GUI worker flow.
+`cachegui/PreviewDecodeWorker.*` contains the Qt GUI async preview decode
+wrapper around `TextureDecoder`. It requests a bounded BC7 mip for thumbnails
+and large previews. Keep reusable reconstruction and decoding behavior in
+`cachelib`; this wrapper should only package copied request data/results for
+the GUI worker flow.
 
 Qt preview decode results distinguish rebuild failures from incomplete/undecodable cached texture data so the GUI can show user-friendly incomplete-texture feedback without changing `cachelib` export semantics.
 
@@ -471,7 +489,8 @@ decode rate for that report.
 application icon and README artwork. The multi-resolution
 `cachegui/resources/cacheexplorer.ico` is embedded into the Windows executable
 through `cacheexplorer.rc`. Keep the packaged README icon and MIT `LICENSE` in
-the shared Qt archive.
+the shared Qt archive. Packages must also include `THIRD_PARTY_NOTICES.md` and
+the bcdec license text.
 
 `cachegui/QtActionState.*` contains Qt button enable/disable rules for the main window.
 
@@ -523,7 +542,8 @@ chosen folder without overwriting existing PNGs.
 
 `cachegui/QtTextureDetails.*` formats the selected texture's compact preview
 metadata. Cache-byte and completeness facts must continue to come from
-`cachelib` helpers.
+`cachelib` helpers. Aurora entries identify complete/partial JPEG2000 and BC7
+variants explicitly, including a direct `BC7 only` label.
 
 `cachegui/QtTryNextPreview.*` contains Qt proxy-model navigation and status text for the "Try Next Preview" action.
 
@@ -564,16 +584,18 @@ entries, and missing state files. The neutral-source coverage verifies that
 `LegacyTextureCacheSource` preserves catalog order and metadata, reconstructs
 JPEG2000 payloads, maps open/read failures, clears state on close, and creates
 detached payload requests that remain valid after the source closes.
-The same suite generates synthetic Aurora `AUSL`, opaque keyed-name, and
-plaintext `AUTX` fixtures to verify format bounds, unsupported versions,
-cache-root probing, grouped texture-file enumeration, and stale-file handling
+The same suite generates synthetic Aurora `AUSL`, opaque keyed-name, plaintext
+`AUTX`, and valid mode-6 BC7 fixtures to verify format bounds, unsupported
+versions, cache-root probing, grouped texture-file enumeration, stale-file
+handling, BC7 mip/alpha decoding, format dispatch, and candidate priority
 without using Aurora code, keys, or real cache data.
 
 `tests/cachegui_tests.cpp` provides focused CTest coverage for GUI-facing
 helpers: Gallery filtering including recent changes, gallery queue accounting,
 bounded Try Next traversal, gallery status text, neutral catalog model mapping,
-and per-user PNG export directory persistence. It is built only when the Qt GUI
-and project tests are enabled.
+texture source-detail text including BC7-only entries, and per-user PNG export
+directory persistence. It is built only when the Qt GUI and project tests are
+enabled.
 
 The Qt table must stay model-backed. An earlier `QTableWidget` version locked up when opening a real cache because it created many cell items and used resize-to-contents behavior on the UI thread.
 

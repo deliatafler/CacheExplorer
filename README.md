@@ -162,7 +162,9 @@ See `RELEASE_NOTES.md` for release history and current release notes.
 
 ## License
 
-CacheExplorer is available under the [MIT License](LICENSE).
+CacheExplorer is available under the [MIT License](LICENSE). See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled third-party
+components and their licenses.
 
 ## Trademarks
 

@@ -10,11 +10,13 @@ add_library(cachelib
     AuroraCacheProbe.cpp
     AuroraSealedFile.cpp
     AuroraTextureCacheSource.cpp
+    Bc7Decoder.cpp
     UUID.cpp
     LegacyTextureCacheSource.cpp
     TextureCacheSource.cpp
     TextureCacheDatabase.cpp
     TextureCacheChanges.cpp
+    TextureDecoder.cpp
     TextureExportState.cpp
     TextureRebuilder.cpp
     TextureExporter.cpp
@@ -27,6 +29,8 @@ add_library(cachelib
 target_include_directories(cachelib
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+    SYSTEM PRIVATE
+        ${PROJECT_SOURCE_DIR}/third_party/bcdec
 )
 
 target_compile_features(cachelib
