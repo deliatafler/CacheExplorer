@@ -18,6 +18,9 @@ const char* TextureCacheOpenErrorMessage(TextureCacheOpenError error)
 
         case TextureCacheOpenError::UnsupportedVersion:
             return "The texture cache version is not supported.";
+
+        case TextureCacheOpenError::CredentialsUnavailable:
+            return "The Aurora cache key could not be read from the system credential store.";
     }
 
     return "Unknown texture cache error.";

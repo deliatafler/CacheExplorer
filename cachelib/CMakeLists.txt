@@ -1,9 +1,15 @@
 find_package(OpenJPEG CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 find_package(PNG REQUIRED)
 
 add_library(cachelib
     AuroraCacheFormat.cpp
+    AuroraCrypto.cpp
+    AuroraCredential.cpp
+    AuroraCacheKey.cpp
     AuroraCacheProbe.cpp
+    AuroraSealedFile.cpp
+    AuroraTextureCacheSource.cpp
     UUID.cpp
     LegacyTextureCacheSource.cpp
     TextureCacheSource.cpp
@@ -13,6 +19,7 @@ add_library(cachelib
     TextureRebuilder.cpp
     TextureExporter.cpp
     TextureSelection.cpp
+    ViewerTextureCacheSource.cpp
     J2CDecoder.cpp
     PngWriter.cpp
 )
@@ -30,8 +37,16 @@ target_compile_features(cachelib
 target_link_libraries(cachelib
     PRIVATE
         openjp2
+        OpenSSL::Crypto
         PNG::PNG
 )
+
+if(WIN32)
+    target_link_libraries(cachelib
+        PRIVATE
+            Advapi32
+    )
+endif()
 
 if(MSVC)
     target_compile_options(cachelib

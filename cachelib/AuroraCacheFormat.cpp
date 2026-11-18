@@ -122,6 +122,55 @@ namespace
     {
         return value > 0 && value <= MaximumTranscodedDimension;
     }
+
+    AuroraFormatError InspectSealedHeader(
+        const std::array<std::uint8_t, AuroraSealedHeaderSize>& header,
+        std::uint64_t sealedBytes,
+        AuroraSealedFileInfo& output)
+    {
+        output = {};
+
+        if (!HasMagic(header, SealedMagic))
+        {
+            return IsFutureSealedMagic(header)
+                ? AuroraFormatError::UnsupportedVersion
+                : AuroraFormatError::InvalidFormat;
+        }
+
+        const std::uint64_t plaintextBytes =
+            ReadLittleEndian64(header, SealedPlaintextSizeOffset);
+        const std::uint64_t chunkCount =
+            std::max<std::uint64_t>(
+                1,
+                (plaintextBytes / AuroraSealedChunkSize) +
+                    (plaintextBytes % AuroraSealedChunkSize != 0 ? 1 : 0));
+
+        if (chunkCount >
+            std::numeric_limits<std::uint64_t>::max() /
+                AuroraSealedTagSize)
+        {
+            return AuroraFormatError::SizeMismatch;
+        }
+
+        std::uint64_t expectedSize = AuroraSealedHeaderSize;
+        if (!AddWithoutOverflow(
+                expectedSize,
+                plaintextBytes,
+                expectedSize) ||
+            !AddWithoutOverflow(
+                expectedSize,
+                chunkCount * AuroraSealedTagSize,
+                expectedSize) ||
+            expectedSize != sealedBytes)
+        {
+            return AuroraFormatError::SizeMismatch;
+        }
+
+        output.plaintextBytes = plaintextBytes;
+        output.sealedBytes = sealedBytes;
+        output.chunkCount = chunkCount;
+        return AuroraFormatError::None;
+    }
 }
 
 const char* AuroraFormatErrorMessage(AuroraFormatError error)
@@ -148,6 +197,12 @@ const char* AuroraFormatErrorMessage(AuroraFormatError error)
 
         case AuroraFormatError::InvalidMetadata:
             return "The Aurora texture metadata is invalid.";
+
+        case AuroraFormatError::AuthenticationFailed:
+            return "The Aurora cache file could not be authenticated.";
+
+        case AuroraFormatError::CryptoError:
+            return "The Aurora cache cryptography operation failed.";
     }
 
     return "Unknown Aurora cache format error.";
@@ -202,46 +257,30 @@ AuroraFormatError InspectAuroraSealedFile(
         return AuroraFormatError::ReadError;
     }
 
-    if (!HasMagic(header, SealedMagic))
+    return InspectSealedHeader(header, sealedBytes, output);
+}
+
+AuroraFormatError InspectAuroraSealedBytes(
+    const std::vector<std::uint8_t>& bytes,
+    AuroraSealedFileInfo& output)
+{
+    output = {};
+
+    if (bytes.size() < AuroraSealedHeaderSize)
     {
-        return IsFutureSealedMagic(header)
-            ? AuroraFormatError::UnsupportedVersion
-            : AuroraFormatError::InvalidFormat;
+        return AuroraFormatError::InvalidFormat;
     }
 
-    const std::uint64_t plaintextBytes =
-        ReadLittleEndian64(header, SealedPlaintextSizeOffset);
-    const std::uint64_t chunkCount =
-        std::max<std::uint64_t>(
-            1,
-            (plaintextBytes / AuroraSealedChunkSize) +
-                (plaintextBytes % AuroraSealedChunkSize != 0 ? 1 : 0));
+    std::array<std::uint8_t, AuroraSealedHeaderSize> header{};
+    std::copy_n(
+        bytes.begin(),
+        header.size(),
+        header.begin());
 
-    if (chunkCount >
-        std::numeric_limits<std::uint64_t>::max() /
-            AuroraSealedTagSize)
-    {
-        return AuroraFormatError::SizeMismatch;
-    }
-
-    std::uint64_t expectedSize = AuroraSealedHeaderSize;
-    if (!AddWithoutOverflow(
-            expectedSize,
-            plaintextBytes,
-            expectedSize) ||
-        !AddWithoutOverflow(
-            expectedSize,
-            chunkCount * AuroraSealedTagSize,
-            expectedSize) ||
-        expectedSize != sealedBytes)
-    {
-        return AuroraFormatError::SizeMismatch;
-    }
-
-    output.plaintextBytes = plaintextBytes;
-    output.sealedBytes = sealedBytes;
-    output.chunkCount = chunkCount;
-    return AuroraFormatError::None;
+    return InspectSealedHeader(
+        header,
+        static_cast<std::uint64_t>(bytes.size()),
+        output);
 }
 
 bool IsAuroraTextureKey(std::string_view value)

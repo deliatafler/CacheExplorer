@@ -67,8 +67,8 @@ This is the supported GUI path. It is also the preferred developer path because
 it avoids rebuilding Qt locally.
 
 The helper script configures the recommended build: official/prebuilt Qt,
-static vcpkg libraries for OpenJPEG/libpng, and the dynamic MSVC runtime to
-match the official Qt SDK.
+static vcpkg libraries for OpenJPEG/libpng/OpenSSL, and the dynamic MSVC
+runtime to match the official Qt SDK.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/configure-qt-prebuilt.ps1 `

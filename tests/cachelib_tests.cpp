@@ -1,5 +1,9 @@
 #include "AuroraCacheFormat.h"
+#include "AuroraCacheKey.h"
 #include "AuroraCacheProbe.h"
+#include "AuroraSealedFile.h"
+#include "AuroraTextureCacheSource.h"
+#include "AuroraTextureKey.h"
 #include "Structures.h"
 #include "LegacyTextureCacheSource.h"
 #include "TextureCacheDatabase.h"
@@ -8,8 +12,10 @@
 #include "TextureRebuilder.h"
 #include "TextureSelection.h"
 #include "UUID.h"
+#include "ViewerTextureCacheSource.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
@@ -268,6 +274,80 @@ namespace
         }
 
         return bytes;
+    }
+
+    std::vector<std::uint8_t> BytesFromHex(
+        const std::string& hex)
+    {
+        auto value = [](char character) -> int
+        {
+            if (character >= '0' && character <= '9')
+            {
+                return character - '0';
+            }
+
+            if (character >= 'a' && character <= 'f')
+            {
+                return character - 'a' + 10;
+            }
+
+            return -1;
+        };
+
+        if (hex.size() % 2 != 0)
+        {
+            Expect(false, "hex fixture has an even length");
+            return {};
+        }
+
+        std::vector<std::uint8_t> bytes;
+        bytes.reserve(hex.size() / 2);
+
+        for (std::size_t i = 0; i < hex.size(); i += 2)
+        {
+            const int high = value(hex[i]);
+            const int low = value(hex[i + 1]);
+
+            if (high < 0 || low < 0)
+            {
+                Expect(false, "hex fixture contains valid digits");
+                return {};
+            }
+
+            bytes.push_back(
+                static_cast<std::uint8_t>((high << 4) | low));
+        }
+
+        return bytes;
+    }
+
+    std::array<std::uint8_t, AuroraCacheKey::Size>
+    KnownAuroraKeyBytes()
+    {
+        std::array<std::uint8_t, AuroraCacheKey::Size> bytes{};
+
+        for (std::size_t i = 0; i < bytes.size(); ++i)
+        {
+            bytes[i] = static_cast<std::uint8_t>(i);
+        }
+
+        return bytes;
+    }
+
+    std::vector<std::uint8_t> KnownAuroraSealedFixture()
+    {
+        return BytesFromHex(
+            "4155534ca0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
+            "1c00000000000000"
+            "ba0f2f3d05a734eeab389cb73f4782880e433213ed9570c4"
+            "37fb36e9"
+            "fc0ecf5a9610f2b4f41fa7fdb03a8417");
+    }
+
+    std::vector<std::uint8_t> KnownAuroraPlaintext()
+    {
+        return BytesFromHex(
+            "43616368654578706c6f726572204175726f72612066697874757265");
     }
 
     Entry MakeEntry(
@@ -713,6 +793,15 @@ namespace
             source.Open(directory) == TextureCacheOpenError::None,
             "reopen legacy source after detached payload request");
 
+        ViewerTextureCacheSource detectedSource;
+        Expect(
+            detectedSource.Open(directory) == TextureCacheOpenError::None &&
+                detectedSource.Format() ==
+                    TextureCacheFormat::LegacyViewer &&
+                detectedSource.LegacySource() != nullptr,
+            "auto-detecting source selects the legacy adapter");
+        detectedSource.Close();
+
         std::error_code bodyRemoveError;
         fs::remove(
             TextureRebuilder::BodyFilePath(directory, bodyEntry),
@@ -1099,6 +1188,215 @@ namespace
             "Aurora keyed texture name rejects the wrong length");
     }
 
+    void TestAuroraKnownAnswerCrypto()
+    {
+        const std::array<std::uint8_t, AuroraCacheKey::Size> keyBytes =
+            KnownAuroraKeyBytes();
+
+        AuroraCacheKey key = AuroraCacheKey::FromBytes(keyBytes);
+        const UUID uuid =
+            MakeUuid("12345678-9abc-def0-0fed-cba987654321");
+        const std::optional<std::string> keyedName =
+            AuroraKeyedTextureName(key, uuid);
+
+        Expect(
+            keyedName.has_value() &&
+                *keyedName == "1136455863d312914e3ab2909f07a316",
+            "Aurora UUID name matches the independent HKDF/HMAC vector");
+
+        const std::vector<std::uint8_t> sealed =
+            KnownAuroraSealedFixture();
+        const std::vector<std::uint8_t> expectedPlaintext =
+            KnownAuroraPlaintext();
+
+        std::vector<std::uint8_t> plaintext;
+        Expect(
+            OpenAuroraSealedBytes(sealed, key, plaintext) ==
+                AuroraFormatError::None,
+            "open the independent Aurora AES-GCM fixture");
+        Expect(
+            plaintext == expectedPlaintext,
+            "Aurora sealed fixture decrypts to the expected plaintext");
+
+        std::array<std::uint8_t, AuroraCacheKey::Size> wrongBytes{};
+        wrongBytes.fill(0x5a);
+        AuroraCacheKey wrongKey =
+            AuroraCacheKey::FromBytes(wrongBytes);
+        Expect(
+            OpenAuroraSealedBytes(
+                sealed,
+                wrongKey,
+                plaintext) == AuroraFormatError::AuthenticationFailed,
+            "Aurora sealed fixture rejects another installation key");
+        Expect(
+            plaintext.empty(),
+            "failed Aurora authentication leaves no plaintext");
+
+        std::vector<std::uint8_t> changed = sealed;
+        changed.back() ^= 1;
+        Expect(
+            OpenAuroraSealedBytes(
+                changed,
+                key,
+                plaintext) == AuroraFormatError::AuthenticationFailed,
+            "Aurora sealed fixture rejects a changed authentication tag");
+
+        const fs::path directory = MakeTempDirectory();
+        const fs::path filename = directory / "known-answer.j2c";
+        WriteBytes(filename, sealed);
+        Expect(
+            OpenAuroraSealedFile(filename, key, plaintext) ==
+                AuroraFormatError::None &&
+                plaintext == expectedPlaintext,
+            "open a sealed Aurora file from disk");
+        Expect(
+            OpenAuroraSealedFile(
+                directory / "removed.j2c",
+                key,
+                plaintext) == AuroraFormatError::FileNotFound,
+            "opening a removed sealed file is a cache miss");
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove Aurora crypto test directory");
+    }
+
+    void TestAuroraTextureCacheSourceProvidesNeutralPayloads()
+    {
+        const fs::path directory = MakeTempDirectory();
+        const fs::path cacheRoot = directory / "cache";
+        const fs::path textureStore =
+            cacheRoot / "store" / "tex";
+
+        std::error_code createError;
+        fs::create_directories(textureStore, createError);
+        Expect(!createError, "create Aurora source test store");
+
+        const std::string jpegKey =
+            "1136455863d312914e3ab2909f07a316";
+        const std::string bc7Key(32, 'b');
+        const std::vector<std::uint8_t> sealed =
+            KnownAuroraSealedFixture();
+        const std::vector<std::uint8_t> plaintext =
+            KnownAuroraPlaintext();
+
+        WriteBytes(
+            textureStore / (jpegKey + ".j2c"),
+            sealed);
+        WriteBytes(
+            textureStore / (bc7Key + ".bc7"),
+            sealed);
+
+        const auto keyLoader =
+            [keyBytes = KnownAuroraKeyBytes()](AuroraCacheKey& output)
+            {
+                output = AuroraCacheKey::FromBytes(keyBytes);
+                return AuroraCredentialError::None;
+            };
+
+        AuroraTextureCacheSource source(keyLoader);
+        Expect(
+            source.Open(cacheRoot) == TextureCacheOpenError::None,
+            "open a synthetic Aurora texture source");
+        Expect(source.IsOpen(), "Aurora texture source is open");
+        Expect(
+            source.Format() == TextureCacheFormat::Aurora,
+            "Aurora texture source reports its format");
+        Expect(
+            source.Entries().size() == 2,
+            "Aurora texture source exposes keyed catalog entries");
+
+        const UUID knownUuid =
+            MakeUuid("12345678-9abc-def0-0fed-cba987654321");
+        const TextureCatalogEntry* found =
+            source.FindByUuid(knownUuid);
+        Expect(
+            found != nullptr && found->sourceKey == jpegKey,
+            "Aurora Find UUID derives the keyed filename");
+        Expect(
+            found != nullptr && !found->uuid.has_value(),
+            "Aurora catalog does not claim an enumerable UUID");
+        Expect(
+            found != nullptr &&
+                found->HasCompletePayload() &&
+                found->timestamp > 0,
+            "complete Aurora J2C entry has size and timestamp metadata");
+
+        TexturePayload payload;
+        Expect(
+            source.ReadPayload(jpegKey, payload) ==
+                TexturePayloadError::None,
+            "read a decrypted Aurora JPEG2000 payload");
+        Expect(
+            payload.format == TexturePayloadFormat::Jpeg2000 &&
+                payload.bytes == plaintext,
+            "Aurora J2C payload preserves plaintext bytes");
+
+        Expect(
+            source.ReadPayload(bc7Key, payload) ==
+                TexturePayloadError::None,
+            "read a decrypted Aurora BC7 container payload");
+        Expect(
+            payload.format == TexturePayloadFormat::Bc7 &&
+                payload.bytes == plaintext,
+            "Aurora BC7 payload is explicitly typed");
+
+        ViewerTextureCacheSource detectedSource(keyLoader);
+        Expect(
+            detectedSource.Open(cacheRoot) ==
+                    TextureCacheOpenError::None &&
+                detectedSource.Format() == TextureCacheFormat::Aurora &&
+                detectedSource.AuroraSource() != nullptr,
+            "auto-detecting source selects the Aurora adapter");
+        Expect(
+            detectedSource.FindByUuid(knownUuid) != nullptr,
+            "auto-detecting source delegates Aurora UUID lookup");
+        detectedSource.Close();
+
+        std::unique_ptr<TexturePayloadRequest> detached =
+            source.CreatePayloadRequest(jpegKey);
+        Expect(detached != nullptr, "create detached Aurora payload request");
+        source.Close();
+        Expect(
+            detached &&
+                detached->Read(payload) == TexturePayloadError::None &&
+                payload.bytes == plaintext,
+            "detached Aurora request survives source close");
+
+        AuroraTextureCacheSource noCredential(
+            [](AuroraCacheKey& output)
+            {
+                output = {};
+                return AuroraCredentialError::NotFound;
+            });
+        Expect(
+            noCredential.Open(cacheRoot) ==
+                TextureCacheOpenError::CredentialsUnavailable &&
+                noCredential.CredentialError() ==
+                    AuroraCredentialError::NotFound,
+            "Aurora source reports an unavailable credential clearly");
+
+        std::array<std::uint8_t, AuroraCacheKey::Size> wrongBytes{};
+        wrongBytes.fill(0x5a);
+        AuroraTextureCacheSource wrongKey(
+            [wrongBytes](AuroraCacheKey& output)
+            {
+                output = AuroraCacheKey::FromBytes(wrongBytes);
+                return AuroraCredentialError::None;
+            });
+        Expect(
+            wrongKey.Open(cacheRoot) == TextureCacheOpenError::None,
+            "Aurora source can enumerate before authenticating payloads");
+        Expect(
+            wrongKey.ReadPayload(jpegKey, payload) ==
+                TexturePayloadError::MissingData,
+            "a cache file sealed by another installation is a cache miss");
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove Aurora source test directory");
+    }
+
     void TestAuroraTranscodedTextureParsing()
     {
         const std::vector<std::uint8_t> valid =
@@ -1261,7 +1559,8 @@ namespace
             MakeAuroraSealedFixture(50));
         WriteBytes(
             textureStore / (secondKey + ".bc7"),
-            MakeAuroraSealedFixture(280));
+            MakeAuroraSealedFixture(
+                AuroraSealedChunkSize + 1));
 
         std::vector<std::uint8_t> future =
             MakeAuroraSealedFixture(10);
@@ -1291,19 +1590,16 @@ namespace
                 TextureCacheOpenError::None,
             "enumerate Aurora keyed texture files");
         Expect(
-            scan.records.size() == 2,
-            "enumeration groups valid files by opaque source key");
+            scan.records.size() == 4,
+            "enumeration groups candidate files by opaque source key");
         Expect(
-            scan.cacheMissCount == 1,
-            "replacement-sized file is a normal cache miss");
-        Expect(
-            scan.unsupportedFileCount == 1,
-            "unknown sealed format is counted separately");
+            scan.cacheMissCount == 0,
+            "lazy enumeration avoids opening candidate payload files");
         Expect(
             scan.ignoredFileCount == 2,
             "enumeration ignores unrelated and invalidly named files");
 
-        if (scan.records.size() == 2)
+        if (scan.records.size() == 4)
         {
             const AuroraTextureRecord& first = scan.records[0];
             const AuroraTextureRecord& second = scan.records[1];
@@ -1315,9 +1611,17 @@ namespace
                     !first.transcodedBc7.has_value(),
                 "enumeration groups complete and partial J2C files");
             Expect(
+                first.completeJpeg2000->plaintextBytes == 100 &&
+                    first.partialJpeg2000->plaintextBytes == 50,
+                "enumeration derives J2C plaintext sizes without opening files");
+            Expect(
                 second.sourceKey == secondKey &&
                     second.transcodedBc7.has_value(),
                 "enumeration records a sealed BC7 file");
+            Expect(
+                second.transcodedBc7->plaintextBytes ==
+                    AuroraSealedChunkSize + 1,
+                "enumeration derives multi-chunk plaintext size from sealed length");
         }
 
         std::error_code removeError;
@@ -1340,6 +1644,8 @@ int main()
     TestTextureExportStateLoadHandlesMissingFile();
     TestAuroraSealedEnvelopeInspection();
     TestAuroraKeyedTextureNames();
+    TestAuroraKnownAnswerCrypto();
+    TestAuroraTextureCacheSourceProvidesNeutralPayloads();
     TestAuroraTranscodedTextureParsing();
     TestAuroraTextureStoreProbingAndEnumeration();
 

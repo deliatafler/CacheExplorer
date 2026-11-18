@@ -533,6 +533,46 @@ namespace
             "first cache folder picker starts in the platform cache root");
     }
 
+    void TestAuroraCachePathResolution()
+    {
+        QTemporaryDir directory;
+        Expect(
+            directory.isValid(),
+            "temporary Aurora path directory is available");
+        if (!directory.isValid())
+        {
+            return;
+        }
+
+        const std::filesystem::path selectedParent =
+            PathFromQString(directory.path());
+        const std::filesystem::path cacheRoot =
+            selectedParent / "AuroraViewerCache";
+        const std::filesystem::path store = cacheRoot / "store";
+        const std::filesystem::path textureStore = store / "tex";
+
+        std::error_code error;
+        std::filesystem::create_directories(textureStore, error);
+        Expect(!error, "synthetic Aurora texture store is created");
+
+        Expect(
+            ResolveTextureCacheDirectory(cacheRoot) ==
+                std::filesystem::weakly_canonical(cacheRoot, error),
+            "Aurora cache root resolves to itself");
+        Expect(
+            ResolveTextureCacheDirectory(store) ==
+                std::filesystem::weakly_canonical(cacheRoot, error),
+            "Aurora store directory resolves to its cache root");
+        Expect(
+            ResolveTextureCacheDirectory(textureStore) ==
+                std::filesystem::weakly_canonical(cacheRoot, error),
+            "Aurora texture directory resolves to its cache root");
+        Expect(
+            ResolveTextureCacheDirectory(selectedParent) ==
+                std::filesystem::weakly_canonical(cacheRoot, error),
+            "parent containing AuroraViewerCache resolves to the cache root");
+    }
+
     void TestWindowStatePersistence()
     {
         QTemporaryDir settingsDirectory;
@@ -674,6 +714,7 @@ int main(int argc, char* argv[])
     TestCachePathNormalization();
     TestRecentCachePathMigration();
     TestCacheFolderDialogStartPath();
+    TestAuroraCachePathResolution();
     TestWindowStatePersistence();
     TestPngExportDirectoryPersistence();
     TestTextureDetailsText();

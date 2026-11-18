@@ -5,7 +5,6 @@
 #include "GalleryListView.h"
 #include "GalleryPreviewController.h"
 #include "GalleryPreviewScanner.h"
-#include "LegacyTextureCacheSource.h"
 #include "PreviewCache.h"
 #include "PreviewDecodeWorker.h"
 #include "PreviewPanel.h"
@@ -28,6 +27,7 @@
 #include "TextureCacheChanges.h"
 #include "TryNextPreviewState.h"
 #include "UUID.h"
+#include "ViewerTextureCacheSource.h"
 
 #include <cstdint>
 #include <chrono>
@@ -74,6 +74,12 @@ namespace fs = std::filesystem;
 
 namespace
 {
+    struct OpenCacheResult
+    {
+        TextureCacheOpenError error = TextureCacheOpenError::ReadError;
+        ViewerTextureCacheSource source;
+    };
+
     enum class PreviewRequestKind
     {
         TableSelection,
@@ -120,8 +126,16 @@ namespace
 
         bool SmokeOpenCache(const QString& cachePath)
         {
-            pathEdit_->setText(cachePath);
-            OpenCache();
+            const fs::path cacheDirectory =
+                ResolveTextureCacheDirectory(PathFromQString(cachePath));
+            const TextureCacheOpenError result =
+                source_.Open(cacheDirectory);
+            if (result != TextureCacheOpenError::None)
+            {
+                return false;
+            }
+
+            PopulateTable();
 
             return source_.IsOpen()
                 && static_cast<std::size_t>(tableModel_.rowCount())
@@ -263,6 +277,8 @@ namespace
             galleryFilterRefreshTimer_->setInterval(150);
             batchExportPollTimer_ = new QTimer(root);
             batchExportPollTimer_->setInterval(100);
+            openCachePollTimer_ = new QTimer(root);
+            openCachePollTimer_->setInterval(100);
 
             previewLabel_ = new QLabel(QStringLiteral("No preview selected."), root);
             previewLabel_->setObjectName(QStringLiteral("PreviewImage"));
@@ -590,7 +606,7 @@ namespace
                 {
                     ShowAboutDialog(
                         *this,
-                        source_.LegacyDatabase(),
+                        source_,
                         galleryPreviewController_.MetricsSnapshot());
                 });
 
@@ -780,6 +796,15 @@ namespace
                 {
                     PollBatchPngExport();
                 });
+
+            connect(
+                openCachePollTimer_,
+                &QTimer::timeout,
+                this,
+                [this]()
+                {
+                    PollOpenCache();
+                });
         }
         void BrowseForCache()
         {
@@ -808,29 +833,106 @@ namespace
 
         void OpenCache()
         {
+            if (openCacheActive_)
+            {
+                return;
+            }
+
             const fs::path cacheDirectory =
                 ResolveTextureCacheDirectory(PathFromQString(pathEdit_->text()));
             const bool refreshingCurrentCache =
                 source_.IsOpen() &&
                 IsSameCachePath(cacheDirectory, source_.CacheDirectory());
-            const std::vector<CacheEntry> previousEntries =
+            const LegacyTextureCacheSource* currentLegacySource =
                 refreshingCurrentCache
-                    ? source_.LegacyDatabase().Entries()
+                    ? source_.LegacySource()
+                    : nullptr;
+            const std::vector<CacheEntry> previousEntries =
+                currentLegacySource != nullptr
+                    ? currentLegacySource->LegacyDatabase().Entries()
                     : std::vector<CacheEntry>{};
 
             SetBusy(true, QStringLiteral("Opening cache..."));
 
-            const TextureCacheOpenError result = source_.Open(cacheDirectory);
-
-            if (result != TextureCacheOpenError::None)
+            try
             {
-                HandleOpenCacheFailure(result);
+                openCacheFuture_ = std::async(
+                    std::launch::async,
+                    [cacheDirectory]()
+                    {
+                        OpenCacheResult result;
+                        result.error = result.source.Open(cacheDirectory);
+                        return result;
+                    });
+            }
+            catch (const std::exception& error)
+            {
+                SetBusy(false);
+                statusLabel_->setText(
+                    QStringLiteral("Could not start cache open: %1")
+                        .arg(QString::fromUtf8(error.what())));
                 return;
             }
 
-            HandleOpenCacheSuccess(
-                refreshingCurrentCache,
-                previousEntries);
+            pendingOpenRefreshedCurrentCache_ = refreshingCurrentCache;
+            pendingOpenRefreshedLegacyCache_ =
+                currentLegacySource != nullptr;
+            pendingOpenPreviousEntries_ = previousEntries;
+            openCacheActive_ = true;
+            tableSelectionPreviewTimer_->stop();
+            previewPollTimer_->stop();
+            galleryPreviewPollTimer_->stop();
+            previewWorker_.Clear();
+            galleryPreviewWorker_.Clear();
+            tryNextPreview_.Stop();
+            ClearGalleryPreviewQueue();
+            openCachePollTimer_->start();
+        }
+
+        void PollOpenCache()
+        {
+            if (!openCacheActive_)
+            {
+                openCachePollTimer_->stop();
+                return;
+            }
+
+            if (openCacheFuture_.wait_for(std::chrono::seconds(0)) !=
+                std::future_status::ready)
+            {
+                return;
+            }
+
+            openCachePollTimer_->stop();
+            openCacheActive_ = false;
+
+            try
+            {
+                OpenCacheResult result = openCacheFuture_.get();
+                if (result.error != TextureCacheOpenError::None)
+                {
+                    source_.Close();
+                    HandleOpenCacheFailure(result.error);
+                }
+                else
+                {
+                    source_ = std::move(result.source);
+                    HandleOpenCacheSuccess(
+                        pendingOpenRefreshedCurrentCache_,
+                        pendingOpenRefreshedLegacyCache_,
+                        pendingOpenPreviousEntries_);
+                }
+            }
+            catch (const std::exception& error)
+            {
+                source_.Close();
+                HandleOpenCacheFailure(TextureCacheOpenError::ReadError);
+                statusLabel_->setText(
+                    QStringLiteral("Could not open cache: %1")
+                        .arg(QString::fromUtf8(error.what())));
+            }
+
+            pendingOpenPreviousEntries_.clear();
         }
 
         void HandleOpenCacheFailure(TextureCacheOpenError result)
@@ -850,13 +952,16 @@ namespace
 
         void HandleOpenCacheSuccess(
             bool refreshedCurrentCache,
+            bool refreshedLegacyCache,
             const std::vector<CacheEntry>& previousEntries)
         {
+            const LegacyTextureCacheSource* legacySource =
+                source_.LegacySource();
             const std::vector<std::uint32_t> changedCacheIndices =
-                refreshedCurrentCache
+                refreshedLegacyCache && legacySource != nullptr
                     ? FindChangedCacheIndices(
                         previousEntries,
-                        source_.LegacyDatabase().Entries())
+                        legacySource->LegacyDatabase().Entries())
                     : std::vector<std::uint32_t>{};
 
             pathEdit_->setText(PathToQString(source_.CacheDirectory()));
@@ -867,11 +972,11 @@ namespace
             LoadPersistentPreviewState();
             proxyModel_->SetRecentCacheIndices(changedCacheIndices);
             UpdateRecentChangesFilterLabel(
-                refreshedCurrentCache
+                refreshedLegacyCache
                     ? std::optional<std::size_t>{changedCacheIndices.size()}
                     : std::nullopt);
 
-            if (!refreshedCurrentCache &&
+            if (!refreshedLegacyCache &&
                 CurrentGalleryPreviewFilter(*galleryFilterCombo_) ==
                     GalleryPreviewFilter::RecentChanges)
             {
@@ -890,18 +995,39 @@ namespace
             UpdateGalleryEntryCount();
             SetBusy(false);
             UpdateOpenButtonText();
-            const CacheHeader& header = source_.LegacyDatabase().Header();
-            statusLabel_->setText(
-                refreshedCurrentCache
-                    ? RefreshedCacheStatus(
-                        source_.Entries().size(),
-                        header.entryCount,
-                        header.version,
-                        changedCacheIndices.size())
-                    : LoadedCacheStatus(
-                        source_.Entries().size(),
-                        header.entryCount,
-                        header.version));
+            if (legacySource != nullptr)
+            {
+                const CacheHeader& header =
+                    legacySource->LegacyDatabase().Header();
+                statusLabel_->setText(
+                    refreshedCurrentCache
+                        ? RefreshedCacheStatus(
+                            source_.Entries().size(),
+                            header.entryCount,
+                            header.version,
+                            changedCacheIndices.size())
+                        : LoadedCacheStatus(
+                            source_.Entries().size(),
+                            header.entryCount,
+                            header.version));
+            }
+            else
+            {
+                const AuroraTextureCacheSource* auroraSource =
+                    source_.AuroraSource();
+                const QString action = refreshedCurrentCache
+                    ? QStringLiteral("Refreshed")
+                    : QStringLiteral("Loaded");
+                statusLabel_->setText(
+                    QStringLiteral(
+                        "%1 %2 Aurora texture records. "
+                        "%3 files changed during the catalog scan.")
+                        .arg(action)
+                        .arg(source_.Entries().size())
+                        .arg(auroraSource != nullptr
+                            ? auroraSource->CacheMissCount()
+                            : 0));
+            }
             ScheduleGalleryPreviewSearch();
         }
 
@@ -1720,7 +1846,9 @@ namespace
 
         void LoadPersistentPreviewState()
         {
-            if (!source_.IsOpen())
+            const LegacyTextureCacheSource* legacySource =
+                source_.LegacySource();
+            if (legacySource == nullptr)
             {
                 previewStateFile_.clear();
                 return;
@@ -1733,7 +1861,7 @@ namespace
             const bool loaded =
                 LoadPreviewState(
                     previewStateFile_,
-                    source_,
+                    *legacySource,
                     previewCache_,
                     errorMessage);
 
@@ -1747,7 +1875,9 @@ namespace
 
         void SavePersistentPreviewState()
         {
-            if (!source_.IsOpen() || previewStateFile_.empty())
+            const LegacyTextureCacheSource* legacySource =
+                source_.LegacySource();
+            if (legacySource == nullptr || previewStateFile_.empty())
             {
                 return;
             }
@@ -1755,7 +1885,7 @@ namespace
             QString errorMessage;
             SavePreviewState(
                 previewStateFile_,
-                source_,
+                *legacySource,
                 previewCache_,
                 errorMessage);
         }
@@ -1938,8 +2068,9 @@ namespace
         QTimer* galleryPreviewPollTimer_ = nullptr;
         QTimer* galleryFilterRefreshTimer_ = nullptr;
         QTimer* batchExportPollTimer_ = nullptr;
+        QTimer* openCachePollTimer_ = nullptr;
         GalleryPreviewController galleryPreviewController_;
-        LegacyTextureCacheSource source_;
+        ViewerTextureCacheSource source_;
         std::filesystem::path previewStateFile_;
         bool busy_ = false;
         PreviewWorkerState previewWorker_;
@@ -1947,6 +2078,11 @@ namespace
         std::future<BulkExportResults> batchExportFuture_;
         bool batchExportActive_ = false;
         QString batchExportOutputDirectory_;
+        std::future<OpenCacheResult> openCacheFuture_;
+        std::vector<CacheEntry> pendingOpenPreviousEntries_;
+        bool openCacheActive_ = false;
+        bool pendingOpenRefreshedCurrentCache_ = false;
+        bool pendingOpenRefreshedLegacyCache_ = false;
         PreviewRequestKind activePreviewRequestKind_ = PreviewRequestKind::TableSelection;
         TryNextPreviewState tryNextPreview_;
         bool galleryMode_ = true;

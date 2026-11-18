@@ -22,7 +22,8 @@ enum class TextureCacheOpenError
     FileNotFound,
     ReadError,
     InvalidFormat,
-    UnsupportedVersion
+    UnsupportedVersion,
+    CredentialsUnavailable
 };
 
 enum class TexturePayloadFormat

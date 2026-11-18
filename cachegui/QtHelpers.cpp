@@ -1,5 +1,7 @@
 #include "QtHelpers.h"
 
+#include "AuroraCacheProbe.h"
+
 #include <system_error>
 
 #include <QByteArray>
@@ -19,6 +21,19 @@ namespace
                 error);
 
         return exists && !error;
+    }
+
+    bool RecognizedCacheDirectoryExists(
+        const std::filesystem::path& directory)
+    {
+        if (TextureEntriesFileExists(directory))
+        {
+            return true;
+        }
+
+        AuroraTextureStoreProbe probe;
+        return ProbeAuroraTextureStore(directory, probe) ==
+            TextureCacheOpenError::None;
     }
 
     Qt::CaseSensitivity CachePathCaseSensitivity()
@@ -104,6 +119,13 @@ std::filesystem::path ResolveTextureCacheDirectory(
         return childTextureCache;
     }
 
+    AuroraTextureStoreProbe auroraProbe;
+    if (ProbeAuroraTextureStore(suppliedPath, auroraProbe) ==
+        TextureCacheOpenError::None)
+    {
+        return auroraProbe.cacheRoot;
+    }
+
     return suppliedPath;
 }
 
@@ -137,11 +159,12 @@ QString DefaultCachePath()
         const std::filesystem::path candidatePaths[] = {
             localAppDataPath / "SecondLife" / "texturecache",
             localAppDataPath / "Firestorm_x64" / "texturecache",
-            localAppDataPath / "FirestormOS_x64" / "texturecache"};
+            localAppDataPath / "FirestormOS_x64" / "texturecache",
+            localAppDataPath / "Aurora" / "AuroraViewer" / "cache"};
 
         for (const std::filesystem::path& candidatePath : candidatePaths)
         {
-            if (TextureEntriesFileExists(candidatePath))
+            if (RecognizedCacheDirectoryExists(candidatePath))
             {
                 return PathToQString(candidatePath);
             }
@@ -164,7 +187,7 @@ QString DefaultCachePath()
 
         for (const std::filesystem::path& candidatePath : candidatePaths)
         {
-            if (TextureEntriesFileExists(candidatePath))
+            if (RecognizedCacheDirectoryExists(candidatePath))
             {
                 return PathToQString(candidatePath);
             }
@@ -190,7 +213,7 @@ QString PreferredCachePath()
     }
 
     if (!lastOpenedPath.isEmpty() &&
-        TextureEntriesFileExists(PathFromQString(lastOpenedPath)))
+        RecognizedCacheDirectoryExists(PathFromQString(lastOpenedPath)))
     {
         return lastOpenedPath;
     }
@@ -274,7 +297,7 @@ QStringList RecentCachePaths()
             PathFromQString(normalizedPath);
 
         if (!normalizedPath.isEmpty() &&
-            TextureEntriesFileExists(filesystemPath) &&
+            RecognizedCacheDirectoryExists(filesystemPath) &&
             !ContainsCachePath(validPaths, filesystemPath))
         {
             validPaths.append(normalizedPath);

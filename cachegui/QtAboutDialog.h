@@ -1,10 +1,10 @@
 #pragma once
 
-class TextureCacheDatabase;
+class ViewerTextureCacheSource;
 class QWidget;
 struct GalleryPreviewMetricsSnapshot;
 
 void ShowAboutDialog(
     QWidget& parent,
-    const TextureCacheDatabase& database,
+    const ViewerTextureCacheSource& source,
     const GalleryPreviewMetricsSnapshot& galleryMetrics);

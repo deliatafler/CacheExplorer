@@ -4,6 +4,7 @@
 #include "TextureCacheSource.h"
 
 #include <cstddef>
+#include <ctime>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -27,7 +28,9 @@ struct AuroraTextureFile
     AuroraTextureFileKind kind =
         AuroraTextureFileKind::CompleteJpeg2000;
     std::filesystem::path path;
-    AuroraSealedFileInfo sealed;
+    std::uint64_t sealedBytes = 0;
+    std::optional<std::uint64_t> plaintextBytes;
+    std::time_t modifiedTime = 0;
 };
 
 struct AuroraTextureRecord
@@ -44,7 +47,6 @@ struct AuroraTextureStoreScan
     std::vector<AuroraTextureRecord> records;
 
     std::size_t cacheMissCount = 0;
-    std::size_t unsupportedFileCount = 0;
     std::size_t ignoredFileCount = 0;
 };
 

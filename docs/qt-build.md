@@ -12,8 +12,8 @@ The recommended Windows setup is:
 
 * Install the official Qt 6 MSVC 2022 64-bit SDK.
 * Use vcpkg for CacheExplorer's non-Qt dependencies only.
-* Use `x64-windows-static-md` so OpenJPEG/libpng remain static while the MSVC
-  runtime model matches the official Qt SDK.
+* Use `x64-windows-static-md` so OpenJPEG, libpng, and OpenSSL remain static
+  while the MSVC runtime model matches the official Qt SDK.
 
 The helper script locates `QT_DIR`, common `C:\Qt\<version>\msvc2022_64`
 installations, or accepts `-QtDir` explicitly:
@@ -82,7 +82,7 @@ not require contributors to replace their local SDK.
 
 `.github/workflows/linux-ci.yml` provides early cross-platform coverage on an
 Ubuntu hosted runner. It installs the native Qt 6 Widgets development package,
-uses vcpkg only for OpenJPEG/libpng, then builds the CLI and Qt GUI and runs
+uses vcpkg only for OpenJPEG/libpng/OpenSSL, then builds the CLI and Qt GUI and runs
 CTest on both Ubuntu 24.04 and 26.04. Each job creates a release-specific native
 x86-64 Debian package, validates its desktop launcher, metadata, files,
 checksum, and shared-library dependencies, installs it through `apt`, and
@@ -94,7 +94,7 @@ validation on a Linux desktop remains a separate milestone.
 
 `.github/workflows/macos-ci.yml` provides the corresponding early macOS
 coverage on GitHub's Apple Silicon `macos-15` runner. It installs the prebuilt
-Qt 6.8.3 macOS SDK, uses the vcpkg `arm64-osx` triplet for OpenJPEG/libpng,
+Qt 6.8.3 macOS SDK, uses the vcpkg `arm64-osx` triplet for OpenJPEG/libpng/OpenSSL,
 builds the CLI and Qt GUI as an ARM64 `.app` bundle, and runs CTest. It then
 uses Qt's deployment support and CPack to produce and inspect an ad-hoc-signed
 DMG, which is uploaded as a short-lived workflow artifact. Developer ID
@@ -112,7 +112,7 @@ procedure, local package commands, and package contents.
   `C:/Qt/6.11.1/msvc2022_64`.
 * Fresh configure used `build-qt-prebuilt`, `CMAKE_PREFIX_PATH` pointing at
   that Qt tree, `x64-windows-static-md`, and no `qt-gui` vcpkg manifest feature.
-  vcpkg restored only OpenJPEG/libpng/zlib from binary cache.
+  vcpkg restored OpenJPEG/libpng/OpenSSL/zlib from binary cache.
 * Configure completed in about 18 seconds.
 * `cmake --build build-qt-prebuilt --config Release --target cachegui`
   completed in about 7 seconds.

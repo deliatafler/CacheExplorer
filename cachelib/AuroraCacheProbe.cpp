@@ -1,5 +1,7 @@
 #include "AuroraCacheProbe.h"
 
+#include <chrono>
+#include <limits>
 #include <map>
 #include <system_error>
 #include <utility>
@@ -101,6 +103,68 @@ namespace
                 record.transcodedBc7 = std::move(file);
                 return;
         }
+    }
+
+    std::time_t FileModifiedTime(
+        const fs::path& path,
+        std::error_code& error)
+    {
+        const fs::file_time_type fileTime =
+            fs::last_write_time(path, error);
+
+        if (error)
+        {
+            return 0;
+        }
+
+        const auto systemTime =
+            std::chrono::time_point_cast<
+                std::chrono::system_clock::duration>(
+                fileTime - fs::file_time_type::clock::now() +
+                std::chrono::system_clock::now());
+
+        return std::chrono::system_clock::to_time_t(systemTime);
+    }
+
+    std::optional<std::uint64_t> AuroraPlaintextSize(
+        std::uint64_t sealedBytes)
+    {
+        constexpr std::uint64_t bytesPerFullChunk =
+            AuroraSealedChunkSize + AuroraSealedTagSize;
+
+        if (sealedBytes <
+            AuroraSealedHeaderSize + AuroraSealedTagSize)
+        {
+            return std::nullopt;
+        }
+
+        const std::uint64_t payloadAndTags =
+            sealedBytes - AuroraSealedHeaderSize;
+        const std::uint64_t chunkCount =
+            std::max<std::uint64_t>(
+                1,
+                (payloadAndTags / bytesPerFullChunk) +
+                    (payloadAndTags % bytesPerFullChunk != 0 ? 1 : 0));
+
+        if (chunkCount >
+                std::numeric_limits<std::uint64_t>::max() /
+                    AuroraSealedTagSize ||
+            payloadAndTags < chunkCount * AuroraSealedTagSize)
+        {
+            return std::nullopt;
+        }
+
+        const std::uint64_t plaintextBytes =
+            payloadAndTags - chunkCount * AuroraSealedTagSize;
+        const std::uint64_t expectedChunkCount =
+            std::max<std::uint64_t>(
+                1,
+                (plaintextBytes / AuroraSealedChunkSize) +
+                    (plaintextBytes % AuroraSealedChunkSize != 0 ? 1 : 0));
+
+        return expectedChunkCount == chunkCount
+            ? std::optional<std::uint64_t>{plaintextBytes}
+            : std::nullopt;
     }
 }
 
@@ -250,19 +314,21 @@ TextureCacheOpenError EnumerateAuroraTextureStore(
             continue;
         }
 
-        AuroraSealedFileInfo sealed;
-        const AuroraFormatError formatError =
-            InspectAuroraSealedFile(
-                entry.path(),
-                sealed);
-
-        if (formatError == AuroraFormatError::UnsupportedVersion)
+        std::error_code sizeError;
+        const std::uintmax_t fileSize =
+            entry.file_size(sizeError);
+        if (sizeError ||
+            fileSize > std::numeric_limits<std::uint64_t>::max())
         {
-            ++output.unsupportedFileCount;
+            ++output.cacheMissCount;
             continue;
         }
 
-        if (formatError != AuroraFormatError::None)
+        std::error_code modifiedError;
+        const std::time_t modifiedTime =
+            FileModifiedTime(entry.path(), modifiedError);
+
+        if (modifiedError)
         {
             ++output.cacheMissCount;
             continue;
@@ -279,7 +345,10 @@ TextureCacheOpenError EnumerateAuroraTextureStore(
             AuroraTextureFile{
                 *kind,
                 entry.path(),
-                sealed});
+                static_cast<std::uint64_t>(fileSize),
+                AuroraPlaintextSize(
+                    static_cast<std::uint64_t>(fileSize)),
+                modifiedTime});
     }
 
     output.records.reserve(records.size());

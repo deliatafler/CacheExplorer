@@ -116,8 +116,10 @@ changelog.
   boundary while preserving the Second Life/Firestorm interface and behavior.
 - [x] Add synthetic Aurora sealed-file, keyed-name, and BC7-container fixtures
   plus cache-root probing tests.
-- [ ] Build a Windows-only JPEG2000 proof of concept using the Aurora key from
-  Credential Manager, with no key logging or persistence.
+- [ ] Complete human validation of the Windows JPEG2000 proof of concept.
+  Implementation, synthetic known-answer tests, and real-cache Gallery/preview
+  validation are complete; Find UUID, PNG export, and live-viewer refresh
+  remain to be checked manually.
 - [ ] Add Aurora BC7 preview decoding after the JPEG2000 path is proven.
 - [ ] Add macOS Keychain and Linux Secret Service providers and validate
   platform packaging before considering Aurora support non-experimental.

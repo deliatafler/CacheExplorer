@@ -55,9 +55,9 @@ installation key stored in the operating system credential store. Filenames
 are the first 128 bits of an HMAC-SHA256 over the asset UUID under a separate
 derived naming key.
 
-The installed Windows cache inspected during research contained 104,523
-distinct keyed textures: 18,401 complete J2C files, 85,989 partial files, and
-81,848 BC7 files.
+The installed Windows cache inspected during research contained about 105,000
+distinct keyed textures and roughly 187,000 files across complete J2C,
+partial J2C, and BC7 variants. The exact mix changes while Aurora runs.
 
 ## Important limitation
 
@@ -113,10 +113,12 @@ an unsupported sealed format; unrelated data is reported as invalid.
 
 `AuroraCacheProbe` accepts a cache root, `store`, direct `store/tex`, or a
 user-selected parent containing `AuroraViewerCache/store/tex`. Enumeration
-groups valid `.j2c`, `.part`, and `.bc7` envelopes by their opaque lowercase
-32-hex source key. Files that disappear, cannot be read consistently, or no
-longer match their advertised size are skipped as ordinary cache misses;
-unsupported sealed formats are counted separately for diagnostics.
+groups `.j2c`, `.part`, and `.bc7` candidates by their opaque lowercase
+32-hex source key. It derives plaintext sizes from sealed file lengths without
+opening every candidate. Full envelope validation and authentication are
+deferred until a visible thumbnail or export requests the payload, which keeps
+a roughly 187,000-file real-cache scan to about five seconds on the development
+machine.
 
 All fixtures are generated in `cachelib_tests` from independently documented
 byte layouts. This tranche introduces no cryptography, credential access, or
@@ -134,6 +136,28 @@ Acceptance criteria:
   Aurora cache.
 * Find UUID calculates the keyed name and locates matching files.
 * Aurora Viewer can remain open while CacheExplorer reads and refreshes.
+
+Status: implementation complete on the experiment branch; final human
+validation is pending. `AuroraTextureCacheSource` reads the 32-byte key from
+Windows Credential Manager target
+`disk cache key v1.Aurora Viewer cache`, derives file and naming keys with
+HKDF-SHA256, calculates opaque filenames with HMAC-SHA256, and opens chunked
+AES-256-GCM `AUSL` files through OpenSSL. The key is move-only, cleansed on
+destruction, and is neither logged nor persisted by CacheExplorer.
+
+`ViewerTextureCacheSource` automatically selects the legacy or Aurora adapter.
+The Qt GUI recognizes Aurora roots, remembers them in Recent caches, opens
+large stores on a worker thread, and reuses the existing lazy Gallery,
+large-preview, Find UUID, and PNG-export paths. A real Windows Aurora cache
+loaded 104,815 grouped records; multiple real J2C files decrypted into Gallery
+thumbnails and the large preview. BC7-only entries currently show `No preview`,
+as expected before tranche 4.
+
+Remaining human checks for this tranche:
+
+* Find a texture UUID known to be present in the Aurora cache.
+* Export one and multiple Aurora J2C-backed textures as PNG.
+* Refresh while Aurora Viewer is running and writing the cache.
 
 ### 4. BC7 thumbnails
 

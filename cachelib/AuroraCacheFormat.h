@@ -18,7 +18,9 @@ enum class AuroraFormatError
     InvalidFormat,
     UnsupportedVersion,
     SizeMismatch,
-    InvalidMetadata
+    InvalidMetadata,
+    AuthenticationFailed,
+    CryptoError
 };
 
 const char* AuroraFormatErrorMessage(AuroraFormatError error);
@@ -32,6 +34,10 @@ struct AuroraSealedFileInfo
 
 AuroraFormatError InspectAuroraSealedFile(
     const std::filesystem::path& filename,
+    AuroraSealedFileInfo& output);
+
+AuroraFormatError InspectAuroraSealedBytes(
+    const std::vector<std::uint8_t>& bytes,
     AuroraSealedFileInfo& output);
 
 bool IsAuroraTextureKey(std::string_view value);

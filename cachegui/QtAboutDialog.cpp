@@ -2,7 +2,7 @@
 
 #include "QtGalleryDiagnostics.h"
 #include "QtHelpers.h"
-#include "TextureCacheDatabase.h"
+#include "ViewerTextureCacheSource.h"
 
 #include <QApplication>
 #include <QString>
@@ -15,13 +15,33 @@
 
 namespace
 {
-    QString CacheDiagnosticText(const TextureCacheDatabase& database)
+    QString CacheDiagnosticText(const ViewerTextureCacheSource& source)
     {
-        if (!database.IsOpen())
+        if (!source.IsOpen())
         {
             return QStringLiteral("Cache: not open");
         }
 
+        const LegacyTextureCacheSource* legacySource =
+            source.LegacySource();
+        if (legacySource == nullptr)
+        {
+            const AuroraTextureCacheSource* auroraSource =
+                source.AuroraSource();
+            return QStringLiteral(
+                "Cache: %1\n"
+                "Cache format: Aurora (experimental)\n"
+                "Texture records: %2\n"
+                "Files changed during scan: %3")
+                .arg(PathToQString(source.CacheDirectory()))
+                .arg(source.Entries().size())
+                .arg(auroraSource != nullptr
+                    ? auroraSource->CacheMissCount()
+                    : 0);
+        }
+
+        const TextureCacheDatabase& database =
+            legacySource->LegacyDatabase();
         const CacheHeader& header = database.Header();
 
         return QStringLiteral(
@@ -40,7 +60,7 @@ namespace
     }
 
     QString BuildDiagnosticText(
-        const TextureCacheDatabase& database,
+        const ViewerTextureCacheSource& source,
         const GalleryPreviewMetricsSnapshot& galleryMetrics)
     {
         return QStringLiteral(
@@ -52,14 +72,14 @@ namespace
             .arg(QStringLiteral(CACHEEXPLORER_VERSION))
             .arg(QString::fromLatin1(qVersion()))
             .arg(QStringLiteral(QT_VERSION_STR))
-            .arg(CacheDiagnosticText(database))
+            .arg(CacheDiagnosticText(source))
             .arg(GalleryPerformanceDiagnosticText(galleryMetrics));
     }
 }
 
 void ShowAboutDialog(
     QWidget& parent,
-    const TextureCacheDatabase& database,
+    const ViewerTextureCacheSource& source,
     const GalleryPreviewMetricsSnapshot& galleryMetrics)
 {
     QMessageBox aboutBox(&parent);
@@ -69,12 +89,13 @@ void ShowAboutDialog(
     aboutBox.setInformativeText(
         QStringLiteral(
             "Standalone Second Life® viewer texture-cache browser and PNG exporter.\n"
-            "Verified with the official Second Life viewer and Firestorm Viewer.\n\n"
+            "Verified with the official Second Life viewer and Firestorm Viewer.\n"
+            "Experimental Aurora Viewer cache support is also enabled.\n\n"
             "Open-source software licensed under the MIT License.\n\n"
             "Second Life® is a registered trademark of Linden Research, Inc.\n"
             "Firestorm Viewer is a trademark of The Phoenix Firestorm Project, Inc.\n"
             "CacheExplorer is not affiliated with, sponsored by, or endorsed by "
             "either organization."));
-    aboutBox.setDetailedText(BuildDiagnosticText(database, galleryMetrics));
+    aboutBox.setDetailedText(BuildDiagnosticText(source, galleryMetrics));
     aboutBox.exec();
 }

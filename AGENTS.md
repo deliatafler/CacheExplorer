@@ -56,6 +56,7 @@ Dependencies:
 
 * OpenJPEG
 * libpng
+* OpenSSL (Aurora sealed-cache cryptography)
 
 The root `VERSION` file is the single source for the user-facing application
 version and package filenames. CMake derives its numeric project version from
@@ -250,6 +251,12 @@ Legacy database access remains temporarily exposed only for legacy refresh
 diagnostics and preview-state compatibility. The CLI still uses
 `TextureCacheDatabase` directly.
 
+`ViewerTextureCacheSource` auto-detects the legacy and Aurora layouts and
+delegates the neutral source contract to the matching adapter. Its move
+operations must rebind the active-adapter pointer; the Qt GUI opens a new
+source on a worker thread and moves it into the main window only after the
+read completes.
+
 ### Aurora cache format experiment
 
 `AuroraCacheFormat` validates Aurora's `AUSL` sealed-file envelope without
@@ -260,9 +267,17 @@ malformed BC7 mip layouts clearly.
 
 `AuroraCacheProbe` recognizes a cache root, `store`, direct `store/tex`, or a
 user-selected parent containing `AuroraViewerCache/store/tex`. It enumerates
-32-character lowercase keyed names, groups `.j2c`, `.part`, and `.bc7` files,
-and treats files removed or replaced during a scan as cache misses. It does
-not read credentials, decrypt payloads, or weaken legacy cache validation.
+32-character lowercase keyed names and groups `.j2c`, `.part`, and `.bc7`
+files. Enumeration derives plaintext sizes from sealed file lengths and does
+not open every candidate; envelope validation and authentication occur lazily
+when a payload is requested.
+
+`AuroraTextureCacheSource` reads the 32-byte installation key from the Windows
+Credential Manager target `disk cache key v1.Aurora Viewer cache`, keeps it in
+memory only, derives keyed texture names with HKDF-SHA256/HMAC-SHA256, and
+opens `AUSL` files with AES-256-GCM through OpenSSL. Real-cache Gallery and
+large-preview validation has passed for Aurora JPEG2000 files. BC7-only
+records remain unsupported and show the normal unavailable-preview state.
 
 ### TextureRebuilder
 
