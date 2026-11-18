@@ -1,6 +1,7 @@
 #include "QtGallerySort.h"
 
 #include <QComboBox>
+#include <QSignalBlocker>
 #include <QSortFilterProxyModel>
 #include <QString>
 #include <Qt>
@@ -28,7 +29,9 @@ namespace
         return GallerySortMode::NewestFirst;
     }
 
-    QString GallerySortName(GallerySortMode sortMode)
+    QString GallerySortName(
+        GallerySortMode sortMode,
+        std::optional<TextureCacheFormat> format)
     {
         switch (sortMode)
         {
@@ -42,39 +45,102 @@ namespace
                 return QStringLiteral("largest body");
 
             case GallerySortMode::LargestImage:
-                return QStringLiteral("largest image");
+                return format == TextureCacheFormat::Aurora
+                    ? QStringLiteral("largest cache item")
+                    : QStringLiteral("largest image");
 
             case GallerySortMode::CacheIndex:
                 return QStringLiteral("cache index");
 
             case GallerySortMode::Uuid:
-                return QStringLiteral("UUID");
+                return format == TextureCacheFormat::Aurora
+                    ? QStringLiteral("cache key")
+                    : QStringLiteral("UUID");
         }
 
         return QStringLiteral("selected order");
     }
 }
 
-void ConfigureGallerySortControl(QComboBox& comboBox)
+void ConfigureGallerySortControl(
+    QComboBox& comboBox,
+    std::optional<TextureCacheFormat> format)
 {
-    comboBox.addItem(
-        QStringLiteral("Newest"),
-        ToComboValue(GallerySortMode::NewestFirst));
-    comboBox.addItem(
-        QStringLiteral("Oldest"),
-        ToComboValue(GallerySortMode::OldestFirst));
-    comboBox.addItem(
-        QStringLiteral("Largest body"),
-        ToComboValue(GallerySortMode::LargestBody));
-    comboBox.addItem(
-        QStringLiteral("Largest image"),
-        ToComboValue(GallerySortMode::LargestImage));
-    comboBox.addItem(
-        QStringLiteral("Cache index"),
-        ToComboValue(GallerySortMode::CacheIndex));
-    comboBox.addItem(
-        QStringLiteral("UUID"),
-        ToComboValue(GallerySortMode::Uuid));
+    const QSignalBlocker blocker(comboBox);
+    const int previousValue = comboBox.currentData().isValid()
+        ? comboBox.currentData().toInt()
+        : ToComboValue(GallerySortMode::NewestFirst);
+
+    comboBox.clear();
+    const GallerySortMode modes[] = {
+        GallerySortMode::NewestFirst,
+        GallerySortMode::OldestFirst,
+        GallerySortMode::LargestBody,
+        GallerySortMode::LargestImage,
+        GallerySortMode::CacheIndex,
+        GallerySortMode::Uuid};
+
+    for (const GallerySortMode mode : modes)
+    {
+        if (!IsGallerySortModeAvailable(mode, format))
+        {
+            continue;
+        }
+
+        comboBox.addItem(
+            GallerySortControlLabel(mode, format),
+            ToComboValue(mode));
+    }
+
+    const int restoredIndex = comboBox.findData(previousValue);
+    comboBox.setCurrentIndex(restoredIndex >= 0 ? restoredIndex : 0);
+}
+
+bool IsGallerySortModeAvailable(
+    GallerySortMode sortMode,
+    std::optional<TextureCacheFormat> format)
+{
+    if (format != TextureCacheFormat::Aurora)
+    {
+        return true;
+    }
+
+    return sortMode == GallerySortMode::NewestFirst ||
+        sortMode == GallerySortMode::OldestFirst ||
+        sortMode == GallerySortMode::LargestImage ||
+        sortMode == GallerySortMode::Uuid;
+}
+
+QString GallerySortControlLabel(
+    GallerySortMode sortMode,
+    std::optional<TextureCacheFormat> format)
+{
+    switch (sortMode)
+    {
+        case GallerySortMode::NewestFirst:
+            return QStringLiteral("Newest");
+
+        case GallerySortMode::OldestFirst:
+            return QStringLiteral("Oldest");
+
+        case GallerySortMode::LargestBody:
+            return QStringLiteral("Largest body");
+
+        case GallerySortMode::LargestImage:
+            return format == TextureCacheFormat::Aurora
+                ? QStringLiteral("Largest cache item")
+                : QStringLiteral("Largest image");
+
+        case GallerySortMode::CacheIndex:
+            return QStringLiteral("Cache index");
+
+        case GallerySortMode::Uuid:
+            return format == TextureCacheFormat::Aurora
+                ? QStringLiteral("Cache key")
+                : QStringLiteral("UUID");
+    }
+
+    return QStringLiteral("Selected order");
 }
 
 GallerySortMode CurrentGallerySortMode(const QComboBox& comboBox)
@@ -82,16 +148,20 @@ GallerySortMode CurrentGallerySortMode(const QComboBox& comboBox)
     return FromComboValue(comboBox.currentData().toInt());
 }
 
-QString GallerySortInProgressStatus(GallerySortMode sortMode)
+QString GallerySortInProgressStatus(
+    GallerySortMode sortMode,
+    std::optional<TextureCacheFormat> format)
 {
     return QStringLiteral("Sorting gallery by %1...")
-        .arg(GallerySortName(sortMode));
+        .arg(GallerySortName(sortMode, format));
 }
 
-QString GallerySortCompleteStatus(GallerySortMode sortMode)
+QString GallerySortCompleteStatus(
+    GallerySortMode sortMode,
+    std::optional<TextureCacheFormat> format)
 {
     return QStringLiteral("Gallery sorted by %1.")
-        .arg(GallerySortName(sortMode));
+        .arg(GallerySortName(sortMode, format));
 }
 
 void ApplyGallerySort(

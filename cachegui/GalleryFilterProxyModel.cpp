@@ -4,6 +4,7 @@
 #include "PreviewCache.h"
 
 #include <QComboBox>
+#include <QSignalBlocker>
 #include <QString>
 #include <QtGlobal>
 
@@ -141,17 +142,41 @@ bool GalleryFilterProxyModel::filterAcceptsRow(
     return true;
 }
 
-void ConfigureGalleryPreviewFilterControl(QComboBox& comboBox)
+void ConfigureGalleryPreviewFilterControl(
+    QComboBox& comboBox,
+    bool includeRecentChanges)
 {
+    const QSignalBlocker blocker(comboBox);
+    const int previousValue = comboBox.currentData().isValid()
+        ? comboBox.currentData().toInt()
+        : ToComboValue(GalleryPreviewFilter::Everything);
+
+    comboBox.clear();
     comboBox.addItem(
         QStringLiteral("Everything"),
         ToComboValue(GalleryPreviewFilter::Everything));
     comboBox.addItem(
         QStringLiteral("Images only"),
         ToComboValue(GalleryPreviewFilter::ImagesOnly));
-    comboBox.addItem(
-        QStringLiteral("Recent changes"),
-        ToComboValue(GalleryPreviewFilter::RecentChanges));
+    if (IsGalleryPreviewFilterAvailable(
+            GalleryPreviewFilter::RecentChanges,
+            includeRecentChanges))
+    {
+        comboBox.addItem(
+            QStringLiteral("Recent changes"),
+            ToComboValue(GalleryPreviewFilter::RecentChanges));
+    }
+
+    const int restoredIndex = comboBox.findData(previousValue);
+    comboBox.setCurrentIndex(restoredIndex >= 0 ? restoredIndex : 0);
+}
+
+bool IsGalleryPreviewFilterAvailable(
+    GalleryPreviewFilter filter,
+    bool includeRecentChanges)
+{
+    return filter != GalleryPreviewFilter::RecentChanges ||
+        includeRecentChanges;
 }
 
 GalleryPreviewFilter CurrentGalleryPreviewFilter(const QComboBox& comboBox)

@@ -525,6 +525,10 @@ outside the viewer cache directory.
 On macOS, default discovery checks common Second Life and Firestorm directories
 under `~/Library/Caches`, and the first folder chooser starts at that cache root
 rather than `~/Library/Application Support`.
+Aurora discovery checks its current read-only `cache_location.txt` marker for a
+custom cache, then its platform default under local application data on Windows
+or the user cache directory on macOS/Linux. Preserve the established
+Second Life/Firestorm priority ahead of Aurora when several defaults exist.
 It retains up to eight valid recently opened cache paths for the GUI's `Recent`
 menu; missing folders are omitted and users can clear the menu from the UI.
 Remembered paths are lexically normalized, displayed with platform-native path
@@ -564,6 +568,10 @@ variants explicitly, including a direct `BC7 only` label.
 `cachegui/TryNextPreviewState.*` contains the Qt GUI "Try Next Preview" row/attempt bookkeeping. It should not inspect Qt models or start preview workers directly.
 
 `cachegui/CacheEntryTableModel.*` contains the Qt model for cache entries, cached display/sort strings, table sorting data roles, preview status text, and generated gallery placeholder icons.
+For Aurora, the Table calls the anonymous identifier `Cache key`, displays a
+neutral data-byte column, and the window hides legacy-only Body and Cache index
+columns. Aurora Gallery controls omit the legacy-only Recent changes filter and
+legacy metadata sorts.
 
 Gallery placeholders are generated in the Qt model for unknown/checking/no-preview/load-failed states so the grid does not appear empty while lazy loading works through visible entries. Unknown/checking placeholders should stay visually quiet during scrolling; terminal no-preview/error labels should remain readable at the configured gallery tile size.
 

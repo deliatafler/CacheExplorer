@@ -292,7 +292,8 @@ namespace
             previewCaption_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
             previewCaption_->setTextInteractionFlags(Qt::TextSelectableByMouse);
             previewCaption_->setWordWrap(true);
-            previewCaption_->setToolTip(QStringLiteral("Selected texture UUID"));
+            previewCaption_->setToolTip(
+                QStringLiteral("Selected texture identifier"));
             copyUuidButton_ = new QPushButton(QStringLiteral("Copy UUID"), root);
             copyUuidButton_->setToolTip(
                 QStringLiteral("Copy the selected texture UUID to the clipboard"));
@@ -457,7 +458,7 @@ namespace
             gallerySortCombo_->setAccessibleName(
                 QStringLiteral("Gallery sort order"));
             previewCaption_->setAccessibleName(
-                QStringLiteral("Selected texture UUID"));
+                QStringLiteral("Selected texture identifier"));
             previewDetails_->setAccessibleName(
                 QStringLiteral("Selected texture details"));
         }
@@ -694,14 +695,20 @@ namespace
                 {
                     const GallerySortMode sortMode =
                         CurrentGallerySortMode(*gallerySortCombo_);
-                    statusLabel_->setText(GallerySortInProgressStatus(sortMode));
+                    const std::optional<TextureCacheFormat> format =
+                        source_.IsOpen()
+                            ? std::optional<TextureCacheFormat>{source_.Format()}
+                            : std::nullopt;
+                    statusLabel_->setText(
+                        GallerySortInProgressStatus(sortMode, format));
                     QApplication::processEvents();
 
                     ApplyGallerySort(
                         *proxyModel_,
                         sortMode);
                     UpdateGalleryEntryCount();
-                    statusLabel_->setText(GallerySortCompleteStatus(sortMode));
+                    statusLabel_->setText(
+                        GallerySortCompleteStatus(sortMode, format));
                     ClearGalleryPreviewQueue();
                     UpdateGalleryActivity();
                     ScheduleGalleryPreviewSearch();
@@ -938,6 +945,7 @@ namespace
         void HandleOpenCacheFailure(TextureCacheOpenError result)
         {
             tableModel_.SetSource(nullptr);
+            ConfigureSourcePresentation();
             proxyModel_->SetRecentCacheIndices({});
             UpdateRecentChangesFilterLabel({});
             previewStateFile_.clear();
@@ -1091,7 +1099,40 @@ namespace
         void PopulateTable()
         {
             tableModel_.SetSource(&source_);
+            ConfigureSourcePresentation();
+            {
+                const QSignalBlocker blocker(gallerySortCombo_);
+                const int newestIndex = gallerySortCombo_->findData(
+                    static_cast<int>(GallerySortMode::NewestFirst));
+                if (newestIndex >= 0)
+                {
+                    gallerySortCombo_->setCurrentIndex(newestIndex);
+                }
+            }
             table_->sortByColumn(4, Qt::DescendingOrder);
+        }
+
+        void ConfigureSourcePresentation()
+        {
+            const bool aurora =
+                source_.IsOpen() &&
+                source_.Format() == TextureCacheFormat::Aurora;
+
+            table_->setColumnHidden(2, aurora);
+            table_->setColumnHidden(3, aurora);
+            copyUuidButton_->setVisible(!aurora);
+
+            ConfigureGalleryPreviewFilterControl(
+                *galleryFilterCombo_,
+                !aurora);
+            proxyModel_->SetPreviewFilter(
+                CurrentGalleryPreviewFilter(*galleryFilterCombo_));
+
+            ConfigureGallerySortControl(
+                *gallerySortCombo_,
+                source_.IsOpen()
+                    ? std::optional<TextureCacheFormat>{source_.Format()}
+                    : std::nullopt);
         }
 
         const TextureCatalogEntry* SelectedEntry() const

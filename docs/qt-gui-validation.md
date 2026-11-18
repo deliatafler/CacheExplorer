@@ -86,6 +86,34 @@ export checks below.
 20. Resize the window, drag the browser/preview divider, close normally, and
     relaunch. Confirm the window and divider return to their previous geometry.
 
+## Experimental Aurora smoke test
+
+Run this section on each platform where Aurora Viewer is installed. Keep Aurora
+Viewer open during at least one refresh pass.
+
+1. On a fresh CacheExplorer settings profile, confirm the home button discovers
+   Aurora's current custom cache from `cache_location.txt`, or its platform
+   default cache when no custom location is configured.
+2. Open the cache and confirm the status identifies Aurora texture records.
+   On macOS, approve the normal read-only Keychain prompt if one appears. On
+   Linux, confirm the desktop Secret Service is available or Aurora's
+   configuration `cache.key` fallback exists.
+3. Confirm Gallery offers `Everything` and `Images only`, but not the
+   legacy-only `Recent changes` filter. Confirm sort choices are Newest,
+   Oldest, Largest cache item, and Cache key.
+4. Switch to Table and confirm the first column is `Cache key`, the size column
+   is `Data bytes`, and legacy Body/Cache index columns are absent.
+5. Scroll and resize through several Gallery viewports. Confirm JPEG2000 and
+   BC7 thumbnails load, and selecting either kind populates the large preview.
+   A BC7-only selection should say `Cache data: BC7 only`.
+6. Find a known in-world texture UUID and confirm the matching opaque cache-key
+   entry is selected. The cache key is not expected to reveal or copy the UUID.
+7. Export one JPEG2000 or BC7 entry and a multi-selection to PNG, then open the
+   files and confirm their dimensions and pixels are plausible.
+8. Click Refresh while Aurora Viewer is running and confirm the cache remains
+   readable and responsive. Click About and confirm `Cache format: Aurora
+   (experimental)` and a non-secret cache-key source are reported.
+
 ## Export smoke test
 
 1. Select a row that has a successful preview in `Table`.

@@ -20,6 +20,9 @@ std::filesystem::path PathFromQString(const QString& value);
 std::filesystem::path ResolveTextureCacheDirectory(
     const std::filesystem::path& suppliedPath);
 
+std::filesystem::path AuroraCachePathFromLocationMarker(
+    const std::filesystem::path& markerPath);
+
 bool IsSameCachePath(
     const std::filesystem::path& left,
     const std::filesystem::path& right);

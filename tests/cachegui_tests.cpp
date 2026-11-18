@@ -4,6 +4,7 @@
 #include "GalleryPreviewMetrics.h"
 #include "GalleryPreviewQueue.h"
 #include "PreviewCache.h"
+#include "QtGallerySort.h"
 #include "QtGalleryStatus.h"
 #include "QtGalleryDiagnostics.h"
 #include "QtHelpers.h"
@@ -65,7 +66,7 @@ namespace
 
         TextureCacheFormat Format() const override
         {
-            return TextureCacheFormat::LegacyViewer;
+            return format;
         }
 
         const std::filesystem::path& CacheDirectory() const override
@@ -106,6 +107,7 @@ namespace
         }
 
         bool open_ = true;
+        TextureCacheFormat format = TextureCacheFormat::LegacyViewer;
         std::filesystem::path cacheDirectory_;
         std::vector<TextureCatalogEntry> entries;
     };
@@ -210,6 +212,83 @@ namespace
         Expect(
             model.RowForEntry(anonymousEntry) == 1,
             "table model finds entries by stable source key");
+
+        source.format = TextureCacheFormat::Aurora;
+        model.SetSource(&source);
+        Expect(
+            model.headerData(0, Qt::Horizontal, Qt::DisplayRole).toString() ==
+                QStringLiteral("Cache key"),
+            "Aurora table labels anonymous identifiers as cache keys");
+        Expect(
+            model.headerData(1, Qt::Horizontal, Qt::DisplayRole).toString() ==
+                QStringLiteral("Data bytes"),
+            "Aurora table labels its primary size column neutrally");
+        Expect(
+            model.index(1, 1).data(Qt::DisplayRole).toULongLong() == 4096,
+            "Aurora table displays cached data bytes");
+    }
+
+    void TestGallerySortControlUsesSourceVocabulary()
+    {
+        Expect(
+            GallerySortControlLabel(
+                GallerySortMode::LargestBody,
+                TextureCacheFormat::LegacyViewer) ==
+                    QStringLiteral("Largest body") &&
+                GallerySortControlLabel(
+                    GallerySortMode::CacheIndex,
+                    TextureCacheFormat::LegacyViewer) ==
+                    QStringLiteral("Cache index") &&
+                GallerySortControlLabel(
+                    GallerySortMode::Uuid,
+                    TextureCacheFormat::LegacyViewer) ==
+                    QStringLiteral("UUID"),
+            "legacy Gallery sort retains cache-format-specific options");
+
+        Expect(
+            GallerySortControlLabel(
+                GallerySortMode::LargestImage,
+                TextureCacheFormat::Aurora) ==
+                    QStringLiteral("Largest cache item") &&
+                GallerySortControlLabel(
+                    GallerySortMode::Uuid,
+                    TextureCacheFormat::Aurora) ==
+                    QStringLiteral("Cache key"),
+            "Aurora Gallery sort exposes only meaningful options");
+        Expect(
+            !IsGallerySortModeAvailable(
+                GallerySortMode::LargestBody,
+                TextureCacheFormat::Aurora) &&
+                !IsGallerySortModeAvailable(
+                    GallerySortMode::CacheIndex,
+                    TextureCacheFormat::Aurora),
+            "Aurora Gallery sort omits legacy-only metadata");
+        Expect(
+            GallerySortCompleteStatus(
+                GallerySortMode::Uuid,
+                TextureCacheFormat::Aurora) ==
+                QStringLiteral("Gallery sorted by cache key."),
+            "Aurora Gallery sort status names the opaque cache key");
+    }
+
+    void TestGalleryFiltersRespectSourceCapabilities()
+    {
+        Expect(
+            IsGalleryPreviewFilterAvailable(
+                GalleryPreviewFilter::Everything,
+                false) &&
+                IsGalleryPreviewFilterAvailable(
+                    GalleryPreviewFilter::ImagesOnly,
+                    false),
+            "Aurora retains the source-neutral Gallery filters");
+        Expect(
+            !IsGalleryPreviewFilterAvailable(
+                GalleryPreviewFilter::RecentChanges,
+                false) &&
+                IsGalleryPreviewFilterAvailable(
+                    GalleryPreviewFilter::RecentChanges,
+                    true),
+            "Recent changes is offered only for sources that support it");
     }
 
     void TestGalleryPreviewMetrics()
@@ -517,10 +596,10 @@ namespace
             "cache folder picker preserves a current path");
 
         const QStandardPaths::StandardLocation startLocation =
-#ifdef __APPLE__
-            QStandardPaths::GenericCacheLocation;
-#else
+#ifdef _WIN32
             QStandardPaths::GenericDataLocation;
+#else
+            QStandardPaths::GenericCacheLocation;
 #endif
         const QString platformStartPath =
             QStandardPaths::writableLocation(
@@ -571,6 +650,57 @@ namespace
             ResolveTextureCacheDirectory(selectedParent) ==
                 std::filesystem::weakly_canonical(cacheRoot, error),
             "parent containing AuroraViewerCache resolves to the cache root");
+    }
+
+    void TestAuroraCacheLocationMarker()
+    {
+        QTemporaryDir directory;
+        Expect(
+            directory.isValid(),
+            "temporary Aurora marker directory is available");
+        if (!directory.isValid())
+        {
+            return;
+        }
+
+        const std::filesystem::path root =
+            PathFromQString(directory.path());
+        const std::filesystem::path cacheRoot =
+            root / "chosen" / "AuroraViewerCache";
+        std::error_code error;
+        std::filesystem::create_directories(
+            cacheRoot / "store" / "tex",
+            error);
+        Expect(!error, "synthetic marked Aurora cache is created");
+
+        const std::filesystem::path marker = root / "cache_location.txt";
+        QFile markerFile(PathToQString(marker));
+        Expect(
+            markerFile.open(QIODevice::WriteOnly),
+            "synthetic Aurora cache marker is writable");
+        markerFile.write(
+            QByteArray("  ") +
+            PathToQString(cacheRoot).toUtf8() +
+            QByteArray("\n"));
+        markerFile.close();
+
+        Expect(
+            AuroraCachePathFromLocationMarker(marker) ==
+                std::filesystem::weakly_canonical(cacheRoot, error),
+            "Aurora cache marker resolves the current custom cache root");
+
+        QFile unrelatedMarker(PathToQString(root / "unrelated.txt"));
+        Expect(
+            unrelatedMarker.open(QIODevice::WriteOnly),
+            "unrelated marker is writable");
+        unrelatedMarker.write(PathToQString(root).toUtf8());
+        unrelatedMarker.close();
+        Expect(
+            AuroraCachePathFromLocationMarker(root / "unrelated.txt").empty(),
+            "Aurora cache marker ignores unrecognized directories");
+        Expect(
+            AuroraCachePathFromLocationMarker(root / "missing.txt").empty(),
+            "missing Aurora cache marker is ignored");
     }
 
     void TestWindowStatePersistence()
@@ -724,6 +854,8 @@ int main(int argc, char* argv[])
 
     TestGalleryPreviewQueue();
     TestCacheEntryTableModelUsesNeutralCatalog();
+    TestGallerySortControlUsesSourceVocabulary();
+    TestGalleryFiltersRespectSourceCapabilities();
     TestGalleryPreviewMetrics();
     TestTryNextPreviewState();
     TestGalleryStatusText();
@@ -732,6 +864,7 @@ int main(int argc, char* argv[])
     TestRecentCachePathMigration();
     TestCacheFolderDialogStartPath();
     TestAuroraCachePathResolution();
+    TestAuroraCacheLocationMarker();
     TestWindowStatePersistence();
     TestPngExportDirectoryPersistence();
     TestTextureDetailsText();

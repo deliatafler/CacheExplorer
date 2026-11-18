@@ -42,10 +42,12 @@ f/
 Click `Choose...` to select either folder; the app opens the selected
 cache immediately. On first use, when no remembered or automatically discovered
 cache path is available, the folder chooser starts in the platform's normal
-per-user cache root: local application data on Windows and `~/Library/Caches`
-on macOS. The home button beside the path box opens the first existing default
+per-user cache root: local application data on Windows and the user cache
+directory on macOS or Linux. The home button beside the path box opens the first existing default
 cache in this order: official Second Life, official Firestorm, then a self-built
-Firestorm cache. It is hidden when none of those caches exist.
+Firestorm cache, followed by Aurora's current or default cache. Aurora's
+`cache_location.txt` marker is honored when the viewer uses a custom cache
+location. The button is hidden when none of those caches exist.
 CacheExplorer remembers the last successfully opened cache path while it still
 exists, and you can still edit the path box and click `Open` for unusual
 installations. Once the path matches the currently open cache, `Open` changes
@@ -78,6 +80,15 @@ The key stays in memory and is never displayed or copied. On Linux, a desktop
 Secret Service such as GNOME Keyring must be available unless Aurora itself is
 using that fallback file.
 
+The default Aurora cache roots are:
+
+* `%LOCALAPPDATA%\Aurora\AuroraViewer\cache` on Windows
+* `~/Library/Caches/org.Aurora.AuroraViewer` on macOS
+* `$XDG_CACHE_HOME/auroraviewer`, normally `~/.cache/auroraviewer`, on Linux
+
+If Aurora uses a custom location, CacheExplorer reads Aurora's current-cache
+marker and resolves the nested `AuroraViewerCache` directory automatically.
+
 ## Browse textures
 
 CacheExplorer opens in `Gallery` for normal browsing. Gallery thumbnails load lazily as you scroll.
@@ -98,10 +109,17 @@ of the cache is reached. This work remains demand-driven rather than scanning
 the entire cache up front. `Recent changes` is populated only after refreshing
 the currently open cache and includes entries whose cache metadata was added or
 updated since the previous read. Table mode continues to show every entry.
+`Recent changes` is currently available for legacy Second Life/Firestorm
+caches; Aurora's opaque keyed catalog does not expose the same cache-index
+change model, so that option is omitted for Aurora.
 
 Use `Table` for debugging and inspection. The table shows UUID, image size, body
 size, raw cache index, timestamp, and preview status. Table sorting is useful
 when investigating cache layout or looking for large entries.
+For Aurora caches, the table instead labels the opaque identifier as `Cache
+key`, shows its cached data size, and omits the legacy-only body and cache-index
+columns. Gallery sorting likewise offers only Newest, Oldest, Largest cache
+item, and Cache key for Aurora.
 
 Both views support Ctrl-click and Shift-click multi-selection. Selected entries
 remain selected when switching between Gallery and Table; the current entry is
@@ -136,13 +154,15 @@ In `Gallery`, select a thumbnail tile to show its cached preview in the large
 preview panel. `Try Next Preview` is hidden because Gallery loads thumbnails
 itself.
 
-Below the large preview, CacheExplorer shows the full selectable UUID, decoded
+Below the large preview, CacheExplorer shows the full selectable identifier, decoded
 dimensions when known, cached-size completeness, source-format information when
 available, and the cache timestamp. Experimental Aurora entries identify
 whether the cache contains complete or partial JPEG2000 data, BC7 data, or a
 combination; `BC7 only` is the direct way to identify a BC7-only texture. Use
 `Copy UUID` to place the selected texture UUID on the clipboard when one is
-available.
+available. Aurora's enumerated cache keys cannot be reversed into UUIDs, so
+that command is hidden for Aurora caches; known UUIDs remain searchable through
+`Find UUID`.
 
 If a preview is available, click `Export PNG` and choose an output file.
 Successful exports report the PNG path, decoded dimensions, and cached byte

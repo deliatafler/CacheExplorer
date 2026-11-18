@@ -52,6 +52,8 @@ if(CACHEEXPLORER_BUILD_QT_GUI)
         ${PROJECT_SOURCE_DIR}/cachegui/QtGalleryStatus.h
         ${PROJECT_SOURCE_DIR}/cachegui/QtGalleryDiagnostics.cpp
         ${PROJECT_SOURCE_DIR}/cachegui/QtGalleryDiagnostics.h
+        ${PROJECT_SOURCE_DIR}/cachegui/QtGallerySort.cpp
+        ${PROJECT_SOURCE_DIR}/cachegui/QtGallerySort.h
         ${PROJECT_SOURCE_DIR}/cachegui/QtHelpers.cpp
         ${PROJECT_SOURCE_DIR}/cachegui/QtHelpers.h
         ${PROJECT_SOURCE_DIR}/cachegui/QtTextureDetails.cpp

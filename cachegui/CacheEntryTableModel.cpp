@@ -118,6 +118,8 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
     if (role == Qt::DisplayRole)
     {
         const RowDisplayCache* display = DisplayCacheAt(index.row());
+        const bool aurora =
+            source_->Format() == TextureCacheFormat::Aurora;
 
         switch (index.column())
         {
@@ -125,6 +127,11 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
                 return display == nullptr ? QString{} : display->identifier;
 
             case 1:
+                if (aurora)
+                {
+                    return QVariant::fromValue(
+                        static_cast<qulonglong>(entry->cachedBytes));
+                }
                 return entry->expectedBytes.has_value()
                     ? QVariant::fromValue(
                         static_cast<qulonglong>(*entry->expectedBytes))
@@ -156,6 +163,8 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
     if (role == Qt::UserRole)
     {
         const RowDisplayCache* display = DisplayCacheAt(index.row());
+        const bool aurora =
+            source_->Format() == TextureCacheFormat::Aurora;
 
         switch (index.column())
         {
@@ -163,6 +172,11 @@ QVariant CacheEntryTableModel::data(const QModelIndex& index, int role) const
                 return display == nullptr ? QString{} : display->identifier;
 
             case 1:
+                if (aurora)
+                {
+                    return QVariant::fromValue(
+                        static_cast<qulonglong>(entry->cachedBytes));
+                }
                 return entry->expectedBytes.has_value()
                     ? QVariant::fromValue(
                         static_cast<qulonglong>(*entry->expectedBytes))
@@ -230,10 +244,16 @@ QVariant CacheEntryTableModel::headerData(
     switch (section)
     {
         case 0:
-            return QStringLiteral("UUID");
+            return source_ != nullptr &&
+                    source_->Format() == TextureCacheFormat::Aurora
+                ? QStringLiteral("Cache key")
+                : QStringLiteral("UUID");
 
         case 1:
-            return QStringLiteral("Image");
+            return source_ != nullptr &&
+                    source_->Format() == TextureCacheFormat::Aurora
+                ? QStringLiteral("Data bytes")
+                : QStringLiteral("Image");
 
         case 2:
             return QStringLiteral("Body");

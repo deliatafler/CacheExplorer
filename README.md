@@ -22,6 +22,11 @@ Many real cache entries are expected to be incomplete or undecodable because
 viewers use progressive JPEG2000 texture caching. CacheExplorer treats those
 entries as ordinary no-preview cases, not application failures.
 
+Experimental Aurora Viewer cache support is being developed on the
+`codex/aurora-cache-experiment` branch. It is not part of the 0.1.0 support
+promise yet; see `docs/aurora-cache-experiment.md` for its current validation
+status and security boundary.
+
 Feedback and bug reports are collected through
 [GitHub Issues](https://github.com/deliatafler/CacheExplorer/issues). For GUI
 problems, include the diagnostics shown by `About` when possible.

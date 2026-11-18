@@ -123,6 +123,8 @@ changelog.
   finest-mip export, source metadata, and pinned third-party licensing.
 - [x] Add a platform-neutral Aurora cache-key provider, macOS Keychain and
   Linux Secret Service backends, and Aurora's read-only `cache.key` fallback.
+- [x] Add cross-platform Aurora default/custom-cache discovery, format-aware
+  Table/Gallery labels and controls, and an Aurora GUI validation matrix.
 - [ ] Validate Aurora cache open, Gallery browsing, UUID lookup, and PNG export
   against physical macOS and Ubuntu installations before considering Aurora
   support non-experimental.

@@ -15,7 +15,12 @@ enum class GalleryPreviewFilter
     RecentChanges
 };
 
-void ConfigureGalleryPreviewFilterControl(QComboBox& comboBox);
+void ConfigureGalleryPreviewFilterControl(
+    QComboBox& comboBox,
+    bool includeRecentChanges = true);
+bool IsGalleryPreviewFilterAvailable(
+    GalleryPreviewFilter filter,
+    bool includeRecentChanges);
 GalleryPreviewFilter CurrentGalleryPreviewFilter(const QComboBox& comboBox);
 
 class GalleryFilterProxyModel final : public QSortFilterProxyModel

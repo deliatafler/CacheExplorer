@@ -205,6 +205,21 @@ diagnostics, release documentation, and the full GUI validation matrix. Aurora
 support remains experimental until its cache-format compatibility and upgrade
 behavior have been tested across multiple Aurora releases.
 
+Status: initial integration complete on the experiment branch. CacheExplorer
+discovers Aurora's current custom cache through its read-only
+`cache_location.txt` marker and otherwise checks the platform default cache:
+`%LOCALAPPDATA%\Aurora\AuroraViewer\cache`,
+`~/Library/Caches/org.Aurora.AuroraViewer`, or
+`$XDG_CACHE_HOME/auroraviewer`. Existing Second Life/Firestorm default priority
+is unchanged.
+
+Aurora Table and Gallery surfaces now call anonymous identifiers `Cache key`,
+hide legacy-only Body/Cache index columns and Recent changes filtering, and
+offer only meaningful Aurora sort choices. The validation checklist has a
+separate physical-platform Aurora pass covering credential access, JPEG2000 and
+BC7 browsing, UUID lookup, export, live refresh, and non-secret diagnostics.
+Physical macOS and Ubuntu real-cache validation remains the release gate.
+
 ## Questions for Aurora maintainers
 
 Development should not block on answers, but cooperation could improve the

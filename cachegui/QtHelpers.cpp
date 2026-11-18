@@ -5,6 +5,7 @@
 #include <system_error>
 
 #include <QByteArray>
+#include <QFile>
 #include <QSettings>
 #include <QStandardPaths>
 
@@ -78,6 +79,62 @@ namespace
 
         return false;
     }
+
+    std::filesystem::path AuroraDefaultCachePath()
+    {
+        const QString cacheRoot = QStandardPaths::writableLocation(
+#ifdef _WIN32
+            QStandardPaths::GenericDataLocation);
+#else
+            QStandardPaths::GenericCacheLocation);
+#endif
+        if (cacheRoot.isEmpty())
+        {
+            return {};
+        }
+
+        const std::filesystem::path root = PathFromQString(cacheRoot);
+
+#ifdef _WIN32
+        return root / "Aurora" / "AuroraViewer" / "cache";
+#elif defined(__APPLE__)
+        return root / "org.Aurora.AuroraViewer";
+#else
+        return root / "auroraviewer";
+#endif
+    }
+
+    std::filesystem::path AuroraCacheLocationMarkerPath()
+    {
+        QString configRoot;
+
+#ifdef _WIN32
+        configRoot = qEnvironmentVariable("APPDATA");
+#elif defined(__APPLE__)
+        configRoot = QStandardPaths::writableLocation(
+            QStandardPaths::GenericDataLocation);
+#else
+        configRoot = QStandardPaths::writableLocation(
+            QStandardPaths::GenericConfigLocation);
+#endif
+
+        if (configRoot.isEmpty())
+        {
+            return {};
+        }
+
+        const std::filesystem::path root = PathFromQString(configRoot);
+
+#ifdef _WIN32
+        return root / "Aurora" / "AuroraViewer" / "config" /
+            "cache_location.txt";
+#elif defined(__APPLE__)
+        return root / "org.Aurora.AuroraViewer" /
+            "cache_location.txt";
+#else
+        return root / "auroraviewer" / "cache_location.txt";
+#endif
+    }
 }
 
 QString ToQString(const std::string& value)
@@ -129,6 +186,43 @@ std::filesystem::path ResolveTextureCacheDirectory(
     return suppliedPath;
 }
 
+std::filesystem::path AuroraCachePathFromLocationMarker(
+    const std::filesystem::path& markerPath)
+{
+    if (markerPath.empty())
+    {
+        return {};
+    }
+
+    QFile markerFile(PathToQString(markerPath));
+    if (!markerFile.open(QIODevice::ReadOnly))
+    {
+        return {};
+    }
+
+    constexpr qint64 MaximumMarkerBytes = 32 * 1024;
+    const QByteArray markerBytes = markerFile.read(MaximumMarkerBytes + 1);
+    if (markerBytes.size() > MaximumMarkerBytes)
+    {
+        return {};
+    }
+
+    const QString markedPath = QString::fromUtf8(markerBytes).trimmed();
+    if (markedPath.isEmpty())
+    {
+        return {};
+    }
+
+    AuroraTextureStoreProbe probe;
+    if (ProbeAuroraTextureStore(PathFromQString(markedPath), probe) !=
+        TextureCacheOpenError::None)
+    {
+        return {};
+    }
+
+    return probe.cacheRoot;
+}
+
 bool IsSameCachePath(
     const std::filesystem::path& left,
     const std::filesystem::path& right)
@@ -159,8 +253,7 @@ QString DefaultCachePath()
         const std::filesystem::path candidatePaths[] = {
             localAppDataPath / "SecondLife" / "texturecache",
             localAppDataPath / "Firestorm_x64" / "texturecache",
-            localAppDataPath / "FirestormOS_x64" / "texturecache",
-            localAppDataPath / "Aurora" / "AuroraViewer" / "cache"};
+            localAppDataPath / "FirestormOS_x64" / "texturecache"};
 
         for (const std::filesystem::path& candidatePath : candidatePaths)
         {
@@ -194,6 +287,22 @@ QString DefaultCachePath()
         }
     }
 #endif
+
+    const std::filesystem::path markedAuroraCache =
+        AuroraCachePathFromLocationMarker(
+            AuroraCacheLocationMarkerPath());
+    if (!markedAuroraCache.empty())
+    {
+        return PathToQString(markedAuroraCache);
+    }
+
+    const std::filesystem::path defaultAuroraCache =
+        AuroraDefaultCachePath();
+    if (!defaultAuroraCache.empty() &&
+        RecognizedCacheDirectoryExists(defaultAuroraCache))
+    {
+        return PathToQString(defaultAuroraCache);
+    }
 
     return {};
 }
@@ -229,10 +338,10 @@ QString CacheFolderDialogStartPath(const QString& currentPath)
     }
 
     const QStandardPaths::StandardLocation startLocation =
-#ifdef __APPLE__
-        QStandardPaths::GenericCacheLocation;
-#else
+#ifdef _WIN32
         QStandardPaths::GenericDataLocation;
+#else
+        QStandardPaths::GenericCacheLocation;
 #endif
     const QString platformStartPath =
         QStandardPaths::writableLocation(startLocation);
