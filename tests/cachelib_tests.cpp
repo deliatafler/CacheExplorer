@@ -1,6 +1,7 @@
 #include "AuroraCacheFormat.h"
 #include "AuroraCacheKey.h"
 #include "AuroraCacheProbe.h"
+#include "AuroraCredential.h"
 #include "AuroraSealedFile.h"
 #include "AuroraTextureCacheSource.h"
 #include "AuroraTextureKey.h"
@@ -22,7 +23,9 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -33,6 +36,41 @@ namespace
     namespace fs = std::filesystem;
 
     int gFailures = 0;
+
+    class TestAuroraCacheKeyProvider final
+        : public AuroraCacheKeyProvider
+    {
+    public:
+        using Loader = std::function<
+            AuroraCredentialError(AuroraCacheKey&)>;
+
+        explicit TestAuroraCacheKeyProvider(Loader loader)
+            : loader_(std::move(loader))
+        {
+        }
+
+        AuroraCredentialResult Load(
+            AuroraCacheKey& output) const override
+        {
+            const AuroraCredentialError error = loader_(output);
+            return {
+                error,
+                error == AuroraCredentialError::None
+                    ? AuroraCredentialSource::NativeStore
+                    : AuroraCredentialSource::None};
+        }
+
+    private:
+        Loader loader_;
+    };
+
+    std::shared_ptr<const AuroraCacheKeyProvider>
+    MakeAuroraCacheKeyProviderForTest(
+        TestAuroraCacheKeyProvider::Loader loader)
+    {
+        return std::make_shared<TestAuroraCacheKeyProvider>(
+            std::move(loader));
+    }
 
     void Expect(bool condition, const std::string& message)
     {
@@ -1310,6 +1348,53 @@ namespace
         Expect(!removeError, "remove Aurora crypto test directory");
     }
 
+    void TestAuroraCredentialKeyFile()
+    {
+        const fs::path directory = MakeTempDirectory();
+        const fs::path keyFile = directory / "cache.key";
+        const auto expected = KnownAuroraKeyBytes();
+        AuroraCacheKey key = AuroraCacheKey::FromBytes(expected);
+
+        const AuroraCredentialError missingError =
+            LoadAuroraCacheKeyFile(keyFile, key);
+        Expect(
+            missingError == AuroraCredentialError::NotFound,
+            "missing Aurora key file is reported as not found (got " +
+                std::to_string(static_cast<int>(missingError)) + ")");
+        Expect(
+            !key.IsValid(),
+            "missing Aurora key file clears the output key");
+
+        WriteBytes(
+            keyFile,
+            std::vector<std::uint8_t>(
+                expected.begin(),
+                expected.end()));
+        Expect(
+            LoadAuroraCacheKeyFile(keyFile, key) ==
+                    AuroraCredentialError::None &&
+                key.IsValid() &&
+                key.Bytes() == expected,
+            "read an exact 32-byte Aurora configuration key file");
+
+        WriteBytes(keyFile, std::vector<std::uint8_t>(31, 0x5a));
+        Expect(
+            LoadAuroraCacheKeyFile(keyFile, key) ==
+                    AuroraCredentialError::InvalidKey &&
+                !key.IsValid(),
+            "reject a malformed Aurora configuration key file");
+
+        const fs::path defaultPath = DefaultAuroraCacheKeyFile();
+        Expect(
+            defaultPath.empty() ||
+                defaultPath.filename() == "cache.key",
+            "default Aurora fallback path names cache.key");
+
+        std::error_code removeError;
+        fs::remove_all(directory, removeError);
+        Expect(!removeError, "remove Aurora credential test directory");
+    }
+
     void TestAuroraTextureCacheSourceProvidesNeutralPayloads()
     {
         const fs::path directory = MakeTempDirectory();
@@ -1343,14 +1428,15 @@ namespace
             textureStore / (combinedKey + ".bc7"),
             sealed);
 
-        const auto keyLoader =
+        const auto keyProvider =
+            MakeAuroraCacheKeyProviderForTest(
             [keyBytes = KnownAuroraKeyBytes()](AuroraCacheKey& output)
             {
                 output = AuroraCacheKey::FromBytes(keyBytes);
                 return AuroraCredentialError::None;
-            };
+            });
 
-        AuroraTextureCacheSource source(keyLoader);
+        AuroraTextureCacheSource source(keyProvider);
         Expect(
             source.Open(cacheRoot) == TextureCacheOpenError::None,
             "open a synthetic Aurora texture source");
@@ -1358,6 +1444,10 @@ namespace
         Expect(
             source.Format() == TextureCacheFormat::Aurora,
             "Aurora texture source reports its format");
+        Expect(
+            source.CredentialSource() ==
+                AuroraCredentialSource::NativeStore,
+            "Aurora texture source reports its credential provider");
         Expect(
             source.Entries().size() == 3,
             "Aurora texture source exposes keyed catalog entries");
@@ -1437,7 +1527,7 @@ namespace
                 mixedEntry->hasBc7,
             "Aurora catalog identifies mixed BC7 and partial JPEG2000 data");
 
-        ViewerTextureCacheSource detectedSource(keyLoader);
+        ViewerTextureCacheSource detectedSource(keyProvider);
         Expect(
             detectedSource.Open(cacheRoot) ==
                     TextureCacheOpenError::None &&
@@ -1460,11 +1550,12 @@ namespace
             "detached Aurora request survives source close");
 
         AuroraTextureCacheSource noCredential(
+            MakeAuroraCacheKeyProviderForTest(
             [](AuroraCacheKey& output)
             {
                 output = {};
                 return AuroraCredentialError::NotFound;
-            });
+            }));
         Expect(
             noCredential.Open(cacheRoot) ==
                 TextureCacheOpenError::CredentialsUnavailable &&
@@ -1475,11 +1566,12 @@ namespace
         std::array<std::uint8_t, AuroraCacheKey::Size> wrongBytes{};
         wrongBytes.fill(0x5a);
         AuroraTextureCacheSource wrongKey(
+            MakeAuroraCacheKeyProviderForTest(
             [wrongBytes](AuroraCacheKey& output)
             {
                 output = AuroraCacheKey::FromBytes(wrongBytes);
                 return AuroraCredentialError::None;
-            });
+            }));
         Expect(
             wrongKey.Open(cacheRoot) == TextureCacheOpenError::None,
             "Aurora source can enumerate before authenticating payloads");
@@ -1809,6 +1901,7 @@ int main()
     TestAuroraSealedEnvelopeInspection();
     TestAuroraKeyedTextureNames();
     TestAuroraKnownAnswerCrypto();
+    TestAuroraCredentialKeyFile();
     TestAuroraTextureCacheSourceProvidesNeutralPayloads();
     TestAuroraTranscodedTextureParsing();
     TestAuroraBc7Decoding();

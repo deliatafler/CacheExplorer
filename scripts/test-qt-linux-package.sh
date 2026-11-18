@@ -60,6 +60,10 @@ if ! grep -q "qt6-qpa-plugins" <<<"$package_dependencies"; then
     echo "The package does not declare its Qt platform-plugin dependency." >&2
     exit 1
 fi
+if ! grep -Eq "libsecret-1-0(t64)?" <<<"$package_dependencies"; then
+    echo "The package does not declare its Secret Service runtime dependency." >&2
+    exit 1
+fi
 
 linkage="$(ldd "$work_dir/root/usr/bin/CacheExplorer")"
 echo "$linkage"

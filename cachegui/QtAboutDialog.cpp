@@ -32,12 +32,18 @@ namespace
                 "Cache: %1\n"
                 "Cache format: Aurora (experimental)\n"
                 "Texture records: %2\n"
-                "Files changed during scan: %3")
+                "Files changed during scan: %3\n"
+                "Cache key source: %4")
                 .arg(PathToQString(source.CacheDirectory()))
                 .arg(source.Entries().size())
                 .arg(auroraSource != nullptr
                     ? auroraSource->CacheMissCount()
-                    : 0);
+                    : 0)
+                .arg(QString::fromLatin1(
+                    auroraSource != nullptr
+                        ? AuroraCredentialSourceName(
+                            auroraSource->CredentialSource())
+                        : "Unavailable"));
         }
 
         const TextureCacheDatabase& database =

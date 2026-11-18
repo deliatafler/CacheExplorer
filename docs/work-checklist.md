@@ -121,5 +121,8 @@ changelog.
   Aurora Viewer is running.
 - [x] Add Aurora BC7 preview and export decoding with bounded preview mips,
   finest-mip export, source metadata, and pinned third-party licensing.
-- [ ] Add macOS Keychain and Linux Secret Service providers and validate
-  platform packaging before considering Aurora support non-experimental.
+- [x] Add a platform-neutral Aurora cache-key provider, macOS Keychain and
+  Linux Secret Service backends, and Aurora's read-only `cache.key` fallback.
+- [ ] Validate Aurora cache open, Gallery browsing, UUID lookup, and PNG export
+  against physical macOS and Ubuntu installations before considering Aurora
+  support non-experimental.

@@ -13,7 +13,8 @@ class ViewerTextureCacheSource final : public TextureCacheSource
 {
 public:
     ViewerTextureCacheSource();
-    explicit ViewerTextureCacheSource(AuroraCacheKeyLoader keyLoader);
+    explicit ViewerTextureCacheSource(
+        std::shared_ptr<const AuroraCacheKeyProvider> keyProvider);
 
     ViewerTextureCacheSource(const ViewerTextureCacheSource&) = delete;
     ViewerTextureCacheSource& operator=(

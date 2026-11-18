@@ -26,6 +26,16 @@ add_library(cachelib
     PngWriter.cpp
 )
 
+if(WIN32)
+    target_sources(cachelib PRIVATE AuroraCredentialWindows.cpp)
+elseif(APPLE)
+    target_sources(cachelib PRIVATE AuroraCredentialMac.cpp)
+elseif(UNIX)
+    target_sources(cachelib PRIVATE AuroraCredentialLinux.cpp)
+else()
+    target_sources(cachelib PRIVATE AuroraCredentialUnsupported.cpp)
+endif()
+
 target_include_directories(cachelib
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -50,6 +60,18 @@ if(WIN32)
         PRIVATE
             Advapi32
     )
+endif()
+
+if(APPLE)
+    target_link_libraries(cachelib
+        PRIVATE
+            "-framework CoreFoundation"
+            "-framework Security"
+    )
+elseif(UNIX)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LibSecret REQUIRED IMPORTED_TARGET libsecret-1)
+    target_link_libraries(cachelib PRIVATE PkgConfig::LibSecret)
 endif()
 
 if(MSVC)

@@ -173,17 +173,17 @@ namespace
 }
 
 AuroraTextureCacheSource::AuroraTextureCacheSource()
-    : AuroraTextureCacheSource(LoadAuroraCacheKey)
+    : AuroraTextureCacheSource(CreateAuroraCacheKeyProvider())
 {
 }
 
 AuroraTextureCacheSource::AuroraTextureCacheSource(
-    AuroraCacheKeyLoader keyLoader)
-    : keyLoader_(std::move(keyLoader))
+    std::shared_ptr<const AuroraCacheKeyProvider> keyProvider)
+    : keyProvider_(std::move(keyProvider))
 {
-    if (!keyLoader_)
+    if (!keyProvider_)
     {
-        keyLoader_ = LoadAuroraCacheKey;
+        keyProvider_ = CreateAuroraCacheKeyProvider();
     }
 }
 
@@ -202,7 +202,10 @@ TextureCacheOpenError AuroraTextureCacheSource::Open(
     }
 
     AuroraCacheKey loadedKey;
-    credentialError_ = keyLoader_(loadedKey);
+    const AuroraCredentialResult credential =
+        keyProvider_->Load(loadedKey);
+    credentialError_ = credential.error;
+    credentialSource_ = credential.source;
 
     if (credentialError_ != AuroraCredentialError::None ||
         !loadedKey.IsValid())
@@ -272,6 +275,7 @@ void AuroraTextureCacheSource::Close()
     entryIndices_.clear();
     recordIndices_.clear();
     credentialError_ = AuroraCredentialError::None;
+    credentialSource_ = AuroraCredentialSource::None;
     cacheMissCount_ = 0;
 }
 

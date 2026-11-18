@@ -181,6 +181,23 @@ Add macOS Keychain and Linux Secret Service access with the same in-memory-only
 key handling. Package dependencies and first-access prompts must be documented
 and tested on physical or desktop-VM systems.
 
+Status: implementation complete on the experiment branch; physical-platform
+validation is pending. `AuroraCacheKeyProvider` separates cache reading from
+credential retrieval. The default provider reads Aurora's generic credential
+identified by service `Aurora Viewer cache` and account `disk cache key v1`
+through Windows Credential Manager, macOS Keychain, or freedesktop Secret
+Service on Linux.
+
+When the native store is unavailable or has no entry, the provider also reads
+Aurora's read-only 32-byte `cache.key` fallback from the same platform config
+directory selected by Aurora's `directories` 6.x `ProjectDirs` setup. It never
+creates, updates, or deletes credentials or fallback files. macOS uses Apple's
+Security framework. Linux dynamically links the distribution's `libsecret`
+runtime; Debian packaging discovers that dependency through `dpkg-shlibdeps`.
+The About diagnostics report whether an opened Aurora cache key came from the
+system credential store or Aurora's configuration key file without exposing
+the key itself.
+
 ### 6. Product integration
 
 Polish cache discovery, format-specific metadata, anonymous identifiers,

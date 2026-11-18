@@ -58,6 +58,8 @@ Dependencies:
 * libpng
 * OpenSSL (Aurora sealed-cache cryptography)
 * bcdec 0.985 (vendored MIT-licensed Aurora BC7 block decoder)
+* macOS Security framework (Aurora Keychain read access)
+* Linux libsecret (Aurora Secret Service read access)
 
 The root `VERSION` file is the single source for the user-facing application
 version and package filenames. CMake derives its numeric project version from
@@ -274,12 +276,22 @@ not open every candidate; envelope validation and authentication occur lazily
 when a payload is requested.
 
 `AuroraTextureCacheSource` reads the 32-byte installation key from the Windows
-Credential Manager target `disk cache key v1.Aurora Viewer cache`, keeps it in
+Credential Manager, macOS Keychain, or Linux Secret Service, keeps it in
 memory only, derives keyed texture names with HKDF-SHA256/HMAC-SHA256, and
 opens `AUSL` files with AES-256-GCM through OpenSSL. Real-cache Gallery and
 large-preview validation has passed for Aurora JPEG2000 and BC7 data. It
 prefers complete JPEG2000, then BC7, then partial JPEG2000 when choosing a
 payload, while catalog metadata retains every observed variant.
+
+`AuroraCacheKeyProvider` is the platform-neutral credential boundary. Native
+backends use service `Aurora Viewer cache` and account `disk cache key v1`, the
+same identifiers as Aurora's keyring 4.x integration. If the native store is
+unavailable or missing the entry, the default provider reads Aurora's exact
+32-byte `cache.key` fallback from its platform configuration directory. All
+access is read-only. The provider never creates, replaces, or deletes keys.
+macOS may present the normal Keychain access prompt. Linux builds require
+`libsecret-1-dev`; packages dynamically depend on the distribution's libsecret
+runtime. Physical macOS and Ubuntu real-cache validation remains pending.
 
 ### TextureRebuilder
 

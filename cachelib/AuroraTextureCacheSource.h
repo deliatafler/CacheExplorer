@@ -1,25 +1,22 @@
 #pragma once
 
-#include "AuroraCacheKey.h"
+#include "AuroraCredential.h"
 #include "AuroraCacheProbe.h"
 #include "TextureCacheSource.h"
 
 #include <cstddef>
 #include <filesystem>
-#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-using AuroraCacheKeyLoader =
-    std::function<AuroraCredentialError(AuroraCacheKey&)>;
-
 class AuroraTextureCacheSource final : public TextureCacheSource
 {
 public:
     AuroraTextureCacheSource();
-    explicit AuroraTextureCacheSource(AuroraCacheKeyLoader keyLoader);
+    explicit AuroraTextureCacheSource(
+        std::shared_ptr<const AuroraCacheKeyProvider> keyProvider);
 
     TextureCacheOpenError Open(
         const std::filesystem::path& cacheDirectory) override;
@@ -61,6 +58,11 @@ public:
         return credentialError_;
     }
 
+    AuroraCredentialSource CredentialSource() const
+    {
+        return credentialSource_;
+    }
+
     std::size_t CacheMissCount() const
     {
         return cacheMissCount_;
@@ -70,7 +72,7 @@ private:
     const TextureCatalogEntry* FindBySourceKey(
         const std::string& sourceKey) const;
 
-    AuroraCacheKeyLoader keyLoader_;
+    std::shared_ptr<const AuroraCacheKeyProvider> keyProvider_;
     bool open_ = false;
     std::filesystem::path cacheDirectory_;
     std::shared_ptr<const AuroraCacheKey> key_;
@@ -79,5 +81,6 @@ private:
     std::unordered_map<std::string, std::size_t> entryIndices_;
     std::unordered_map<std::string, std::size_t> recordIndices_;
     AuroraCredentialError credentialError_ = AuroraCredentialError::None;
+    AuroraCredentialSource credentialSource_ = AuroraCredentialSource::None;
     std::size_t cacheMissCount_ = 0;
 };

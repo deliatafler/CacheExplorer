@@ -84,6 +84,16 @@ repositories. OpenJPEG and libpng remain statically linked from vcpkg. CPack
 derives the executable's normal shared-library dependencies and explicitly
 adds `qt6-qpa-plugins`, which provides the dynamically loaded Qt XCB platform
 plugin needed on a typical Ubuntu desktop.
+Experimental Aurora support reads the user's Secret Service through the
+distribution `libsecret` runtime. Install `libsecret-1-dev` when building; the
+generated Debian package declares the appropriate release-specific runtime
+package automatically.
+
+Install the native build prerequisites before configuring:
+
+```bash
+sudo apt install desktop-file-utils libsecret-1-dev ninja-build qt6-base-dev
+```
 
 Configure, build, test, and package on Ubuntu:
 
@@ -113,8 +123,8 @@ sudo apt install ./artifacts/CacheExplorer-0.1.0-Ubuntu-26.04-x86_64.deb
 The package installs the executable in `/usr/bin`, a desktop launcher in
 `/usr/share/applications`, the icon in `/usr/share/pixmaps`, and project/user
 documentation in `/usr/share/doc/cacheexplorer`. It relies on Ubuntu's normal
-package manager for Qt runtime libraries rather than copying a second Qt stack
-into the application package.
+package manager for Qt and `libsecret` runtime libraries rather than copying a
+second platform stack into the application package.
 
 ## Shared Qt package
 

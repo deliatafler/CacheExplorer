@@ -81,8 +81,8 @@ the same supported compiler family and the GUI's Qt Widgets API surface; CI does
 not require contributors to replace their local SDK.
 
 `.github/workflows/linux-ci.yml` provides early cross-platform coverage on an
-Ubuntu hosted runner. It installs the native Qt 6 Widgets development package,
-uses vcpkg only for OpenJPEG/libpng/OpenSSL, then builds the CLI and Qt GUI and runs
+Ubuntu hosted runner. It installs the native Qt 6 Widgets and `libsecret`
+development packages, uses vcpkg only for OpenJPEG/libpng/OpenSSL, then builds the CLI and Qt GUI and runs
 CTest on both Ubuntu 24.04 and 26.04. Each job creates a release-specific native
 x86-64 Debian package, validates its desktop launcher, metadata, files,
 checksum, and shared-library dependencies, installs it through `apt`, and

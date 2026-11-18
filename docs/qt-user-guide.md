@@ -13,6 +13,11 @@ confirm `Open`; macOS remembers the exception for later launches.
 
 Do not disable Gatekeeper system-wide.
 
+When opening an experimental Aurora cache for the first time, macOS may also
+ask whether CacheExplorer may access Aurora Viewer's Keychain item. Approving
+that prompt permits read-only access to the cache encryption key; CacheExplorer
+does not create, change, or delete Keychain items.
+
 ## Open a cache
 
 CacheExplorer reads compatible Second Life viewer texture caches directly. It is
@@ -56,6 +61,22 @@ that set. Opening a different cache establishes a new baseline.
 After you open more than one cache, the `Recent` menu beside the path field
 lists up to eight existing cache folders. Choose a path to reopen it immediately
 or use `Clear recent caches` to remove the remembered list.
+
+### Experimental Aurora caches
+
+CacheExplorer can also open Aurora Viewer's cache root, `store` directory, or
+direct `store/tex` directory. Aurora support remains experimental because its
+format is evolving. Aurora filenames are keyed identifiers and cannot be
+reversed into asset UUIDs, so enumerated entries may show an opaque identifier;
+`Find UUID` still works when you already know the original UUID.
+
+Aurora encrypts its cache. CacheExplorer reads the existing installation key
+from Windows Credential Manager, macOS Keychain, or Secret Service on Linux.
+If Aurora could not use the native service, CacheExplorer also recognizes
+Aurora's private `cache.key` fallback in its platform configuration directory.
+The key stays in memory and is never displayed or copied. On Linux, a desktop
+Secret Service such as GNOME Keyring must be available unless Aurora itself is
+using that fallback file.
 
 ## Browse textures
 

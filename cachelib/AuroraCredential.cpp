@@ -1,44 +1,60 @@
-#include "AuroraCacheKey.h"
+#include "AuroraCredential.h"
 
-#include <algorithm>
+#include "AuroraCredentialInternal.h"
+
 #include <array>
+#include <fstream>
+#include <memory>
+#include <system_error>
 
 #include <openssl/crypto.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#include <wincred.h>
-#endif
-
 namespace
 {
-#ifdef _WIN32
-    constexpr wchar_t WindowsCredentialTarget[] =
-        L"disk cache key v1.Aurora Viewer cache";
-
-    class CredentialHandle
+    class DefaultAuroraCacheKeyProvider final
+        : public AuroraCacheKeyProvider
     {
     public:
-        explicit CredentialHandle(PCREDENTIALW credential)
-            : credential_(credential)
+        AuroraCredentialResult Load(
+            AuroraCacheKey& output) const override
         {
-        }
+            output = {};
 
-        ~CredentialHandle()
-        {
-            if (credential_ != nullptr)
+            const AuroraCredentialError nativeError =
+                LoadAuroraNativeCredential(output);
+
+            if (nativeError == AuroraCredentialError::None)
             {
-                CredFree(credential_);
+                return {
+                    AuroraCredentialError::None,
+                    AuroraCredentialSource::NativeStore};
             }
+
+            if (nativeError == AuroraCredentialError::InvalidKey)
+            {
+                return {nativeError, AuroraCredentialSource::None};
+            }
+
+            const AuroraCredentialError fileError =
+                LoadAuroraCacheKeyFile(
+                    DefaultAuroraCacheKeyFile(),
+                    output);
+
+            if (fileError == AuroraCredentialError::None)
+            {
+                return {
+                    AuroraCredentialError::None,
+                    AuroraCredentialSource::ConfigFile};
+            }
+
+            if (fileError != AuroraCredentialError::NotFound)
+            {
+                return {fileError, AuroraCredentialSource::None};
+            }
+
+            return {nativeError, AuroraCredentialSource::None};
         }
-
-        CredentialHandle(const CredentialHandle&) = delete;
-        CredentialHandle& operator=(const CredentialHandle&) = delete;
-
-    private:
-        PCREDENTIALW credential_ = nullptr;
     };
-#endif
 }
 
 const char* AuroraCredentialErrorMessage(AuroraCredentialError error)
@@ -64,43 +80,91 @@ const char* AuroraCredentialErrorMessage(AuroraCredentialError error)
     return "Unknown Aurora credential error.";
 }
 
-AuroraCredentialError LoadAuroraCacheKey(
+const char* AuroraCredentialSourceName(
+    AuroraCredentialSource source)
+{
+    switch (source)
+    {
+        case AuroraCredentialSource::None:
+            return "Unavailable";
+
+        case AuroraCredentialSource::NativeStore:
+            return "System credential store";
+
+        case AuroraCredentialSource::ConfigFile:
+            return "Aurora configuration key file";
+    }
+
+    return "Unknown";
+}
+
+std::shared_ptr<const AuroraCacheKeyProvider>
+CreateAuroraCacheKeyProvider()
+{
+    return std::make_shared<DefaultAuroraCacheKeyProvider>();
+}
+
+AuroraCredentialError LoadAuroraCacheKeyFile(
+    const std::filesystem::path& path,
     AuroraCacheKey& output)
 {
     output = {};
 
-#ifdef _WIN32
-    PCREDENTIALW rawCredential = nullptr;
-    if (!CredReadW(
-            WindowsCredentialTarget,
-            CRED_TYPE_GENERIC,
-            0,
-            &rawCredential))
+    if (path.empty())
     {
-        return GetLastError() == ERROR_NOT_FOUND
+        return AuroraCredentialError::NotFound;
+    }
+
+    std::error_code error;
+    const bool isFile = std::filesystem::is_regular_file(path, error);
+
+    if (error)
+    {
+        return error.default_error_condition() ==
+                std::make_error_condition(
+                    std::errc::no_such_file_or_directory)
             ? AuroraCredentialError::NotFound
             : AuroraCredentialError::ReadError;
     }
 
-    CredentialHandle credential(rawCredential);
+    if (!isFile)
+    {
+        return AuroraCredentialError::NotFound;
+    }
 
-    if (rawCredential == nullptr ||
-        rawCredential->CredentialBlob == nullptr ||
-        rawCredential->CredentialBlobSize != AuroraCacheKey::Size)
+    const std::uintmax_t size =
+        std::filesystem::file_size(path, error);
+
+    if (error)
+    {
+        return AuroraCredentialError::ReadError;
+    }
+
+    if (size != AuroraCacheKey::Size)
     {
         return AuroraCredentialError::InvalidKey;
     }
 
+    std::ifstream input(path, std::ios::binary);
+    if (!input)
+    {
+        return AuroraCredentialError::ReadError;
+    }
+
     std::array<std::uint8_t, AuroraCacheKey::Size> bytes{};
-    std::copy_n(
-        rawCredential->CredentialBlob,
-        bytes.size(),
-        bytes.begin());
+    input.read(
+        reinterpret_cast<char*>(bytes.data()),
+        static_cast<std::streamsize>(bytes.size()));
+
+    if (input.gcount() !=
+            static_cast<std::streamsize>(bytes.size()) ||
+        input.bad())
+    {
+        OPENSSL_cleanse(bytes.data(), bytes.size());
+        return AuroraCredentialError::ReadError;
+    }
 
     output = AuroraCacheKey::FromBytes(bytes);
     OPENSSL_cleanse(bytes.data(), bytes.size());
     return AuroraCredentialError::None;
-#else
-    return AuroraCredentialError::UnsupportedPlatform;
-#endif
 }

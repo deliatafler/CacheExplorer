@@ -37,17 +37,3 @@ private:
     std::array<std::uint8_t, Size> bytes_{};
     bool valid_ = false;
 };
-
-enum class AuroraCredentialError
-{
-    None,
-    UnsupportedPlatform,
-    NotFound,
-    ReadError,
-    InvalidKey
-};
-
-const char* AuroraCredentialErrorMessage(AuroraCredentialError error);
-
-AuroraCredentialError LoadAuroraCacheKey(
-    AuroraCacheKey& output);

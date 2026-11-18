@@ -33,8 +33,8 @@ namespace
 ViewerTextureCacheSource::ViewerTextureCacheSource() = default;
 
 ViewerTextureCacheSource::ViewerTextureCacheSource(
-    AuroraCacheKeyLoader keyLoader)
-    : auroraSource_(std::move(keyLoader))
+    std::shared_ptr<const AuroraCacheKeyProvider> keyProvider)
+    : auroraSource_(std::move(keyProvider))
 {
 }
 
